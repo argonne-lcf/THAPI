@@ -107,12 +107,7 @@ btx_ze_model.yaml: $(srcdir)/gen_babeltrace_ze_model.rb $(ZE_LIB_GEN) $(ZE_MODEL
 
 EXTRA_DIST += \
 	ze_model.rb \
-	gen_babeltrace_ze_model.rb \
-	ze_validator_zemodel.rb \
-	ze_validator_function_entry_exit_callbacks.rb \
-	ze_validator_entry_exit_helpers.rb \
-	ze_validator_state_object.rb \
-	ze_deprecated.json
+	gen_babeltrace_ze_model.rb
 
 
 ZE_PROBES = $(ZE_NAMESPACES:=_tracepoints) $(ZE_STRUCTS_NAMESPACES:=_tracepoints)
@@ -178,8 +173,11 @@ EXTRA_DIST += \
 CLEANFILES += tracer_ze.c
 
 bin_SCRIPTS = \
-	tracer_ze.sh \
-	ze_validator
+	tracer_ze.sh
+
+if ZE_VALIDATOR
+  bin_SCRIPTS += validator/ze_validator
+endif
 
 
 noinst_LTLIBRARIES = libzetracepoints.la
@@ -249,21 +247,33 @@ EXTRA_DIST += \
 	gen_ze_library.rb \
 	gen_babeltrace_ze_lib.rb \
 	gen_ze_refinements.rb \
-	gen_ze_bindings.rb \
-	ze_thread_safety.yaml
+	gen_ze_bindings.rb
 
 CLEANFILES += $(ZE_BINDINGS)
 
 data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb \
-	babeltrace_zeprofiling_apis.txt \
-	ze_thread_safety.yaml \
-	ze_deprecated.json \
-	ze_validator_zemodel.rb \
-	ze_validator_function_entry_exit_callbacks.rb \
-	ze_validator_entry_exit_helpers.rb \
-	ze_validator_state_object.rb
+	babeltrace_zeprofiling_apis.txt
+
+# Everything the ze_validator needs at run time, code and data alike. Installed
+# under its own directory so the require paths ('ze/validator/...') match the
+# layout, and only when the validator is built - nothing else reads these.
+ZE_VALIDATOR_SOURCES = \
+	validator/errors.rb \
+	validator/allocation_map.rb \
+	validator/model.rb \
+	validator/callbacks.rb \
+	validator/semantics.rb \
+	validator/state_object.rb \
+	validator/api_metadata.yaml
+
+EXTRA_DIST += $(ZE_VALIDATOR_SOURCES)
+
+if ZE_VALIDATOR
+  ze_validatordir = $(datadir)/ze/validator
+  ze_validator_DATA = $(ZE_VALIDATOR_SOURCES)
+endif
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'ze_validator_entry_exit_helpers'
-require 'ze_validator_zemodel'
+require 'ze/validator/semantics'
+require 'ze/validator/model'
 require 'ze_library'
 
 $upon_entry = {} # called to modify program state on entry
@@ -27,13 +27,7 @@ $upon_entry['zeCommandListAppendLaunchKernel'] = lambda { |state, ctx, payload|
   # Retrieve the compute ordinal from the command list
   command_lists = state.find_objects(ctx, 'command_list')
   cmd_list = command_lists[payload['hCommandList']]
-  cqg_ordinal = 0 # 0 by default
-  # a normal list carries the ordinal in desc; an immediate list in altdesc
-  if cmd_list&.desc
-    cqg_ordinal = cmd_list.desc[:commandQueueGroupOrdinal]
-  elsif cmd_list&.altdesc
-    cqg_ordinal = cmd_list.altdesc[:ordinal]
-  end
+  cqg_ordinal = cmd_list ? cmd_list.queue_group_ordinal : 0
   # both checks must run even if the launch later aborts
   check_valid_ordinal(state, ctx, payload, cqg_ordinal, cmd_list)
   check_kernel_created(state, ctx, payload)
@@ -263,10 +257,9 @@ $upon_entry['zeCommandQueueExecuteCommandLists'] = lambda { |state, ctx, payload
       # events used by the list must come from a pool on the queue's context
       check_event_pool_list_context_match(state, ctx, known_command_lists[command_list_handle])
     end
-  else
-    # report and continue so the deferred execution below still runs
-    state.print_usage_error(ctx, "command queue #{state.get_handle_str(command_queue_handle)} was not found ")
   end
+  # an unknown queue was already reported by check_valid_command_queue above;
+  # the deferred execution below still runs so the lists get their checks
 }
 
 # Execute is asynchronous, so each submitted list becomes a deferred unit and
@@ -283,9 +276,10 @@ $on_successful_exit['zeFenceHostSynchronize'] = lambda { |state, ctx, _payload|
   fence_handle = state.find_param(ctx, 'hFence')
   fence = get_fence(state, ctx, fence_handle)
   if fence
+    check_fence_sync_without_reset(state, ctx, fence_handle, fence)
     fence.status = fence.signaled
   else
-    state.print_usage_error(ctx, 'nullptr fence was used for zeFenceHostSynchronize')
+    state.report(:null_fence_handle, ctx, 'a null fence was used for zeFenceHostSynchronize')
   end
 }
 
@@ -335,6 +329,7 @@ $on_successful_exit['zeContextCreate'] = lambda { |state, ctx, payload|
   desc = state.to_struct(desc_val, ZE::ZEContextDesc)
   handle = payload['phContext_val']
   contexts[handle] = ZEModel::Context.new(handle, driver, desc)
+  driver.contexts[handle] = contexts[handle] if driver
   check_struct_stype_misuse(state, ctx, payload, :ZE_STRUCTURE_TYPE_CONTEXT_DESC, desc[:stype])
 }
 
@@ -349,13 +344,19 @@ $on_successful_exit['zeContextCreateEx'] = lambda { |state, ctx, payload|
   devs = nil unless state.find_param(ctx, 'phDevices') != 0
   handle = payload['phContext_val']
   contexts[handle] = ZEModel::Context.new(handle, driver, desc, devs)
+  driver.contexts[handle] = contexts[handle] if driver
 }
 
+# A context owns everything created from it, so its destruction is where
+# whatever the program did not clean up first gets reported.
 $on_successful_exit['zeContextDestroy'] = lambda { |state, ctx, _payload|
   contexts = state.find_objects(ctx, 'context')
-  contexts.delete(state.find_param(ctx, 'hContext')) do |h|
-    raise_internal_error(ctx, "context #{state.get_handle_str(h)} does not exist")
+  handle = state.find_param(ctx, 'hContext')
+  context_obj = contexts.delete(handle) do
+    state.object_not_found(ctx, 'context', handle)
   end
+  context_obj.driver&.contexts&.delete(handle)
+  state.report_orphans(ctx, context_obj)
 }
 
 $on_successful_exit['zeEventPoolCreate'] = lambda { |state, ctx, payload|
@@ -382,9 +383,11 @@ $on_successful_exit['zeEventPoolDestroy'] = lambda { |state, ctx, _payload|
   event_pool.context.event_pools.delete(handle) do
     state.object_not_found(ctx, 'event_pool', handle, 'context')
   end
-  event_pool.events.each_key do |h|
-    state.print_usage_error(ctx, "event #{state.get_handle_str(h)} was not destroyed prior to event_pool #{state.get_handle_str(handle)} destruction")
-  end
+  state.report_orphans(ctx, event_pool)
+}
+
+$upon_entry['zeEventCreate'] = lambda { |state, ctx, payload|
+  check_valid_event_pool(state, ctx, payload)
 }
 
 $on_successful_exit['zeEventCreate'] = lambda { |state, ctx, payload|
@@ -395,7 +398,9 @@ $on_successful_exit['zeEventCreate'] = lambda { |state, ctx, payload|
   handle = payload['phEvent_val']
   events[handle] = ZEModel::Event.new(handle, event_pool, desc)
   unless event_pool.indices.delete?(desc[:index])
-    state.print_usage_error(ctx, "event_pool #{state.get_handle_str(event_pool.handle)} index #{desc[:index]} is already used")
+    state.report(:event_pool_index_in_use, ctx,
+                 "event_pool #{state.get_handle_str(event_pool.handle)} index #{desc[:index]} is already used",
+                 key: "pool-index-used-#{state.get_handle_str(event_pool.handle)}-#{desc[:index]}")
   end
   event_pool.events[handle] = events[handle]
   check_struct_stype_misuse(state, ctx, payload, :ZE_STRUCTURE_TYPE_EVENT_DESC, desc[:stype])
@@ -412,7 +417,9 @@ $on_successful_exit['zeEventDestroy'] = lambda { |state, ctx, _payload|
     state.object_not_found(ctx, 'event', handle, 'event_pool')
   end
   unless event_pool.indices.add?(event.desc[:index])
-    state.print_usage_error(ctx, "event_pool #{state.get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed")
+    state.report(:event_pool_index_already_free, ctx,
+                 "event_pool #{state.get_handle_str(event_pool.handle)} index #{event.desc[:index]} is already freed",
+                 key: "pool-index-freed-#{state.get_handle_str(event_pool.handle)}-#{event.desc[:index]}")
   end
 }
 
@@ -447,9 +454,7 @@ $on_successful_exit['zeCommandQueueDestroy'] = lambda { |state, ctx, _payload|
   command_queue.context.command_queues.delete(handle) do
     state.object_not_found(ctx, 'command_queue', handle, 'context')
   end
-  command_queue.fences.each_key do |h|
-    state.print_usage_error(ctx, "fence #{state.get_handle_str(h)} was not destroyed prior to command_queue #{state.get_handle_str(handle)} destruction")
-  end
+  state.report_orphans(ctx, command_queue)
 }
 
 $on_successful_exit['zeFenceCreate'] = lambda { |state, ctx, payload|
@@ -484,9 +489,7 @@ $on_successful_exit['zeCommandListCreate'] = lambda { |state, ctx, payload|
   desc = state.to_struct(desc_val, ZE::ZECommandListDesc)
   handle = payload['phCommandList_val']
   command_lists[handle] = ZEModel::CommandList.new(handle, context_obj, device, desc, nil)
-  # in-order enables the intra-list self-deadlock check
-  command_lists[handle].in_order = !(desc && desc[:flags].respond_to?(:include?) &&
-                                      desc[:flags].include?(:ZE_COMMAND_LIST_FLAG_IN_ORDER)).nil?
+  command_lists[handle].in_order = desc[:flags].include?(:ZE_COMMAND_LIST_FLAG_IN_ORDER)
   context_obj.command_lists[handle] = command_lists[handle]
   check_struct_stype_misuse(state, ctx, payload, :ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC, desc[:stype])
 }
@@ -500,12 +503,8 @@ $on_successful_exit['zeCommandListCreateImmediate'] = lambda { |state, ctx, payl
   handle = payload['phCommandList_val']
   check_group_property_queued(state, ctx, payload, device)
   command_lists[handle] = ZEModel::CommandList.new(handle, context_obj, device, nil, altdesc)
-  command_lists[handle].immediate = true # immdediate command lists cannot be passed to the execute command lists
-  command_lists[handle].associated_ordinal = altdesc[:ordinal]
-  # each immediate append is its own single-op unit, so a cycle between them is
-  # caught by check_circular_deadlock; recorded here for consistency
-  command_lists[handle].in_order = !(altdesc && altdesc[:flags].respond_to?(:include?) &&
-                                      altdesc[:flags].include?(:ZE_COMMAND_QUEUE_FLAG_IN_ORDER)).nil?
+  command_lists[handle].immediate = true
+  command_lists[handle].in_order = altdesc[:flags].include?(:ZE_COMMAND_QUEUE_FLAG_IN_ORDER)
   context_obj.command_lists[handle] = command_lists[handle]
 
   # immediate command list does not take in the list descriptor as an input
@@ -536,7 +535,7 @@ $on_successful_exit['zeModuleCreate'] = lambda { |state, ctx, payload|
   build_log_handle = payload['phBuildLog_val']
   if build_log_handle != 0
     module_build_logs = state.find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle, mod)
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle, context_obj, mod)
     module_build_logs[build_log_handle] = build_log
     context_obj.module_build_logs[build_log_handle] = build_log
     modules[handle].build_log = build_log
@@ -550,7 +549,7 @@ $on_erroneous_exit['zeModuleCreate'] = lambda { |state, ctx, payload|
   if build_log_handle != 0
     context_obj = state.find_object(ctx, 'context', 'hContext')
     module_build_logs = state.find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle, context_obj)
     module_build_logs[build_log_handle] = build_log
     context_obj.module_build_logs[build_log_handle] = build_log
   end
@@ -566,9 +565,7 @@ $on_successful_exit['zeModuleDestroy'] = lambda { |state, ctx, _payload|
   mod.context.modules.delete(handle) do
     state.object_not_found(ctx, 'module', handle, 'context')
   end
-  mod.kernels.each_key do |h|
-    state.print_usage_error(ctx, "kernel #{state.get_handle_str(h)} was not destroyed prior to module #{state.get_handle_str(handle)} destruction")
-  end
+  state.report_orphans(ctx, mod)
 }
 
 $on_erroneous_exit['zeModuleDynamicLink'] = $on_successful_exit['zeModuleDynamicLink'] = lambda { |state, ctx, payload|
@@ -576,7 +573,7 @@ $on_erroneous_exit['zeModuleDynamicLink'] = $on_successful_exit['zeModuleDynamic
   if build_log_handle != 0
     context_obj = state.find_object(ctx, 'context', 'hContext')
     module_build_logs = state.find_objects(ctx, 'module_build_log')
-    build_log = ZEModel::Module::BuildLog.new(build_log_handle)
+    build_log = ZEModel::Module::BuildLog.new(build_log_handle, context_obj)
     module_build_logs[build_log_handle] = build_log
     context_obj.module_build_logs[build_log_handle] = build_log
   end
@@ -626,60 +623,59 @@ $on_successful_exit['zeKernelDestroy'] = lambda { |state, ctx, _payload|
   end
 }
 
-# Each allocator keys the allocation by its Level Zero context, then calls
-# mark_reallocated since the driver may hand back an address that was freed.
-
 $on_successful_exit['zeMemAllocDevice'] = lambda { |state, ctx, payload|
   # memory is associated with devices
   ze_context = state.find_param(ctx, 'hContext')
-  memory_allocations = state.memory_allocations(ctx, ze_context)
-  context_obj = state.find_object(ctx, 'context', 'hContext')
+  context_obj = state.context_from_handle(ctx, ze_context)
   device = state.find_object(ctx, 'device', 'hDevice')
   size = state.find_param(ctx, 'size')
   device_desc_val = state.find_param(ctx, 'device_desc_val')
   handle = payload['pptr_val']
-  mark_reallocated(state, ctx, ze_context, handle, size)
-  memory_allocation = ZEModel::Memory.new(handle, context_obj, size, device, 'device')
-  memory_allocations << memory_allocation
-  memory_allocations.sort_by!(&:base) if memory_allocation
+  if context_obj
+    mark_reallocated(context_obj.freed_memory_allocations, handle, size)
+    memory_allocation = ZEModel::MemoryAllocation.new(handle, context_obj, size, device, 'device')
+    track_allocation(state, ctx, context_obj.memory_allocations, memory_allocation)
+  end
   device_desc = state.to_struct(device_desc_val, ZE::ZEDeviceMemAllocDesc)
   check_struct_stype_misuse(state, ctx, payload, :ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, device_desc[:stype])
 }
 
 $on_successful_exit['zeMemAllocShared'] = lambda { |state, ctx, payload|
   ze_context = state.find_param(ctx, 'hContext')
-  memory_allocations = state.memory_allocations(ctx, ze_context)
   # finds the device and context objects associated with the params
-  context_obj = state.find_object(ctx, 'context', 'hContext')
+  context_obj = state.context_from_handle(ctx, ze_context)
   device = state.find_object(ctx, 'device', 'hDevice')
   # A nullptr device handle shares ownership between the host and all devices
   # supporting cross-device shared access.
   size = state.find_param(ctx, 'size')
   handle = payload['pptr_val']
-  mark_reallocated(state, ctx, ze_context, handle, size)
-  memory_allocation = ZEModel::Memory.new(handle, context_obj, size, device, 'shared')
-  memory_allocations << memory_allocation
-  memory_allocations.sort_by!(&:base) if memory_allocation
+  return unless context_obj
+
+  mark_reallocated(context_obj.freed_memory_allocations, handle, size)
+  memory_allocation = ZEModel::MemoryAllocation.new(handle, context_obj, size, device, 'shared')
+  track_allocation(state, ctx, context_obj.memory_allocations, memory_allocation)
 }
 
 $on_successful_exit['zeMemAllocHost'] = lambda { |state, ctx, payload|
   # Host allocations are accessible by the host and all devices within the driver’s context.
   ze_context = state.find_param(ctx, 'hContext')
-  memory_allocations = state.memory_allocations(ctx, ze_context)
-  context_obj = state.find_object(ctx, 'context', 'hContext')
+  context_obj = state.context_from_handle(ctx, ze_context)
   size = state.find_param(ctx, 'size')
   handle = payload['pptr_val']
-  mark_reallocated(state, ctx, ze_context, handle, size)
-  memory_allocation = ZEModel::Memory.new(handle, context_obj, size, nil, 'host')
-  memory_allocations << memory_allocation
-  memory_allocations.sort_by!(&:base) if memory_allocation
+  return unless context_obj
+
+  mark_reallocated(context_obj.freed_memory_allocations, handle, size)
+  memory_allocation = ZEModel::MemoryAllocation.new(handle, context_obj, size, nil, 'host')
+  track_allocation(state, ctx, context_obj.memory_allocations, memory_allocation)
 }
 
 # The free is applied at entry: zeMemFree may block until the buffer is idle, so
 # by _exit a gated copy could have drained and the in-flight check would miss it.
 $upon_entry['zeMemFree'] = lambda { |state, ctx, payload|
-  ze_context = payload['hContext']
-  memory_allocations = state.memory_allocations(ctx, ze_context)
+  context_obj = state.context_from_handle(ctx, payload['hContext'])
+  return unless context_obj
+
+  memory_allocations = context_obj.memory_allocations
   handle = payload['ptr']
   memory_allocation = find_allocation(memory_allocations, handle)
   return unless memory_allocation&.base == handle
@@ -687,34 +683,38 @@ $upon_entry['zeMemFree'] = lambda { |state, ctx, payload|
   # flag if this buffer is still referenced by a copy/fill that has been
   # submitted but not yet completed (in-flight device work would touch freed mem)
   check_free_in_flight(state, ctx, memory_allocation)
-  memory_allocations.delete_if { |m| m.base == handle }
+  untrack_allocation(memory_allocations, memory_allocation)
   # keep the freed allocation in this context's freed registry so a later
   # copy/fill/kernel referencing this address is caught as use-after-free
   memory_allocation.freed_by = state.get_api_context(ctx)
-  state.freed_memory_allocations(ctx, ze_context) << memory_allocation
-  state.freed_memory_allocations(ctx, ze_context).sort_by!(&:base) if memory_allocation
+  track_freed_allocation(context_obj.freed_memory_allocations, memory_allocation)
 }
 
-# the free was applied at entry, so restore the allocation if it actually failed
+# the free was applied at entry, so restore the allocation if it actually failed.
+# The unknown-context case was already reported at entry, hence the plain lookup.
 $on_erroneous_exit['zeMemFree'] = lambda { |state, ctx, _payload|
-  ze_context = state.find_param(ctx, 'hContext')
+  context_obj = state.find_object(ctx, 'context', 'hContext')
   handle = state.find_param(ctx, 'ptr')
-  freed = state.freed_memory_allocations(ctx, ze_context)
+  return unless context_obj
+
+  freed = context_obj.freed_memory_allocations
   mem = find_allocation(freed, handle)
   if mem&.base == handle
-    freed.delete_if { |m| m.base == handle }
+    untrack_allocation(freed, mem)
     mem.freed_by = nil
-    state.memory_allocations(ctx, ze_context) << mem
-    state.memory_allocations(ctx, ze_context).sort_by!(&:base) if mem
+    track_allocation(state, ctx, context_obj.memory_allocations, mem)
   end
 }
 
 $upon_entry['zeMemGetAddressRange'] = lambda { |state, ctx, payload|
-  ze_context = payload['hContext']
-  memory_allocations = state.memory_allocations(ctx, ze_context)
+  context_obj = state.context_from_handle(ctx, payload['hContext'])
+  return unless context_obj
+
   handle = payload['ptr']
-  memory_allocation = find_allocation(memory_allocations, handle)
+  memory_allocation = find_allocation(context_obj.memory_allocations, handle)
   if !memory_allocation || memory_allocation.base != handle
-    state.print_usage_error(ctx, "Memory range is either out-of-range or never allocated")
+    state.report(:unallocated_address_range, ctx,
+                 "ptr #{state.get_handle_str(handle)} is either out-of-bounds or never got allocated",
+                 key: "addr-range-#{state.get_handle_str(handle)}")
   end
 }

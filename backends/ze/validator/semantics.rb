@@ -1,60 +1,99 @@
 # frozen_string_literal: true
 
-require 'ze_validator_zemodel'
+require 'ze/validator/model'
 require 'ze_library'
 require 'rgl/adjacency'
 require 'rgl/traversal'
 
+# The engine groups recorded for a device, or nil when the trace carries none.
+#
+# Must not use plain indexing: state.device_properties defaults a missing key to
+# {}, which would both pollute the map and make "topology unknown" look
+# identical to "device has no engine groups".
+def device_command_queue_groups(state, device_handle)
+  return nil unless device_handle
+
+  all = state.device_properties
+  return nil unless all.key?(device_handle)
+
+  groups = all[device_handle]
+  groups.empty? ? nil : groups
+end
+
 # Checks for oob index. A command queue is created with an (ordinal, index)
 # pair -- which engine group, and which queue within that group.
+# Silent when the topology is unknown: this only runs after zeCommandQueueCreate
+# already failed, so a "could not check" note would just be noise there.
 def check_valid_index_for_ordinal(state, ctx, device_handle, cmd_q_handle, ordinal, index)
-  return unless state.device_properties
-  groups = state.device_properties[device_handle]
-  return unless groups
-  
+  groups = device_command_queue_groups(state, device_handle)
+  return if groups.nil?
+
   groups.each do |ordinal_key, info|
     # find matching ordinal, and check whether the index is oob
     next unless ordinal_key == ordinal && (index >= info['numQueues'] || index.negative?)
-    state.print_usage_error(ctx, "command queue (#{state.get_handle_str(cmd_q_handle)}) with ordinal = #{ordinal} was created " \
-                                 "with index = #{index}. Index value should be: 0<= index < #{info['numQueues']}")
+    state.report(:queue_index_out_of_range, ctx,
+                 "command queue (#{state.get_handle_str(cmd_q_handle)}) with ordinal = #{ordinal} was created " \
+                 "with index = #{index}. Index value should be: 0<= index < #{info['numQueues']}")
   end
 end
 
 # Checking whether the application ever called zeDeviceGetCommandQueueGroupProperties
 # before calling command queue/list create. Not calling it implies hardcoded ordinals
 def check_group_property_queued(state, ctx, _payload, device)
-  return unless !device.cmd_queue_group_properties_queried && state.print_tracker['check_group_property'].zero?
+  return if device.cmd_queue_group_properties_queried
 
-  state.print_tracker['check_group_property'] = 1
-  state.print_usage_error(ctx,
-                          "command queue group wasn't queried. Hardcoded group properties may break the code on different devices")
+  state.report(:command_queue_group_not_queried, ctx,
+               "command queue group wasn't queried. Hardcoded group properties may break the code on different devices",
+               key: 'check_group_property')
 end
 
-# returns the copy ordinals retrieved from the trace
+# The copy-only ordinals of the command list's device, or nil when the trace
+# does not carry that device's engine topology.
+#
+# nil is not "this device has no copy-only engine": it means the question cannot
+# be answered and the caller must skip instead of guessing. THAPI emits the
+# command_queue_group tracepoint only for root devices, and only when the
+# properties channel is enabled, so a list created on a sub-device lands here.
 def copy_only_ordinals(state, cmd_list)
-  return [1, 2] unless state.device_properties
-  groups = state.device_properties[cmd_list.device.handle]
-  return unless groups
+  groups = device_command_queue_groups(state, cmd_list&.device&.handle)
+  return nil unless groups
+
   groups.filter_map do |ordinal, prop|
-      flags = prop['flags']
-      ordinal if flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY) &&
-                !flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
+    flags = prop['flags']
+    ordinal if flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY) &&
+               !flags.include?(:ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE)
   end
+end
+
+# Records that a copy-engine check could not run for want of topology. Deduped
+# per device, so one trace reports each unknown device once whichever check hit
+# it first.
+def report_unknown_engine_topology(state, ctx, cmd_list)
+  handle = cmd_list&.device ? state.get_handle_str(cmd_list.device.handle) : 'unknown'
+  state.report(:engine_topology_unknown, ctx,
+               "copy-engine checks skipped for device #{handle}: the trace carries no command queue " \
+               'group properties for it (THAPI records them for root devices only, and only when the ' \
+               'properties channel is enabled)',
+               key: "engine-topology-#{handle}")
 end
 
 # checks whether a command list attached to a copy-only engine receives a kernel
 def check_valid_ordinal(state, ctx, _payload, cqg_ordinal, cmd_list)
-  copy_only_ords = copy_only_ordinals(state, cmd_list)
-  return unless copy_only_ords.include?(cqg_ordinal) && state.print_tracker['check_valid_ordinal'].zero?
+  copy_only = copy_only_ordinals(state, cmd_list)
+  if copy_only.nil?
+    report_unknown_engine_topology(state, ctx, cmd_list)
+    return
+  end
+  return unless copy_only.include?(cqg_ordinal)
 
-  state.print_tracker['check_valid_ordinal'] = 1
   kernels = state.find_objects(ctx, 'kernel')
   kernel_handle = state.find_param(ctx, 'hKernel')
-  kernel_name = 'UNKNOWN' # kernel name wasn't passed, so mark it as unknown
   command_list_handle = state.find_param(ctx, 'hCommandList')
-  kernel_name = kernels[kernel_handle].name if kernels[kernel_handle]
-  state.print_usage_error(ctx,
-                          "Launching kernel (#{kernel_name}) to a command list with Copy Ordinal: #{state.get_handle_str(command_list_handle)}")
+  kernel_name = kernels[kernel_handle]&.name || 'UNKNOWN'
+  state.report(:kernel_on_copy_only_list, ctx,
+               "launching kernel (#{kernel_name}) on command list #{state.get_handle_str(command_list_handle)}, " \
+               "which is bound to copy-only ordinal #{cqg_ordinal}",
+               key: "copy-ordinal-#{state.get_handle_str(command_list_handle)}-#{kernel_name}")
 end
 
 # list of compute launches
@@ -62,23 +101,28 @@ COMPUTE_LAUNCH_APIS = %w[zeCommandListAppendLaunchKernel
                          zeCommandListAppendLaunchCooperativeKernel].freeze
 
 def command_list_has_kernel_launch?(cmd_list)
-  cmd_list&.ops&.any? { |op| op.kind == :launch && COMPUTE_LAUNCH_APIS.include?(op.api) }
+  return false unless cmd_list
+
+  cmd_list.ops.any? { |op| op.kind == :launch && COMPUTE_LAUNCH_APIS.include?(op.api) }
 end
 
 # Checks whether a command list that has a compute kernel gets submitted to a command queue that is attached to a copy only engine.
 def check_copy_only_queue_submission(state, ctx, queue, cmd_list)
-  return unless queue&.desc && command_list_has_kernel_launch?(cmd_list)
+  return unless queue.desc && command_list_has_kernel_launch?(cmd_list)
 
   queue_ordinal = queue.desc[:ordinal]
-  return unless copy_only_ordinals(state).include?(queue_ordinal)
+  copy_only = copy_only_ordinals(state, cmd_list)
+  if copy_only.nil?
+    report_unknown_engine_topology(state, ctx, cmd_list)
+    return
+  end
+  return unless copy_only.include?(queue_ordinal)
 
-  key = "copyq-submit-#{state.get_handle_str(queue.handle)}-#{state.get_handle_str(cmd_list.handle)}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx, "command list #{state.get_handle_str(cmd_list.handle)} contains a compute kernel " \
-                               "launch but was submitted to command queue #{state.get_handle_str(queue.handle)} " \
-                               "with copy-only ordinal #{queue_ordinal}")
+  state.report(:compute_list_on_copy_only_queue, ctx,
+               "command list #{state.get_handle_str(cmd_list.handle)} contains a compute kernel " \
+               "launch but was submitted to command queue #{state.get_handle_str(queue.handle)} " \
+               "with copy-only ordinal #{queue_ordinal}",
+               key: "copyq-submit-#{state.get_handle_str(queue.handle)}-#{state.get_handle_str(cmd_list.handle)}")
 end
 
 # Checks whether the kernel module's context matches that of the command list's.
@@ -92,15 +136,12 @@ def check_kernel_list_context_match(state, ctx, payload)
   mod = kernel.module
   return unless mod&.context && mod.context != cmd_list.context
 
-  key = "kernel-list-ctx-#{state.get_handle_str(cmd_list.handle)}-#{state.get_handle_str(kernel.handle)}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx,
-                          "kernel #{state.get_handle_str(kernel.handle)} (from module " \
-                          "#{state.get_handle_str(mod.handle)} on context #{state.get_handle_str(mod.context.handle)}) " \
-                          "does not share the context of command list #{state.get_handle_str(cmd_list.handle)} " \
-                          "(context #{state.get_handle_str(cmd_list.context.handle)})")
+  state.report(:kernel_list_context_mismatch, ctx,
+               "kernel #{state.get_handle_str(kernel.handle)} (from module " \
+               "#{state.get_handle_str(mod.handle)} on context #{state.get_handle_str(mod.context.handle)}) " \
+               "does not share the context of command list #{state.get_handle_str(cmd_list.handle)} " \
+               "(context #{state.get_handle_str(cmd_list.context.handle)})",
+               key: "kernel-list-ctx-#{state.get_handle_str(cmd_list.handle)}-#{state.get_handle_str(kernel.handle)}")
 end
 
 # Checks if the kernel was created
@@ -109,8 +150,8 @@ def check_kernel_created(state, ctx, payload)
   kernel_handle = payload['hKernel']
   return if kernels[kernel_handle]
 
-  state.print_usage_error(ctx,
-                          "kernel: #{state.get_handle_str(kernel_handle)} wasn't created. Consider calling zeKernelCreate")
+  state.report(:kernel_not_created, ctx,
+               "kernel #{state.get_handle_str(kernel_handle)} wasn't created. Consider calling zeKernelCreate")
 end
 
 # Checks for using fence without reset
@@ -119,7 +160,16 @@ def check_fence_misuse(state, ctx, payload)
   fence = get_fence(state, ctx, fence_handle)
   return unless fence && (fence.status == fence.signaled || fence.status == fence.in_use)
 
-  state.print_usage_error(ctx, "Used fence: #{state.get_handle_str(fence_handle)} twice without resetting it")
+  state.report(:fence_reuse_without_reset, ctx,
+               "fence #{state.get_handle_str(fence_handle)} was used twice without being reset")
+end
+
+# Checks for synchronizing on a fence that is already signaled.
+def check_fence_sync_without_reset(state, ctx, fence_handle, fence)
+  return unless fence && fence.status == fence.signaled
+
+  state.report(:fence_reuse_without_reset, ctx,
+               "fence #{state.get_handle_str(fence_handle)} was synchronized again without being reset")
 end
 
 # Check whether the queue handed to ExecuteCommandLists was never created (or was already destroyed).
@@ -127,26 +177,36 @@ def check_valid_command_queue(state, ctx, _payload, cmd_queues, cmd_queue_ptr)
   cmd_queue = cmd_queues[cmd_queue_ptr]
   return if cmd_queue
 
-  state.print_usage_error(ctx,
-                          "Invalid commandQueue (#{state.get_handle_str(cmd_queue_ptr)}) was handed to zeCommandQueueExecuteCommandLists")
+  state.report(:unknown_command_queue, ctx,
+               "command queue #{state.get_handle_str(cmd_queue_ptr)} handed to " \
+               'zeCommandQueueExecuteCommandLists was never created (or was already destroyed)',
+               key: "unknown-queue-#{state.get_handle_str(cmd_queue_ptr)}")
 end
 
 # Checks for submitting nothing, submitting a handle that was never created, or
 # submitting an immediate list, which carries its own queue.
 def check_valid_command_lists(state, ctx, payload)
+  command_queue_handle = payload['hCommandQueue']
   command_lists = payload['phCommandLists_vals']
   known_command_lists = state.find_objects(ctx, 'command_list')
   if command_lists.nil? || command_lists.empty?
-    state.print_usage_error(ctx, 'No valid commandlist was chosen at zeCommandQueueExecuteCommandLists')
+    state.report(:no_command_list_submitted, ctx,
+                 'no command list was submitted to zeCommandQueueExecuteCommandLists')
+    return
   end
 
   command_lists.each do |command_list_handle|
-    if !known_command_lists[command_list_handle]
-      state.print_usage_error(ctx,
-                              "Invalid commandlist (#{command_list_handle}) was handed to zeCommandQueueExecuteCommandLists")
-    elsif known_command_lists[command_list_handle]&.immediate
-      state.print_usage_error(ctx,
-                              "Immediate Command List was chosen for the Command Queue: #{state.get_handle_str(command_queue_handle)}")
+    cmd_list = known_command_lists[command_list_handle]
+    if !cmd_list
+      state.report(:unknown_command_list, ctx,
+                   "command list #{state.get_handle_str(command_list_handle)} handed to " \
+                   'zeCommandQueueExecuteCommandLists was never created (or was already destroyed)',
+                   key: "unknown-list-#{state.get_handle_str(command_list_handle)}")
+    elsif cmd_list.immediate
+      state.report(:immediate_list_submitted, ctx,
+                   "immediate command list #{state.get_handle_str(command_list_handle)} was submitted to " \
+                   "command queue #{state.get_handle_str(command_queue_handle)}; an immediate list carries its own queue",
+                   key: "immediate-submit-#{state.get_handle_str(command_list_handle)}")
     end
   end
 end
@@ -167,7 +227,7 @@ end
 def wait_event_handles(state, ctx)
   handles = state.find_param(ctx, 'phWaitEvents_vals') ||
             state.find_param(ctx, 'phEvents_vals') || []
-  handles.reject { |h| h.nil? || h.zero? }
+  handles.reject(&:zero?)
 end
 
 # Record one op onto a command list
@@ -177,7 +237,7 @@ def record_op(state, ctx, cmd_list_handle, op)
 
   if cmd_list.immediate
     check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
-    state.enqueue_immediate_op(ctx, op, cmd_list_handle)
+    state.enqueue_immediate_op(ctx, op, cmd_list_handle, in_order: cmd_list.in_order)
   else
     cmd_list.ops << op
   end
@@ -222,11 +282,15 @@ def check_command_list_closed(state, ctx, payload)
     next unless cmd_list
 
     if cmd_list.status == ZEModel::CommandList.class_variable_get(:@@INITIALIZED)
-      state.print_usage_error(ctx,
-                              "commandlist: #{state.get_handle_str(command_list_handle)} wasn't closed before executing on #{state.get_handle_str(command_queue_handle)}")
+      state.report(:command_list_not_closed, ctx,
+                   "command list #{state.get_handle_str(command_list_handle)} wasn't closed before being executed " \
+                   "on command queue #{state.get_handle_str(command_queue_handle)}",
+                   key: "not-closed-#{state.get_handle_str(command_list_handle)}")
     elsif cmd_list.status == ZEModel::CommandList.class_variable_get(:@@DESTROYED)
-      state.print_usage_error(ctx,
-                              "commandlist: #{state.get_handle_str(command_list_handle)} was already destroyed #{state.get_handle_str(command_queue_handle)}")
+      state.report(:command_list_already_destroyed, ctx,
+                   "command list #{state.get_handle_str(command_list_handle)} was already destroyed when submitted " \
+                   "to command queue #{state.get_handle_str(command_queue_handle)}",
+                   key: "submit-destroyed-#{state.get_handle_str(command_list_handle)}")
     end
   end
 end
@@ -236,35 +300,29 @@ end
 def check_command_list_reset(state, ctx, payload)
   handle = payload['hCommandList']
   cmd_list = state.find_objects(ctx, 'command_list')[handle]
+  return unless cmd_list
 
   if cmd_list.status == ZEModel::CommandList.class_variable_get(:@@DESTROYED)
-    key = "clreset-destroyed-#{state.get_handle_str(handle)}"
-    if state.print_tracker[key].zero?
-      state.print_tracker[key] = 1
-      state.print_usage_error(ctx,
-                              "command list #{state.get_handle_str(handle)} was already destroyed before zeCommandListReset")
-    end
+    state.report(:command_list_reset_after_destroy, ctx,
+                 "command list #{state.get_handle_str(handle)} was already destroyed before zeCommandListReset",
+                 key: "clreset-destroyed-#{state.get_handle_str(handle)}")
     return
   end
 
   if cmd_list.immediate
-    key = "clreset-immediate-#{state.get_handle_str(handle)}"
-    if state.print_tracker[key].zero?
-      state.print_tracker[key] = 1
-      state.print_usage_error(ctx, "zeCommandListReset called on immediate command list #{state.get_handle_str(handle)}; " \
-                                   'immediate command lists cannot be reset')
-    end
+    state.report(:command_list_reset_immediate, ctx,
+                 "zeCommandListReset called on immediate command list #{state.get_handle_str(handle)}; " \
+                 'immediate command lists cannot be reset',
+                 key: "clreset-immediate-#{state.get_handle_str(handle)}")
   end
 
   return unless state.command_list_in_flight?(ctx, handle)
 
-  key = "clreset-inflight-#{state.get_handle_str(handle)}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx, "command list #{state.get_handle_str(handle)} is being reset while a prior " \
-                               'zeCommandQueueExecuteCommandLists submission is still in-flight; the device may ' \
-                               'still be executing it (undefined behavior)')
+  state.report(:command_list_reset_in_flight, ctx,
+               "command list #{state.get_handle_str(handle)} is being reset while a prior " \
+               'zeCommandQueueExecuteCommandLists submission is still in-flight; the device may ' \
+               'still be executing it (undefined behavior)',
+               key: "clreset-inflight-#{state.get_handle_str(handle)}")
 end
 
 # checks whether zeKernelCreate was given a null module handle.
@@ -272,37 +330,50 @@ def check_valid_module(state, ctx, _payload)
   module_handle = state.find_param(ctx, 'hModule')
   return unless !module_handle || module_handle.zero?
 
-  state.print_usage_error(ctx, 'Improper hModule was handed')
+  state.report(:null_module_handle, ctx, 'a null hModule was handed to zeKernelCreate')
+end
+
+# Checks whether zeEventCreate was given an event pool that was never created.
+def check_valid_event_pool(state, ctx, payload)
+  pool_handle = payload['hEventPool']
+  return unless !pool_handle || pool_handle.zero?
+
+  state.report(:null_event_pool_handle, ctx, 'a null hEventPool was handed to zeEventCreate')
 end
 
 # Checks if the fence's queue and the command list is on the same context.
 def check_list_and_fence_have_matching_context(state, ctx, _payload, cmd_list, fence)
   return unless cmd_list&.context && fence&.command_queue&.context && cmd_list.context != fence.command_queue.context
 
-  list_handle = cmd_list ? state.get_handle_str(cmd_list.handle) : 'nullptr'
-  fence_handle = fence
-  state.print_usage_error(ctx, "Mismatching context between command list #{list_handle} and fence #{fence_handle}")
+  list_handle = state.get_handle_str(cmd_list.handle)
+  fence_handle = state.get_handle_str(fence.handle)
+  state.report(:list_fence_context_mismatch, ctx,
+               "mismatching context between command list #{list_handle} and fence #{fence_handle}",
+               key: "list-fence-ctx-#{list_handle}-#{fence_handle}")
 end
 
 # Checks for context between queue and the fence.
 # Stronger than a context match, as it checks for the matching of the queue.
 def check_fence_and_queue_compatibility(state, ctx, _payload, cmd_queue, fence)
-  return unless fence && cmd_queue && cmd_queue != fence.command_queue
+  return unless fence && cmd_queue != fence.command_queue
 
-  queue_handle = cmd_queue ? state.get_handle_str(cmd_queue.handle) : 'nullptr'
-  fence_handle = fence
-  state.print_usage_error(ctx, "Associated command queue (#{state.get_handle_str(fence.command_queue.handle)}) of fence #{fence_handle} " \
-                               "is different from the one that was provided #{queue_handle}")
+  queue_handle = state.get_handle_str(cmd_queue.handle)
+  fence_handle = state.get_handle_str(fence.handle)
+  state.report(:fence_queue_mismatch, ctx,
+               "fence #{fence_handle} was created on command queue " \
+               "#{state.get_handle_str(fence.command_queue.handle)} but was submitted to #{queue_handle}",
+               key: "fence-queue-#{fence_handle}-#{queue_handle}")
 end
 
 # Check the context between the queue and the list
 def check_list_and_queue_have_matching_context(state, ctx, _payload, cmd_list, cmd_queue)
-  return if cmd_queue && cmd_list && cmd_list.context == cmd_queue.context
+  return if cmd_list && cmd_list.context == cmd_queue.context
 
-  queue_handle = cmd_queue ? state.get_handle_str(cmd_queue.handle) : 'nullptr'
+  queue_handle = state.get_handle_str(cmd_queue.handle)
   list_handle = cmd_list ? state.get_handle_str(cmd_list.handle) : 'nullptr'
-  state.print_usage_error(ctx,
-                          "Mismatching context between command queue #{queue_handle} and command list #{list_handle}")
+  state.report(:list_queue_context_mismatch, ctx,
+               "mismatching context between command queue #{queue_handle} and command list #{list_handle}",
+               key: "list-queue-ctx-#{queue_handle}-#{list_handle}")
 end
 
 # List of operations to collect the events from
@@ -313,7 +384,7 @@ def event_handles_in_op(op)
   handles = []
   if EVENT_OP_KINDS.include?(op.kind)
     handles << op.signal if op.signal
-    handles.concat(op.waits) if op.waits
+    handles.concat(op.waits)
   end
   handles
 end
@@ -333,16 +404,13 @@ def check_events_share_context(state, ctx, event_handles, ref_context, ref_kind,
     ev = events[h]
     next if !(ev && ev.event_pool && ev.event_pool.context) || ev.event_pool.context == ref_context
 
-    key = "evpool-#{ref_kind}-ctx-#{state.get_handle_str(ref_handle)}-#{state.get_handle_str(h)}"
-    next unless state.print_tracker[key].zero?
-
-    state.print_tracker[key] = 1
-    state.print_usage_error(ctx,
-                            "event #{state.get_handle_str(h)} (from event pool " \
-                            "#{state.get_handle_str(ev.event_pool.handle)} on context " \
-                            "#{state.get_handle_str(ev.event_pool.context.handle)}) does not share the context of " \
-                            "#{ref_kind} #{state.get_handle_str(ref_handle)} " \
-                            "(context #{state.get_handle_str(ref_context.handle)})")
+    state.report(:event_list_context_mismatch, ctx,
+                 "event #{state.get_handle_str(h)} (from event pool " \
+                 "#{state.get_handle_str(ev.event_pool.handle)} on context " \
+                 "#{state.get_handle_str(ev.event_pool.context.handle)}) does not share the context of " \
+                 "#{ref_kind} #{state.get_handle_str(ref_handle)} " \
+                 "(context #{state.get_handle_str(ref_context.handle)})",
+                 key: "evpool-#{ref_kind}-ctx-#{state.get_handle_str(ref_handle)}-#{state.get_handle_str(h)}")
   end
 end
 
@@ -356,25 +424,42 @@ end
 
 # Check if event pool's context matches the immediate command list's context
 def check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
-  return unless cmd_list&.context
+  return unless cmd_list.context
 
   check_events_share_context(state, ctx, event_handles_in_op(op),
                              cmd_list.context, 'immediate command list', cmd_list.handle)
 end
 
-# Find the allocation based at exactly ptr, else the one containing it.
-# O(log n) per look up.
+# The MemoryAllocation whose range holds 'ptr', or nil.
+# allocations is an AllocationMap
 def find_allocation(allocations, ptr)
-  mem = allocations.bsearch { |x| x <=> ptr }
-  return mem if mem
+  allocations[ptr]
+end
 
-  idx = allocations.bsearch_index { |m| m.base > ptr }
-  candidate = if idx
-                idx.zero? ? nil : allocations[idx - 1]
-              else
-                allocations.last
-              end
-  candidate if candidate && ptr < candidate.base + candidate.size
+# Records a live allocation.
+def track_allocation(state, ctx, allocations, mem)
+  allocations.insert(mem)
+rescue ZEModel::AllocationMap::OverlapError => e
+  state.report(:overlapping_allocation, ctx,
+               "allocation #{state.get_handle_str(mem.base)} of #{mem.size} bytes overlaps a " \
+               'live allocation of the same context; the allocator should return disjoint ranges',
+               key: "overlap-#{state.get_handle_str(mem.base)}-#{mem.size}")
+  e.entries.each { |old| allocations.delete(old.base) }
+  allocations.insert(mem)
+end
+
+# Records a freed allocation.
+def track_freed_allocation(allocations, mem)
+  allocations.insert(mem)
+rescue ZEModel::AllocationMap::OverlapError => e
+  e.entries.each { |old| allocations.delete(old.base) }
+  allocations.insert(mem)
+end
+
+# Drops an allocation from a map. Callers reach this only with an allocation the
+# map is holding, so its base is a live key: this is free(ptr).
+def untrack_allocation(allocations, mem)
+  allocations.delete(mem.base)
 end
 
 # Check whether the copy's endpoints have enough space to support the requested size
@@ -389,19 +474,19 @@ def check_copy_endpoint_oob(state, ctx, allocations, ptr, size, api, role)
   available = mem.size - offset
   return unless available < size
 
-  key = "oob-#{api}-#{role}-#{state.get_handle_str(ptr)}-#{size}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
-  state.print_usage_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)} only has #{available} " \
-                               "bytes available from this offset but the copy needs #{size} bytes")
+  state.report(:out_of_bounds_copy, ctx,
+               "#{api}: #{role} memory #{state.get_handle_str(ptr)} only has #{available} " \
+               "bytes available from this offset but the copy needs #{size} bytes",
+               key: "oob-#{api}-#{role}-#{state.get_handle_str(ptr)}-#{size}")
 end
 
 # Performs the oob check for copy for both endpoints (src and dst)
 def check_oob_copy(state, ctx, params)
-  api = params[:api] || 'zeCommandListAppendMemoryCopy'
+  api = params[:api]
   size = params[:size]
   allocations = state.memory_allocations(ctx, params[:ctx_handle])
+  return unless allocations
+
   check_copy_endpoint_oob(state, ctx, allocations, params[:dst], size, api, 'destination')
   check_copy_endpoint_oob(state, ctx, allocations, params[:src], size, api, 'source')
 end
@@ -409,17 +494,15 @@ end
 # Check if the copy is from/to a nullptr
 def check_null_copy_ptr(state, ctx, api, endpoints)
   endpoints.each do |role, ptr|
-    state.print_usage_error(ctx, "#{api}: #{role} pointer is nullptr") if ptr.nil? || ptr.zero?
+    next unless ptr.nil? || ptr.zero?
+
+    state.report(:null_copy_pointer, ctx, "#{api}: #{role} pointer is nullptr")
   end
 end
 
-# Deletes the address with a new allocation
-# An address might be reused after a free. In this case, we need to update the validator's state as well.
-def mark_reallocated(state, ctx, ctx_handle, handle, size)
-  freed = state.freed_memory_allocations(ctx, ctx_handle)
-  return if freed.empty?
-
-  freed.delete_if { |m| ranges_overlap?(m.base, m.size, handle, size) }
+# Drops the freed allocations the new one reuses.
+def mark_reallocated(freed, handle, size)
+  freed.overlapping(handle, size).each { |old| freed.delete(old.base) }
 end
 
 # Checks for use-after-free on an address
@@ -429,22 +512,21 @@ def check_uaf_endpoint(state, ctx, live, freed, ptr, api, role)
   mem = find_allocation(freed, ptr)
   return unless mem
 
-  key = "uaf-#{api}-#{state.get_handle_str(ptr)}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
   offset = ptr - mem.base
   where = offset.zero? ? '' : " (offset #{offset} into the freed allocation)"
-  state.print_memory_error(ctx, "#{api}: #{role} memory #{state.get_handle_str(ptr)}#{where} was already " \
-                                "freed#{" by #{mem.freed_by}" if mem.freed_by}; use-after-free")
+  state.report(:use_after_free, ctx,
+               "#{api}: #{role} memory #{state.get_handle_str(ptr)}#{where} was already " \
+               "freed#{" by Process #{mem.freed_by}" if mem.freed_by}; use-after-free",
+               key: "uaf-#{api}-#{state.get_handle_str(ptr)}")
 end
 
 # Checks for when an API uses a memory that has been freed
 def check_use_after_free(state, ctx, params)
-  api = params[:api] || 'zeCommandListAppendMemoryCopy'
+  api = params[:api]
   live  = state.memory_allocations(ctx, params[:ctx_handle])
   freed = state.freed_memory_allocations(ctx, params[:ctx_handle])
-  return if freed.empty?
+
+  return unless live && freed
 
   check_uaf_endpoint(state, ctx, live, freed, params[:dst], api, 'destination')
   check_uaf_endpoint(state, ctx, live, freed, params[:src], api, 'source')
@@ -467,28 +549,25 @@ end
 
 # Checks for uaf on memory ranges barrier
 def check_uaf_ranges_barrier(state, ctx, params)
-  api   = params[:api] || 'zeCommandListAppendMemoryRangesBarrier'
+  api   = params[:api]
   live  = state.memory_allocations(ctx, params[:ctx_handle])
   freed = state.freed_memory_allocations(ctx, params[:ctx_handle])
-  return if freed.empty?
 
-  (params[:ranges] || []).each do |r|
+  return unless live && freed
+
+  params[:ranges].each do |r|
     check_uaf_endpoint(state, ctx, live, freed, r[:base], api, 'range')
   end
 end
 
 # returns true if [a, a+asize) and [b, b+bsize) overlap.
 def ranges_overlap?(a, asize, b, bsize)
-  return false unless a && b && asize && bsize
-
   a < b + bsize && b < a + asize
 end
 
 # Checks for whether memory was deleted during execution of a command list
 def check_free_in_flight(state, ctx, mem)
-  return unless mem
-
-  mem_ctx_handle = mem.context&.handle
+  mem_ctx_handle = mem.context.handle
   state.each_inflight_copy_op(ctx) do |unit, op|
     p = op.params
     next unless p[:ctx_handle] == mem_ctx_handle
@@ -499,31 +578,32 @@ def check_free_in_flight(state, ctx, mem)
     next unless hit
 
     _ptr, role = hit
-    state.print_memory_error(ctx, "memory #{state.get_handle_str(mem.base)} is being freed while still in use as " \
-                                  "the #{role} of an in-flight #{p[:api] || 'copy'} on #{unit.label}; the device " \
-                                  'may access freed memory')
+    state.report(:free_while_in_flight, ctx,
+                 "memory #{state.get_handle_str(mem.base)} is being freed while still in use as " \
+                 "the #{role} of an in-flight #{p[:api] || 'copy'} on #{unit.label}; the device " \
+                 'may access freed memory',
+                 key: "free-inflight-#{state.get_handle_str(mem.base)}-#{unit.label}-#{role}")
   end
 end
 
-# Finds the memory object in the validator that matches the ptr, or the object that contains the ptr
-def find_memory_in_submap(submap, ptr)
-  find_allocation(submap, ptr)
+# Finds the live allocation holding 'ptr' in one Level Zero context, or the one
+# containing it, or nil. An unknown context simply holds nothing.
+def find_allocation_in_context(state, ctx, ctx_handle, ptr)
+  allocations = state.memory_allocations(ctx, ctx_handle)
+  allocations && find_allocation(allocations, ptr)
 end
 
 # Returns [memory, ctx_handle] for ptr, preferring the passed context (usually command list's context).
 def find_known_memory(state, ctx, ptr, prefer_ctx_handle)
-  return [nil, nil] unless ptr && ptr != 0
-
-  all_maps = state.get_process(ctx).memory_allocations
-  if prefer_ctx_handle && all_maps.key?(prefer_ctx_handle)
-    mem = find_memory_in_submap(all_maps[prefer_ctx_handle], ptr)
+  if prefer_ctx_handle
+    mem = find_allocation_in_context(state, ctx, prefer_ctx_handle, ptr)
     return [mem, prefer_ctx_handle] if mem
   end
-  all_maps.each do |cth, submap|
-    if cth != prefer_ctx_handle
-      mem = find_memory_in_submap(submap, ptr)
-      return [mem, cth] if mem
-    end
+  state.get_process(ctx).contexts.each do |cth, context_obj|
+    next if cth == prefer_ctx_handle
+
+    mem = find_allocation(context_obj.memory_allocations, ptr)
+    return [mem, cth] if mem
   end
   [nil, nil]
 end
@@ -538,15 +618,12 @@ def check_ptr_endpoint_list_context(state, ctx, list_ctx_handle, list_handle, pt
   # unknown pointer -> skip (no false alarm)
   return unless mem && found_ctx != list_ctx_handle
 
-  key = "ptr-list-ctx-#{state.get_handle_str(list_handle)}-#{role}-#{state.get_handle_str(ptr)}"
-  return unless state.print_tracker[key].zero?
-
-  state.print_tracker[key] = 1
-  mem_ctx_str = mem.context ? state.get_handle_str(mem.context.handle) : state.get_handle_str(found_ctx)
-  state.print_usage_error(ctx,
-                          "#{api}: #{role} memory #{state.get_handle_str(ptr)} was allocated on context #{mem_ctx_str} " \
-                          "but command list #{state.get_handle_str(list_handle)} is on context #{state.get_handle_str(list_ctx_handle)}; " \
-                          'the command list and copied memory must share a context')
+  mem_ctx_str = state.get_handle_str(mem.context.handle)
+  state.report(:memory_list_context_mismatch, ctx,
+               "#{api}: #{role} memory #{state.get_handle_str(ptr)} was allocated on context #{mem_ctx_str} " \
+               "but command list #{state.get_handle_str(list_handle)} is on context #{state.get_handle_str(list_ctx_handle)}; " \
+               'the command list and copied memory must share a context',
+               key: "ptr-list-ctx-#{state.get_handle_str(list_handle)}-#{role}-#{state.get_handle_str(ptr)}")
 end
 
 # Checks a copy/fill's endpoints against the command list's context. Runs at
@@ -565,32 +642,38 @@ def check_event_signal_reuse(state, ctx, handle, who)
   return unless ev&.signaled
 
   if ev.observed
-    state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was reused as a signal target by #{who} " \
-                                 'without calling zeEventHostReset/zeCommandListAppendEventReset after it was ' \
-                                 "signaled#{" by #{ev.signaled_by}" if ev.signaled_by}")
+    state.report(:event_reuse_without_reset, ctx,
+                 "event #{state.get_handle_str(handle)} was reused as a signal target by #{who} " \
+                 'without calling zeEventHostReset/zeCommandListAppendEventReset after it was ' \
+                 "signaled#{" by #{ev.signaled_by}" if ev.signaled_by}",
+                 key: "event-reuse-#{state.get_handle_str(handle)}-#{who}")
   else
-    state.print_usage_error(ctx, "event #{state.get_handle_str(handle)} was signaled by #{who} before being reset " \
-                                 "or consumed#{" (already signaled by #{ev.signaled_by})" if ev.signaled_by}; " \
-                                 'concurrent signals of the same event are undefined')
+    state.report(:event_concurrent_signal, ctx,
+                 "event #{state.get_handle_str(handle)} was signaled by #{who} before being reset " \
+                 "or consumed#{" (already signaled by #{ev.signaled_by})" if ev.signaled_by}; " \
+                 'concurrent signals of the same event are undefined',
+                 key: "event-double-signal-#{state.get_handle_str(handle)}-#{who}")
   end
 end
 
 # Reports wait-events never signaled by end of trace, i.e. a deferred op that
 # could never complete.
 def report_unsignaled_waits(state, ctx, waits)
-  (waits || []).each do |h|
+  waits.each do |h|
     ev = state.event_by_handle(ctx, h)
     next unless ev && !ev.signaled
 
-    state.print_usage_error(ctx, "event #{state.get_handle_str(h)} was never signaled; a deferred command list " \
-                                 'operation could not complete (possible deadlock or missing signal)')
+    state.report(:unsignaled_wait_event, ctx,
+                 "event #{state.get_handle_str(h)} was never signaled; a deferred command list " \
+                 'operation could not complete (possible deadlock or missing signal)',
+                 key: "unsignaled-#{state.get_handle_str(h)}")
   end
 end
 
 # Checks for a circular event dependency across the units still stuck at end of
 # trace, reporting the first cycle found since cycles overlap and share units.
 def check_circular_deadlock(state, units)
-  stuck = units.select { |u| u.blocked_on && !u.blocked_on.empty? }
+  stuck = units.reject { |u| u.blocked_on.empty? }
   return if stuck.empty?
 
   # event handle -> units that may still signal it
@@ -632,14 +715,15 @@ def report_deadlock_cycle(state, cycle)
   desc = cycle.map { |u| deadlock_node_label(state, u) }.join(' -> ')
   # close the loop for readability
   desc << " -> #{deadlock_node_label(state, cycle.first)}"
-  state.print_deadlock_error(ctx, "circular event dependency among command list operations; none can start: #{desc}")
+  state.report_proc(:circular_event_dependency, ctx,
+                    "circular event dependency among command list operations; none can start: #{desc}")
 end
 
 # Checks for an in-order list parked on an event only a later op in the same
 # list signals. The cross-list detector misses this since it drops self-edges.
 def check_in_order_self_deadlock(state, units)
   units.each do |unit|
-    next unless unit.in_order && unit.blocked_on && !unit.blocked_on.empty?
+    next unless unit.in_order && !unit.blocked_on.empty?
 
     self_waits = unit.blocked_on & unit.pending_signals
     self_waits.each do |ev|
@@ -658,16 +742,18 @@ def report_in_order_self_deadlock(state, unit, ev, signaling_op)
   ev_str = state.get_handle_str(ev)
   desc = "#{unit.label}::#{waiting_api} (waits on event #{ev_str}) -> " \
          "#{unit.label}::#{signaling_api} (signals event #{ev_str} later in the same in-order list)"
-  state.print_deadlock_error(unit.context,
-                             'in-order command list cannot complete; an earlier command waits on an event a later ' \
-                             "command in the same list signals: #{desc}")
+  state.report_proc(:in_order_self_deadlock, unit.context,
+                    'in-order command list cannot complete; an earlier command waits on an event a later ' \
+                    "command in the same list signals: #{desc}",
+                    key: "self-deadlock-#{unit.label}-#{ev_str}")
 end
 
 # Checks a descriptor's stype. Current drivers ignore a wrong one, but it is a
 # latent bug a future driver may reject. Reported once per expected stype.
 def check_struct_stype_misuse(state, ctx, _payload, expected_stype, observed_stype)
-  return unless expected_stype != observed_stype && state.print_tracker[expected_stype].zero?
+  return if expected_stype == observed_stype
 
-  state.print_tracker[expected_stype] = 1
-  state.print_usage_error(ctx, "\nExpected stype of #{expected_stype}\nbut #{observed_stype} was observed.")
+  state.report(:descriptor_stype_mismatch, ctx,
+               "expected stype #{expected_stype} but #{observed_stype} was observed",
+               key: expected_stype.to_s)
 end

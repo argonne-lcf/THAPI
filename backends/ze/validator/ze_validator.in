@@ -7,20 +7,20 @@ require 'optparse'
 require 'babeltrace2'
 require 'find'
 require 'ze_library'
-require 'pp'
 require 'set'
-require 'ze_validator_zemodel'
-require 'ze_validator_function_entry_exit_callbacks'
-require 'ze_validator_state_object'
-require 'yaml'
+require 'ze/validator/errors'
+require 'ze/validator/model'
+require 'ze/validator/callbacks'
+require 'ze/validator/state_object'
 
 # Don't complain about broken pipe
 Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
-$options = { live: false, device_agnostic: true, performance: true,
-             gen_device_properties: true }
+$options = { live: false, csv_export: nil, report_leaks: true }
 
-OptionParser.new do |opts|
+DEFAULT_CSV_EXPORT = 'ze_validator.csv'
+
+parser = OptionParser.new do |opts|
   opts.banner = 'Usage: ze_validator [OPTIONS] trace_directory...'
 
   opts.on('-h', '--help', 'Prints this help') do
@@ -28,23 +28,30 @@ OptionParser.new do |opts|
     exit
   end
 
-  opts.on('--no-device-properties',
-          'Skip running the ze_device_property helper to (re)generate ze_device_property.json') do
-    $options[:gen_device_properties] = false
-  end
-
   opts.on('--live', 'Enable live processing of the trace') do
     $options[:live] = true
   end
 
-  opts.on('--disable-dagn', 'Disables device agnostic semantic misuse checking') do
-    $options[:device_agnostic] = false
+  opts.on('--no-report-leaks', 'Skip the end-of-trace object and memory leak report') do
+    $options[:report_leaks] = false
   end
 
-  opts.on('--disable-performance', 'Disables reporting of API usages that results in downgrade of performance') do
-    $options[:performance] = false
+  opts.on('--csv_export [CSV-FILE]',
+          'Write the per-error-type counts to CSV, one row per diagnostic ' \
+          "(default: #{DEFAULT_CSV_EXPORT})") do |file|
+    $options[:csv_export] = file || DEFAULT_CSV_EXPORT
   end
-end.parse!
+end
+parser.parse!
+
+# The optional argument makes "--csv_export trace_dir" ambiguous: OptionParser
+# hands the trace directory over as the file name and leaves nothing to
+# validate. A directory can never be the CSV output, so give it back to ARGV and
+# fall back to the default name.
+if $options[:csv_export] && File.directory?($options[:csv_export])
+  ARGV.unshift($options[:csv_export])
+  $options[:csv_export] = DEFAULT_CSV_EXPORT
+end
 
 
 def build_and_run_graph( source_location, sink_object )
@@ -56,6 +63,13 @@ def build_and_run_graph( source_location, sink_object )
   utils_muxer = BT2::BTPlugin.find('utils').get_filter_component_class_by_name('muxer')
 
   if !$options[:live]
+    missing = source_location.reject { |path| File.exist?(path) }
+    unless missing.empty?
+      warn "ze_validator: no such file or directory: #{missing.join(', ')}"
+      warn "Try 'ze_validator --help'."
+      exit 1
+    end
+
     trace_locations =
       Find.find(*source_location).reject do |path|
       FileTest.directory?(path)
@@ -71,7 +85,11 @@ def build_and_run_graph( source_location, sink_object )
   else
     trace_locations = source_location
   end
-  raise 'Could not find lttng trace' if trace_locations.size == 0
+  if trace_locations.empty?
+    warn "ze_validator: no LTTng trace found in: #{Array(source_location).join(', ')}"
+    warn "Try 'ze_validator --help'."
+    exit 1
+  end
 
   if !$options[:live]
     comp_sources = trace_locations.each_with_index.collect { |trace_location, i| graph.add_component(ctf_fs, "trace_#{i}", params: {"inputs" => [ trace_location ] }) }
@@ -98,15 +116,20 @@ def build_and_run_graph( source_location, sink_object )
   end
 
   graph.run
-  sink_object.check_issues()
+  sink_object.finalize()
 
 end
 
 # only executive this code if we launch this as the main
 # script. if it's just included with "require" we just want access to the functions.
 if __FILE__ == $0
-  sink_obj = StateObject.new(device_agnostic: $options[:device_agnostic],
-                             performance: $options[:performance])
+  if ARGV.empty?
+    puts parser
+    exit 1
+  end
+
+  sink_obj = StateObject.new(csv_export: $options[:csv_export],
+                             report_leaks: $options[:report_leaks])
   ARGV.uniq!
   source_location = ARGV
   build_and_run_graph(source_location, sink_obj)

@@ -1,14 +1,36 @@
 # frozen_string_literal: true
 
+require 'ze/validator/allocation_map'
 require 'set'
 
 module ZEModel
   # One of these APIs must be called before any other calls
   INIT_API_NAMES = %w[zeInit zeInitDrivers].freeze
+
+  # Which object owns which, following the containment of the specs
+  OWNERSHIP = {
+    'context' => 'driver',
+    'memory_allocation' => 'context',
+    'event_pool' => 'context',
+    'command_queue' => 'context',
+    'command_list' => 'context',
+    'module' => 'context',
+    'module_build_log' => 'context',
+    'event' => 'event_pool',
+    'fence' => 'command_queue',
+    'kernel' => 'module'
+  }.freeze
+
+  # OWNERSHIP inverted
+  OWNED_TYPES = OWNERSHIP.each_with_object({}) { |(child, owner), h|
+    (h[owner] ||= []) << child
+  }.each_value(&:freeze).freeze
+
   # This defines the object in which most ze objects (command list, command queue) extend form
   class Object
     attr_reader :handle
     attr_accessor :status
+    attr_accessor :leak_reported
 
     # returns what object the caller is
     # e.g., 'Device' will return device
@@ -21,6 +43,22 @@ module ZEModel
     def initialize(handle)
       @handle = handle
       @lock = nil
+      @leak_reported = false
+    end
+
+    # The object that owns this one, or nil when it was never recorded.
+    def owner
+      owner_type = OWNERSHIP[self.class.typename]
+      owner_type && instance_variable_get(:"@#{owner_type}")
+    end
+
+    # Yields every live child of one type.
+    def each_child(type, &block)
+      children(type).each_value(&block)
+    end
+
+    def child_count(type)
+      children(type).size
     end
 
     # Reports a race: the trace is timestamp-ordered, so finding the object
@@ -40,15 +78,28 @@ module ZEModel
 
       @lock = nil
     end
+
+    private
+
+    # Mirrors Process#objects: the container for a type is the instance
+    # variable named after its plural.
+    def children(type)
+      instance_variable_get(:"@#{type}s")
+    end
   end
 
   class Driver < Object
     @typename = 'driver'
     attr_reader :devices
+    # handle -> Context. A driver is never destroyed, so this is where the
+    # contexts a program never destroyed are still sitting at the end of a
+    # trace, which is what makes them the leaks worth reporting.
+    attr_reader :contexts
 
     def initialize(handle)
       super
       @devices = []
+      @contexts = {}
     end
   end
 
@@ -76,8 +127,9 @@ module ZEModel
     end
   end
 
-  # create memory object so that device, shared, host mem allocs can be differentiated
-  class Memory < Object
+  # One allocation returned by zeMemAllocDevice/Shared/Host. `memtypestr` keeps
+  # device, shared and host allocations apart.
+  class MemoryAllocation < Object
     @typename = 'memory_allocation'
     attr_reader :context, :size, :owned_by # the Device for a device allocation; nil for host
     attr_accessor :memtypestr, :base # "device" | "host" | "shared"
@@ -99,6 +151,8 @@ module ZEModel
   class Context < Object
     @typename = 'context'
     attr_reader :driver, :desc, :devices, :event_pools, :command_queues, :command_lists, :modules, :module_build_logs
+    attr_reader :memory_allocations
+    attr_reader :freed_memory_allocations
 
     def initialize(handle, driver, desc, devices = nil)
       super(handle)
@@ -111,6 +165,8 @@ module ZEModel
       @command_lists = {}
       @modules = {} # binaries for gpu
       @module_build_logs = {}
+      @memory_allocations = AllocationMap.new
+      @freed_memory_allocations = AllocationMap.new
     end
   end
 
@@ -170,8 +226,8 @@ module ZEModel
   class CommandQueue < Object
     @typename = 'command_queue'
     attr_reader :context, :device, :fences
-    # :ordinal and :index are checked against the topology in
-    # ze_device_property.json
+    # :ordinal and :index are checked against the engine topology recorded by
+    # the lttng_ust_ze_properties:command_queue_group tracepoint
     attr_reader :desc
 
     def initialize(handle, context, device, desc)
@@ -180,7 +236,6 @@ module ZEModel
       @device = device
       @desc = desc
       @fences = {}
-      @valid_fences = Hash.new { |h, k| h[k] = true } # fences that have been reset or haven't been signaled
     end
   end
 
@@ -204,13 +259,9 @@ module ZEModel
 
   class CommandList < Object
     @typename = 'command_list'
-    attr_reader :context, :device, :desc, :altdesc # nil for immediate lists  # queue descriptor, immediate lists only
-    attr_accessor :associated_command_queue, :immediate, :associated_ordinal
-    # enables check_in_order_self_deadlock: in an in-order list an op waiting on
-    # an event only a later op in the same list signals can never complete
+    attr_reader :context, :device, :desc, :altdesc
+    attr_accessor :associated_command_queue, :immediate
     attr_accessor :in_order
-    # RecordedOps in append order, replayed when the list is executed so the
-    # deferred checks run at the point the op would actually execute
     attr_accessor :ops
 
     @@INITIALIZED = 0 # created or being properly recycled
@@ -226,16 +277,15 @@ module ZEModel
       @associated_command_queue = nil
       @status = @@INITIALIZED
       @immediate = false
-      @associated_ordinal = 0
       @in_order = false
-      @api_calls = []
       @ops = []
     end
 
-    # An immediate list is given a queue descriptor instead of a list one, so a
-    # nil desc identifies it.
-    def immediate?
-      !desc
+    def queue_group_ordinal
+      return @desc[:commandQueueGroupOrdinal] if @desc
+      return @altdesc[:ordinal] if @altdesc
+
+      0
     end
   end
 
@@ -249,7 +299,7 @@ module ZEModel
       # normalize a null (0) signal handle to nil so "does this op signal?" is a
       # simple truthiness test
       @signal = signal && signal != 0 ? signal : nil
-      @waits = waits || []
+      @waits = waits
       @params = params
       @api = api || params[:api]
     end
@@ -264,8 +314,11 @@ module ZEModel
     # the command list this unit came from, so list-scoped checks can find their
     # units without matching on the label string
     attr_reader :cmd_list_handle
+    # true when this unit is the running tail of an immediate list rather than a
+    # queue submission; only the latter counts as in-flight for a reset
+    attr_reader :immediate
 
-    def initialize(ops, context, label, in_order: false, cmd_list_handle: nil)
+    def initialize(ops, context, label, in_order: false, cmd_list_handle: nil, immediate: false)
       @ops = ops
       @context = context
       @label = label
@@ -273,8 +326,15 @@ module ZEModel
       @blocked_on = []
       @in_order = in_order
       @cmd_list_handle = cmd_list_handle
+      @immediate = immediate
       # every event this unit will eventually signal, for the wait-for graph
       @pending_signals = ops.map(&:signal).compact
+    end
+
+    # Queues one more op behind the ones already here.
+    def push_op(new_op)
+      @ops << new_op
+      @pending_signals << new_op.signal if new_op.signal
     end
 
     # true once every op has executed
@@ -293,10 +353,12 @@ module ZEModel
 
     class BuildLog < Object
       @typename = 'module_build_log'
+      attr_reader :context
       attr_reader :module # nil when the build failed and produced no module
 
-      def initialize(handle, mod = nil)
+      def initialize(handle, context, mod = nil)
         super(handle)
+        @context = context
         @module = mod
       end
     end
@@ -355,18 +417,13 @@ module ZEModel
     attr_reader :vpid, :threads, :devices, :contexts, :event_pools, :events, :command_queues, :fences, :command_lists, :modules, :module_build_logs # LTTng virtual pid  # tid -> Thread (auto-created on first sight)
     # handle -> object, one table per Level Zero object type
     attr_reader :drivers
-    # allocations kept after zeMemFree, for use-after-free detection
-    attr_reader :freed_memory_allocations
-    # { ctx_handle => { address => Memory } }: addresses are only guaranteed
-    # non-aliasing within a context, so a flat map would lose one of two.
-    attr_reader :memory_allocations
+    attr_reader :kernels
 
     def initialize(vpid)
       @vpid = vpid
       @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
       # can it model memory imports/exports??
       @drivers = {}
-      @event_dependencies = {} # for detecting deadlocks
       @devices = {}
       @contexts = {}
       @event_pools = {}
@@ -377,12 +434,10 @@ module ZEModel
       @modules = {}
       @module_build_logs = {}
       @kernels = {}
-      @memory_allocations = Hash.new { |h, k| h[k] = [] }
-      @freed_memory_allocations = Hash.new { |h, k| h[k] = [] }
     end
 
     # objects('command_list') returns @command_lists, so callers can iterate
-    # object types by name (see StateObject#check_issues).
+    # object types by name (see StateObject#finalize).
     def objects(type)
       instance_variable_get(:"@#{type}s")
     end

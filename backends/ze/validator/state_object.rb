@@ -1,41 +1,38 @@
 require 'babeltrace2'
 require 'ze_library'
 require 'set'
-require 'ze_validator_zemodel'
-require 'ze_validator_function_entry_exit_callbacks'
-require 'ze_validator_state_object'
+require 'ze/validator/errors'
+require 'ze/validator/model'
+require 'ze/validator/callbacks'
 require 'yaml'
-require 'json'
 
 class StateObject
   attr_reader :state
-  attr_reader :ze_thread_safety
   attr_reader :lock_shared_object_on_entry
   attr_reader :unlock_shared_object_on_exit
-  attr_accessor :print_tracker
-  attr_accessor :device_agnostic
-  attr_accessor :performance
   attr_reader :device_properties
+  attr_reader :reporter
 
   def initialize(**opts)
-    @deprecated = JSON.parse(File.read(File.join(DATADIR, 'ze_deprecated.json')))
+    metadata = YAML.load_file(File.join(DATADIR, 'ze', 'validator', 'api_metadata.yaml'))
+    @deprecated = metadata.fetch('deprecated')
     @device_properties = Hash.new { |h, k| h[k] = {} }
-    #for supressing redundant error outputs
-    @print_tracker = Hash.new { |h, k| h[k] = 0 }
-    # Append a third slot to every entry: "has this warning been printed?".
-    @deprecated.each do |api, (version, replacement)|
-      @deprecated[api] = [version, replacement, false]
-    end
-    @performance = opts[:performance]
-    @device_agnostic = opts[:device_agnostic]
+    # Routes every finding: applies the per-kind cap and keeps the counts the
+    # end-of-trace summary reports.
+    @reporter = ZEValidator::Reporter.new
+    # when set, finalze() also writes the per-kind counts there as CSV
+    @csv_export = opts[:csv_export]
+    # end-of-trace leak sweep, on unless --no-report-leaks turned it off
+    @report_leaks = opts.fetch(:report_leaks, true)
+    # APIs whose deprecation warning has already been printed.
+    @deprecation_warned = Set.new
     @state = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
-    @ze_thread_safety = YAML::load_file(File.join(DATADIR, 'ze_thread_safety.yaml'))
+    @ze_thread_safety = metadata.fetch('thread_unsafe')
     @lock_shared_object_on_entry = Hash.new { |h, k| h[k] = [] }
     @unlock_shared_object_on_exit = Hash.new { |h, k| h[k] = [] }
     @init_called = Hash.new { |h, k| h[k] = false } #pid : init called status
     @printed_init_error = false
     @deferred_units = []
-    @signal_epoch = 0
     @ze_thread_safety.each { |api, objects|
       objects.each { |o|
         @lock_shared_object_on_entry[api].push( lambda { |state, ctx, payload|
@@ -111,89 +108,86 @@ class StateObject
     ZE::ZEResult.from_native(payload["zeResult"], nil) == :ZE_RESULT_SUCCESS
   end
 
-  # Zero-padded so the same object reads identically everywhere, which also
-  # makes these strings safe as print_tracker dedup keys.
   def get_handle_str(handle)
     '0x%016x' % handle
   end
 
-  # "hostname - pid", for process-wide findings such as leaks and deadlocks.
   def get_proc_context_str(context)
-    "#{context['hostname']} - #{context['vpid']}"
+    "#{context['hostname']}:#{context['vpid']}"
   end
 
-  # "tid in zeSomeApi": identifies the specific call.
   def get_api_context(context)
     "#{context['vtid']} in #{context['api']}"
   end
 
-  # "hostname - pid - tid in zeSomeApi", for findings attributable to one call.
   def get_context_str(context)
-    "#{get_proc_context_str(context)} - #{get_api_context(context)}"
+    "#{get_proc_context_str(context)}:#{context['vtid']}"
+  end
+
+  # Reports a finding attributable to one API call. `id` names a leaf of the
+  # diagnostic tree (see errors.rb); `key`, when given,
+  # suppresses verbatim repeats about the same object.
+  def report(id, context, str, key: nil)
+    @reporter.report(id, [context['hostname'], context['vpid'], context['vtid']],
+                     "in #{context['api']}: #{str}", key: key)
+  end
+
+  # Reports a process-wide finding, which has no thread or API to attribute to.
+  def report_proc(id, context, str, key: nil)
+    @reporter.report(id, [context['hostname'], context['vpid']], str, key: key)
   end
 
   # Warns once per deprecated API actually used.
-  def print_deprecation_warning(old_api)
-    if @deprecated.include?(old_api) and @deprecated[old_api][2]
-      deprecated_since = @deprecated[old_api][0]
-      new_api = @deprecated[old_api][1]
-      if deprecated_since == ""
-        puts "#{old_api} is deprecated. Please use #{new_api} instead."
-      else
-        puts "#{old_api} is deprecated since #{deprecated_since}. Please use #{new_api} instead."
-      end
-    end
+  def print_deprecation_warning(context, old_api)
+    return unless @deprecation_warned.add?(old_api)
+
+    deprecated_since, new_api = @deprecated[old_api]
+    since = deprecated_since.to_s.empty? ? '' : " since #{deprecated_since}"
+    report(:deprecated_api, context, "#{old_api} is deprecated#{since}. Please use #{new_api} instead.")
   end
 
-  def print_portability_error(context,str)
-    $stderr.puts "Level Zero Portability Error: on #{get_context_str(context)}: #{str}\n\n"
-  end
-  def print_performance_issue(context,str)
-     $stderr.puts "Level Zero Performance Issue: on #{get_context_str(context)}: #{str}\n\n"
-  end
-  def print_usage_error(context, str)
-    $stderr.puts "Level Zero Usage Error: on #{get_context_str(context)}: #{str}\n\n"
+  # Reports a leaked object, naming what it still held. The objects inside it
+  # are not reported on their own, so the count is where the detail went.
+  def print_leak_error(context, type, obj)
+    report_proc(:object_leak, context,
+                "#{type} #{get_handle_str(obj.handle)} was never destroyed#{held_summary(obj)}")
   end
 
-  def print_crash_error(context, str)
-    $stderr.puts "Level Zero Crash Error: on #{get_context_str(context)}: #{str}\n\n"
+  # " (still held 2 command_lists, 5 memory_allocations)", or "" for an object
+  # that owns nothing or had nothing left in it.
+  def held_summary(obj)
+    held = ZEModel::OWNED_TYPES.fetch(obj.class.typename, []).filter_map { |type|
+      count = obj.child_count(type)
+      "#{count} #{type}#{'s' if count > 1}" if count.positive?
+    }
+    held.empty? ? '' : " (still held #{held.join(', ')})"
   end
 
-  def print_memory_error(context, str)
-    $stderr.puts "Level Zero Memory Error: on #{get_context_str(context)}: #{str}\n\n"
-  end
+  # How an object reads on a report line. Memory is a range rather than a
+  # handle, and carries the kind the allocator gave it.
+  def object_label(type, obj)
+    return "#{obj.memtypestr}-memory #{get_handle_str(obj.base)}" if type == 'memory_allocation'
 
-  def print_deadlock_error(context, str)
-    $stderr.puts "Level Zero Deadlock: on #{get_proc_context_str(context)}: #{str}\n\n"
-  end
-
-
-  def print_leak_error(context, type, handle, memtypestr="")
-    if memtypestr.empty?
-      $stderr.puts "Level Zero Leak: on #{get_proc_context_str(context)}: #{type} #{get_handle_str(handle)}\n\n"
-    else
-      $stderr.puts "Level Zero Leak #{memtypestr}-memory: on #{get_proc_context_str(context)}: #{type} #{get_handle_str(handle)}\n\n"
-    end
+    "#{type} #{get_handle_str(obj.handle)}"
   end
 
   # Not a finding about the traced program: the validator's own bookkeeping is
   # wrong, so further output would be untrustworthy.
   def raise_internal_error(context, str)
-    raise "Invalid state #{get_context_str(context)}: #{str}"
+    raise "Invalid state #{get_context_str(context)} in #{context['api']}: #{str}"
   end
 
   # Deduped per (object, other holder) so a racing loop reports once.
   def print_race_condition(context, other_context, type, handle)
-    if @print_tracker["#{type}-#{get_handle_str(handle)}-#{get_api_context(other_context)}"] == 0
-      @print_tracker["#{type}-#{get_handle_str(handle)}-#{get_api_context(other_context)}"] = 1
-      print_usage_error(context, "concurrent acces to #{type} #{get_handle_str(handle)}, already held by #{get_api_context(other_context)}")
-    end
+    report(:concurrent_object_access, context,
+           "concurrent access to #{type} #{get_handle_str(handle)}, already held by #{get_api_context(other_context)}",
+           key: "#{type}-#{get_handle_str(handle)}-#{get_api_context(other_context)}")
   end
 
   # Passed as the block to Hash#delete, so it fires when a destroy names a
   # handle the model never recorded.
   def object_not_found(context, type, handle, sub_context = nil)
-    raise_internal_error(context, "event_pool #{get_handle_str(handle)} not found#{sub_context ? " in #{sub_context}" : ""}")
+    raise_internal_error(context, "#{type} #{get_handle_str(handle)} not found#{sub_context ? " in #{sub_context}" : ""}")
   end
 
   # Reads one input argument of the call executing on this thread. Works at
@@ -213,24 +207,35 @@ class StateObject
     find_objects(context, type)[handle]
   end
 
-  # The live allocations of one Level Zero context (address -> Memory).
+  # AllocationMap for living allocations on a Context
   def memory_allocations(context, ctx_handle)
-    get_process(context).memory_allocations[ctx_handle]
+    get_process(context).contexts[ctx_handle]&.memory_allocations
   end
 
-  # The freed allocations of one Level Zero context, for use-after-free checks.
+  # AllocationMap for freed allocations on a Context (for use_after_free detections)
   def freed_memory_allocations(context, ctx_handle)
-    get_process(context).freed_memory_allocations[ctx_handle]
+    get_process(context).contexts[ctx_handle]&.freed_memory_allocations
   end
 
-  # Yields [unit, op] for every copy op still pending in this process, so a free
-  # can tell whether the buffer is still referenced by submitted work.
+  # Get a Context of a Process from handles
+  def context_from_handle(context, ctx_handle)
+    ctx_obj = get_process(context).contexts[ctx_handle]
+    return ctx_obj if ctx_obj
+
+    report(:unknown_context, context,
+           "context #{get_handle_str(ctx_handle)} was never created, or was already destroyed; " \
+           'its allocations cannot be tracked',
+           key: "unknown-context-#{get_handle_str(ctx_handle)}")
+    nil
+  end
+
+  # Yields [unit, op] for every copy op still pending in this process
   def each_inflight_copy_op(context)
     @deferred_units.each do |unit|
       next unless unit.context['hostname'] == context['hostname'] &&
                   unit.context['vpid'] == context['vpid']
       unit.ops[unit.cursor..].each do |op|
-        next unless op && op.kind == :copy
+        next unless op.kind == :copy
         yield unit, op
       end
     end
@@ -239,7 +244,8 @@ class StateObject
   # True if a prior submission of this command list has not drained yet.
   def command_list_in_flight?(context, handle)
     @deferred_units.any? do |unit|
-      unit.cmd_list_handle == handle &&
+      !unit.immediate &&
+        unit.cmd_list_handle == handle &&
         unit.context['hostname'] == context['hostname'] &&
         unit.context['vpid'] == context['vpid'] &&
         !unit.done?
@@ -258,16 +264,13 @@ class StateObject
     find_objects(context, 'event')[handle]
   end
 
-  # Signals an event and notes progress so pump_deferred sweeps again.
+  # Signals an event, if the handle names one we track.
   def signal_event(context, handle, by = nil)
     ev = event_by_handle(context, handle)
-    if ev
-      ev.signal(by)
-      @signal_epoch += 1
-    end
+    ev&.signal(by)
     ev
   end
-  
+
   # Reset's the given handle's event
   def reset_event(context, handle)
     event_by_handle(context, handle)&.reset
@@ -286,7 +289,6 @@ class StateObject
   # True once every wait handle is signaled. Untracked handles count as
   # satisfied, so we never invent a deadlock for one.
   def waits_satisfied?(context, waits)
-    return true if waits.nil? || waits.empty?
     waits.all? { |h| ev = event_by_handle(context, h); ev.nil? || ev.signaled }
   end
 
@@ -344,9 +346,10 @@ class StateObject
   end
 
   # Registers a command list's ops as a deferred unit and pumps.
-  def run_deferred_list(context, ops, label, in_order: false, cmd_list_handle: nil)
+  def run_deferred_list(context, ops, label, in_order: false, cmd_list_handle: nil, immediate: false)
     @deferred_units << ZEModel::DeferredUnit.new(ops, context, label, in_order: in_order,
-                                                 cmd_list_handle: cmd_list_handle)
+                                                 cmd_list_handle: cmd_list_handle,
+                                                 immediate: immediate)
     pump_deferred
   end
 
@@ -360,12 +363,30 @@ class StateObject
     end
   end
 
+  # The unit of an in-order immediate list that still has ops to run, if any.
+  def open_immediate_unit(context, handle)
+    @deferred_units.find do |unit|
+      unit.immediate && unit.cmd_list_handle == handle &&
+        unit.context['hostname'] == context['hostname'] &&
+        unit.context['vpid'] == context['vpid'] &&
+        !unit.done?
+    end
+  end
+
   # Immediate lists execute each op as it is appended, but still go through the
   # same machinery so they get the same checks.
-  def enqueue_immediate_op(context, op, handle = nil)
+  def enqueue_immediate_op(context, op, handle = nil, in_order: false)
+    unit = in_order && handle ? open_immediate_unit(context, handle) : nil
+    if unit
+      unit.push_op(op)
+      pump_deferred
+      return
+    end
+
     label = handle ? "immediate command list (#{get_handle_str(handle)})" \
                    : 'immediate command list'
-    run_deferred_list(context, [op], label)
+    run_deferred_list(context, [op], label, in_order: in_order,
+                                            cmd_list_handle: handle, immediate: true)
   end
 
   # End-of-trace drain: reports deadlocks among whatever is still stuck, then
@@ -387,50 +408,84 @@ class StateObject
   end
 
 
-  # Checks for the issues only visible at end of trace: deadlocks, calls that
-  # never returned, and objects that were never destroyed.
-  def check_issues()
-    #drain deferred command-list executions before reporting leaks/crashes
+  # Checks for the issues only visible at end of trace
+  # Notify that all traces had been processed to:
+  #   - perform final checks, that can only be performed after the entire
+  #   traced got read (e.g., deadlocks, leaks, etc.)
+  #   - export to csv if asked by users
+  def finalize()
     flush_deferred
-    crash = false
+    report_unfinished_calls
+    report_leaks if @report_leaks
+    @reporter.summary
+    @reporter.export_csv(@csv_export) if @csv_export
+  end
+
+  # Any frame still on a thread's call stack is a call that never returned.
+  def report_unfinished_calls
     @state.each { |hostname, node|
       node.processes.each { |pid, process|
         process.threads.each { |tid, thread|
-          #any frame still on the stack is a call that never returned
           thread.call_stack.each { |frame|
             ctx = {'hostname' => hostname, 'vpid'=> pid, 'vtid' => tid, 'api' => frame.name}
-            print_crash_error(ctx, 'command did not finish execution')
-            crash = true
+            report(:api_never_returned, ctx, 'call did not finish execution')
           }
         }
       }
     }
+  end
 
-    unless crash && false
-      @state.each { |hostname, node|
-        node.processes.each { |pid, process|
-          ctx = {'hostname' => hostname, 'vpid'=> pid}
-          [ 'context',
-            'event_pool',
-            'command_queue',
-            'fence',
-            'command_list',
-            'module',
-            'module_build_log',
-            'kernel',
-          ].each { |t|
-            process.objects(t).each { |h, c|
-              print_leak_error(ctx, t, h)
-            }
-          }
-          process.objects('memory_allocation').each { |_ctx_handle, allocs|
-            allocs.each { |c|
-              print_leak_error(ctx, 'memory_allocation', c.base, c.memtypestr)
-            }
+  # Objects still registered once the trace is exhausted were never destroyed.
+  LEAKABLE_OBJECT_TYPES = %w[context event_pool command_queue fence command_list
+                             module module_build_log kernel].freeze
+
+  # Reports what a container still held when it was destroyed, and forgets it.
+  def report_orphans(context, parent)
+    parent_label = "#{parent.class.typename} #{get_handle_str(parent.handle)}"
+    ZEModel::OWNED_TYPES.fetch(parent.class.typename, []).each { |type|
+      verb = type == 'memory_allocation' ? 'freed' : 'destroyed'
+      parent.each_child(type) { |child|
+        report(:object_outlives_owner, context,
+               "#{object_label(type, child)} was not #{verb} prior to #{parent_label} destruction" \
+               "#{held_summary(child)}",
+               key: "outlives-#{type}-#{get_handle_str(child.handle)}")
+        mark_leak_reported(type, child)
+      }
+    }
+  end
+
+  # Marks an object and everything below it as already reported, so the end of
+  # the trace does not name them a second time.
+  def mark_leak_reported(type, obj)
+    obj.leak_reported = true
+    ZEModel::OWNED_TYPES.fetch(type, []).each { |child_type|
+      obj.each_child(child_type) { |child| mark_leak_reported(child_type, child) }
+    }
+  end
+
+  # True when this object is the outermost leaked object of its subtree, and so
+  # the one worth a report.
+  def leak_root?(process, type, obj)
+    return false if obj.leak_reported
+
+    owner_type = ZEModel::OWNERSHIP[type]
+    return true unless owner_type && LEAKABLE_OBJECT_TYPES.include?(owner_type)
+
+    owner = obj.owner
+    owner.nil? || !process.objects(owner_type).key?(owner.handle)
+  end
+
+  def report_leaks
+    @state.each { |hostname, node|
+      node.processes.each { |pid, process|
+        ctx = {'hostname' => hostname, 'vpid'=> pid}
+        LEAKABLE_OBJECT_TYPES.each { |t|
+          process.objects(t).each_value { |obj|
+            print_leak_error(ctx, t, obj) if leak_root?(process, t, obj)
           }
         }
       }
-    end
+    }
   end
 
 
@@ -442,7 +497,7 @@ class StateObject
     end
 
 	if !@init_called[context['vpid']] && !@printed_init_error
-		self.print_usage_error(context, "zeInit or zeDriversInit wasn't called before #{context['api']}")
+		report(:init_not_called, context, "zeInit or zeInitDrivers wasn't called before #{context['api']}")
 		@printed_init_error = true
 	end
   end
@@ -455,13 +510,13 @@ class StateObject
       @lock_shared_object_on_entry[m[1]].each { |l|
                   l.call(self, context, payload)
       }
-    #modifies the satate based on entry fields. Needed because some fields are easier to access it from the entry
+    #modifies the state based on entry fields. Needed because some fields are easier to access it from the entry
     l = $upon_entry[m[1]]
     l.call(self,context,payload) if l
   end
 
   def on_exit(m,hostname,context,payload)
-    #unlock the shared object if the api name matches the predefined in ze_thread_safety.yaml
+    #unlock the shared object if the api name matches the predefined in api_metadata.yaml
     @unlock_shared_object_on_exit[m[1]].reverse_each { |l|
       l.call(self, context, payload)
     }
@@ -498,7 +553,7 @@ class StateObject
             context['api'] = m[1]
 			      #zeDriversInit or zeInit must be the first one to be called before any api calls
             check_initialization(context)
-            print_deprecation_warning(m[1]) if @deprecated[m[1]]
+            print_deprecation_warning(context, m[1]) if @deprecated[m[1]]
 
             if m[2] == 'entry'
               on_entry(m, hostname, context, payload)
