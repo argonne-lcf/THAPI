@@ -133,6 +133,16 @@ AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
 
+# ze_validator is opt-in
+AC_ARG_ENABLE([ze-validator],
+              AS_HELP_STRING([--enable-ze-validator],
+                             [Build and install ze_validator (needs the rbtree3 ruby gem)]),
+              [enable_ze_validator="$enableval"],
+              [enable_ze_validator="no"])
+AS_IF([test "x$enable_ze_validator" = xyes],
+      [AX_RUBY_EXTENSION([rbtree3 >= 1.1.0], [yes])])
+AM_CONDITIONAL([ZE_VALIDATOR], [test "x$enable_ze_validator" = xyes])
+
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 
 # Checks for header files.
@@ -182,6 +192,8 @@ AC_CONFIG_FILES([utils/test_wrapper_thapi_text_pretty.sh], [chmod +x utils/test_
 AC_CONFIG_FILES([backends/opencl/tracer_opencl.sh], [chmod +x backends/opencl/tracer_opencl.sh])
 AC_CONFIG_FILES([backends/opencl/extract_enqueues], [chmod +x backends/opencl/extract_enqueues])
 AC_CONFIG_FILES([backends/ze/tracer_ze.sh], [chmod +x backends/ze/tracer_ze.sh])
+AC_CONFIG_FILES([backends/ze/validator/ze_validator],
+                [chmod +x backends/ze/validator/ze_validator])
 AC_CONFIG_FILES([backends/cuda/tracer_cuda.sh], [chmod +x backends/cuda/tracer_cuda.sh])
 AC_CONFIG_FILES([backends/omp/tracer_omp.sh], [chmod +x backends/omp/tracer_omp.sh])
 AC_CONFIG_FILES([backends/hip/tracer_hip.sh], [chmod +x backends/hip/tracer_hip.sh])
