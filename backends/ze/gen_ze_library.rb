@@ -102,92 +102,6 @@ puts <<~EOF
       ver & 0x0000ffff
     end
 
-    module Handle
-      def to_s
-        s = '{ data: "'
-        s << self[:data].to_a.collect { |v| "\\\\x%02x" % ((v + 256)%256) }.join
-        s << '" }'
-      end
-    end
-
-    module UUID
-      def to_s
-        a = self[:id].to_a
-        s = "{ id: "
-        s << "%02x" % a[15]
-        s << "%02x" % a[14]
-        s << "%02x" % a[13]
-        s << "%02x" % a[12]
-        s << "-"
-        s << "%02x" % a[11]
-        s << "%02x" % a[10]
-        s << "-"
-        s << "%02x" % a[9]
-        s << "%02x" % a[8]
-        s << "-"
-        s << "%02x" % a[7]
-        s << "%02x" % a[6]
-        s << "-"
-        s << "%02x" % a[5]
-        s << "%02x" % a[4]
-        s << "%02x" % a[3]
-        s << "%02x" % a[2]
-        s << "%02x" % a[1]
-        s << "%02x" % a[0]
-        s << " }"
-      end
-    end
-
-    module KUUID
-      def to_s
-        a = self[:kid].to_a
-        s = "{ kid: "
-        s << "%02x" % a[15]
-        s << "%02x" % a[14]
-        s << "%02x" % a[13]
-        s << "%02x" % a[12]
-        s << "-"
-        s << "%02x" % a[11]
-        s << "%02x" % a[10]
-        s << "-"
-        s << "%02x" % a[9]
-        s << "%02x" % a[8]
-        s << "-"
-        s << "%02x" % a[7]
-        s << "%02x" % a[6]
-        s << "-"
-        s << "%02x" % a[5]
-        s << "%02x" % a[4]
-        s << "%02x" % a[3]
-        s << "%02x" % a[2]
-        s << "%02x" % a[1]
-        s << "%02x" % a[0]
-        a = self[:mid].to_a
-        s << ", mid: "
-        s << "%02x" % a[15]
-        s << "%02x" % a[14]
-        s << "%02x" % a[13]
-        s << "%02x" % a[12]
-        s << "-"
-        s << "%02x" % a[11]
-        s << "%02x" % a[10]
-        s << "-"
-        s << "%02x" % a[9]
-        s << "%02x" % a[8]
-        s << "-"
-        s << "%02x" % a[7]
-        s << "%02x" % a[6]
-        s << "-"
-        s << "%02x" % a[5]
-        s << "%02x" % a[4]
-        s << "%02x" % a[3]
-        s << "%02x" % a[2]
-        s << "%02x" % a[1]
-        s << "%02x" % a[0]
-        s << " }"
-      end
-    end
-
     module Version
       def to_s
         "\#{self[:major]}.\#{self[:minor]}"
@@ -201,18 +115,9 @@ puts <<~EOF
 
 EOF
 
-def print_struct(name, struct)
-  prepends = []
-  if NAMING.class_name(name).match('UUID')
-    prepends << if NAMING.class_name(name).match('ZEKernelUUID')
-                  'KUUID'
-                else
-                  'UUID'
-                end
-  elsif NAMING.class_name(name).match(/Handle\z/)
-    prepends << 'Handle'
-  end
+print_bytes_module(NAMING, META_PARAMETERS)
 
+def print_struct(name, struct)
   stype = traced_structure_type_names(name).first
   initializer = <<EOF if stype
 
@@ -224,7 +129,10 @@ def print_struct(name, struct)
     end
 EOF
 
-  print_struct_with_namespace(NAMING, name, struct, prepends: prepends, initializer: initializer, close: false)
+  to_s = struct_to_s_definition(NAMING, struct, META_PARAMETERS[:meta_parameters_struct][name])
+  print_struct_with_namespace(NAMING, name, struct,
+                              body: [to_s, initializer].compact.join,
+                              close: false)
 end
 
 API.int_scalars.each do |k, v|

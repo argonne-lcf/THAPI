@@ -57,6 +57,8 @@ puts <<~EOF
 
 EOF
 
+print_bytes_module(NAMING, META_PARAMETERS)
+
 # itt defines its callbacks at the end of the file, so a struct member typed as
 # one would name a callback FFI has not seen yet. Those members are emitted as
 # a plain :pointer, which is the same machine type.

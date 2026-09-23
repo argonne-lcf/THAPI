@@ -581,3 +581,13 @@ meta_parameters:
     - [ReturnString]
   amd_dbgapi_get_git_hash:
     - [ReturnString]
+
+meta_parameters_struct:
+  hipUUID:
+    - [ uuid, bytes ]
+  hipIpcMemHandle_t:
+    - [ blob, reserved ]
+  hipIpcEventHandle_t:
+    - [ blob, reserved ]
+  hipMemPoolPtrExportData:
+    - [ blob, reserved ]

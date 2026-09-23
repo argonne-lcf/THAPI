@@ -15,14 +15,11 @@ class CommandIndex
 
   def initialize(groups)
     @groups = groups.freeze
-    @by_name = {}
-    @groups.each_value do |commands|
-      commands.each do |c|
-        raise "#{c.name} appears in two command lists" if @by_name.key?(c.name)
+    all = @groups.values.flatten
+    twice = all.collect(&:name).tally.select { |_, n| n > 1 }.keys
+    raise "#{twice.join(', ')} appear in two command lists" unless twice.empty?
 
-        @by_name[c.name] = c
-      end
-    end
+    @by_name = all.to_h { |c| [c.name, c] }
   end
 
   def each(&block)

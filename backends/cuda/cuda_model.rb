@@ -14,10 +14,12 @@ CONTEXT = BackendContext.for(API, result_name: 'cuResult', init_functions: nil)
 
 # The driver and its export tables are one API but two LTTng providers, so the
 # commands are grouped by the provider that will carry them.
+META_PARAMETERS = load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+
 COMMANDS = build_command_index(
   { lttng_ust_cuda: cuda_api.functions, lttng_ust_cuda_exports: cuda_exports_api.functions },
   context: CONTEXT,
-  spec: load_meta_parameters('cuda_meta_parameters.yaml', 'cuda_exports_meta_parameters.yaml')
+  spec: META_PARAMETERS[:meta_parameters]
 )
 
 CUDA_POINTER_NAMES = COMMANDS.pointer_names

@@ -7,6 +7,22 @@ MEMBER_SEPARATOR = '__'
 START = 'entry'
 STOP = 'exit'
 
+# The decorations a tracepoint adds, undone. An event is named
+# <provider>:<function>_<suffix>; a parameter is traced under `_val`, or
+# `_vals` when the field holds several of them.
+#
+#   >> event_function_name('lttng_ust_cuda:cuDeviceGetLuid_exit')
+#   => "cuDeviceGetLuid"
+#   >> parameter_name('luid_vals')
+#   => "luid"
+def event_function_name(event_name)
+  event_name.split(':').last.sub(/_(#{START}|#{STOP})\z/, '')
+end
+
+def parameter_name(field_name)
+  field_name.sub(/_vals?\z/, '')
+end
+
 # The tracepoint macro takes a fixed number of arguments, one of which LTTng
 # spends itself; a function with more parameters than the rest can carry has no
 # tracepoint generated for it.

@@ -143,7 +143,7 @@ end
 # The walk and the classification are the same for all six backends; only the
 # printing differs, so each kind is a keyword argument defaulting to the shared
 # printer. A backend passes one only where its API really diverges -- cuda
-# prepends a UUID module to matching structs, itt defers its callbacks -- and
+# renders a struct's declared byte arrays, itt defers its callbacks -- and
 # passes `nil` for a kind its bindings do not carry, which is how omp emits
 # enums alone.
 #
@@ -287,45 +287,80 @@ def print_enum_with_namespace(naming, name, enum, filter_members: ->(_m) { true 
 EOF
 end
 
-# Shared by cuda/hip/mpi. ze inlines its own -- :data/:id fields, and a UUID
-# printed back to front.
-def print_handle_uuid_modules
-  puts <<'EOF'
-  module Handle
-    def to_s
-      s = '{ reserved: "'
-      s << self[:reserved].to_a.collect { |v| "\\x%02x" % ((v + 256)%256) }.join
-      s << '" }'
-    end
-  end
+BYTE_TYPES = %w[:char :uchar :int8 :uint8].freeze
 
-  module UUID
-    def to_s
-      a = self[:bytes].to_a.collect { |v| v < 0 ? 0x100 + v : v }
-      s = "{ id: "
-      s << "%02x" % a[0]
-      s << "%02x" % a[1]
-      s << "%02x" % a[2]
-      s << "%02x" % a[3]
-      s << "-"
-      s << "%02x" % a[4]
-      s << "%02x" % a[5]
-      s << "-"
-      s << "%02x" % a[6]
-      s << "%02x" % a[7]
-      s << "-"
-      s << "%02x" % a[8]
-      s << "%02x" % a[9]
-      s << "-"
-      s << "%02x" % a[10]
-      s << "%02x" % a[11]
-      s << "%02x" % a[12]
-      s << "%02x" % a[13]
-      s << "%02x" % a[14]
-      s << "%02x" % a[15]
-      s << " }"
-    end
+def byte_array_members(naming, struct_name)
+  typedef = naming.api.types.find { |t| t.name == struct_name }
+  raise "meta_parameters_struct names no such struct: #{struct_name}" unless typedef
+
+  naming.api.struct(typedef.type).to_ffi(naming).filter_map do |member, ffi_type|
+    member.delete_prefix(':') if ffi_type.is_a?(Array) && BYTE_TYPES.include?(ffi_type[0].to_s)
   end
+end
+
+# Declaring one member replaces the whole `to_s`, so a byte array left
+# undeclared is interpolated raw: ze_kernel_uuid_t with only `kid` prints mid
+# as 16 control characters. Hence the second check.
+def check_meta_parameters_struct(naming, meta_parameters_struct)
+  unknown = meta_parameters_struct.values.flat_map(&:values).uniq - BYTES_BODIES.keys
+  raise "unknown renderer: #{unknown.join(', ')}" unless unknown.empty?
+
+  meta_parameters_struct.each do |struct_name, members|
+    bytes = byte_array_members(naming, struct_name)
+    unrenderable = members.keys - bytes
+    unless unrenderable.empty?
+      raise "#{struct_name} has no byte-array member #{unrenderable.join(', ')} " \
+            "(has #{bytes.join(', ')})"
+    end
+
+    undeclared = bytes - members.keys
+    raise "#{struct_name} declares no renderer for #{undeclared.join(', ')}" unless undeclared.empty?
+  end
+end
+
+# See backends/README.md for what each prints and why it must be declared
+# rather than guessed from the C type.
+DASHED_HEX = <<~EOF
+  hex = ordered.collect { |v| format('%02x', v % 256) }
+  cuts = [0, *[4, 6, 8, 10].select { |c| c < hex.length }, hex.length]
+  cuts.each_cons(2).collect { |a, b| hex[a...b].join }.join('-')
+EOF
+
+BYTES_BODIES = {
+  'blob' => "bytes.pack('C*').b.inspect\n",
+  'uuid' => "ordered = bytes\n#{DASHED_HEX}",
+  'uuid_reversed' => "ordered = bytes.reverse\n#{DASHED_HEX}",
+}.freeze
+
+def print_bytes_module(naming, meta_parameters)
+  sections = meta_parameters.values_at(:meta_parameters_struct, :meta_parameters_function)
+  check_meta_parameters_struct(naming, sections.first)
+  wanted = sections.flat_map { |rows| rows.values.flat_map(&:values) }.uniq.sort
+  return if wanted.empty?
+
+  puts '  module Bytes'
+  puts wanted.collect { |name|
+    body = BYTES_BODIES.fetch(name).lines.collect { |l| "      #{l}" }.join
+    "    def self.#{name}(bytes)\n#{body}    end\n"
+  }.join("\n")
+  puts '  end'
+  puts
+end
+
+def struct_to_s_definition(naming, struct, members)
+  return nil unless members
+
+  rendered = struct.to_ffi(naming).collect do |member, _type|
+    key = member.delete_prefix(':')
+    renderer = members[key]
+    value = renderer ? "\#{Bytes.#{renderer}(self[#{member}].to_a)}" : "\#{self[#{member}]}"
+    "#{key}: #{value}"
+  end
+  <<EOF
+
+    def to_s
+      "{ #{rendered.join(', ')} }"
+    end
 EOF
 end
 
@@ -544,29 +579,20 @@ def print_function_pointer_type(naming, name, func)
 EOF
 end
 
-def print_struct_prepending_uuid(naming, name, struct)
-  prepends = naming.class_name(name).match('UUID') ? ['UUID'] : []
-  print_struct_with_namespace(naming, name, struct, prepends: prepends)
-end
-
 # `members` defaults to the struct's own layout. A backend overrides it when it
 # has to rewrite member types before emitting -- itt refers to function
 # pointers it only defines further down the file, so it passes :pointer for
 # them instead of a name FFI cannot resolve yet.
-def print_struct_with_namespace(naming, name, struct, prepends: [], initializer: nil, close: true,
+#
+# `body` is the method definitions to put inside the class -- a to_s, an
+# initialize, or both -- and may be nil or empty.
+def print_struct_with_namespace(naming, name, struct, body: nil, close: true,
                                 members: struct.to_ffi(naming))
   puts <<EOF
   class #{naming.class_name(name)} < #{naming.ffi_base('Struct')}
-EOF
-  prepends.each do |prep|
-    puts <<EOF
-    prepend #{prep}
-EOF
-  end
-  puts <<EOF
     layout #{ffi_layout(members)}
 EOF
-  puts initializer if initializer
+  puts body unless body.to_s.empty?
   puts <<EOF
   end
   typedef #{naming.class_name(name)}.by_value, #{to_ffi_name(name)}

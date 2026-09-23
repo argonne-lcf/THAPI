@@ -17,6 +17,8 @@ puts <<~EOF
 
 EOF
 
+print_bytes_module(NAMING, META_PARAMETERS)
+
 # The Ruby bindings for OMPT carry only its enums.
 print_typedefs(NAMING,
                enum: ->(name, t) { print_enum(name, API.enum(t.type)) },
