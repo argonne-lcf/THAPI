@@ -4,9 +4,9 @@ require 'ze/validator/semantics'
 require 'ze/validator/model'
 require 'ze_library'
 
-$upon_entry = {} # called to modify program state on entry
-$on_successful_exit = {} # called upon seeing exit functions with a successful return code
-$on_erroneous_exit = {} # called upon seeing exit functions with a non-successful return code
+$upon_entry = {}          # called to modify program state on entry
+$on_successful_exit = {}  # called upon seeing exit functions with a successful return code
+$on_erroneous_exit = {}   # called upon seeing exit functions with a non-successful return code
 
 # these two record only that the app asked, for the portability checks
 $on_successful_exit['zeDeviceGetProperties'] = lambda { |state, ctx, _payload|

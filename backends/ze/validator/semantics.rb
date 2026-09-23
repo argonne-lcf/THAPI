@@ -2,14 +2,8 @@
 
 require 'ze/validator/model'
 require 'ze_library'
-require 'rgl/adjacency'
-require 'rgl/traversal'
 
 # The engine groups recorded for a device, or nil when the trace carries none.
-#
-# Must not use plain indexing: state.device_properties defaults a missing key to
-# {}, which would both pollute the map and make "topology unknown" look
-# identical to "device has no engine groups".
 def device_command_queue_groups(state, device_handle)
   return nil unless device_handle
 
@@ -49,11 +43,6 @@ end
 
 # The copy-only ordinals of the command list's device, or nil when the trace
 # does not carry that device's engine topology.
-#
-# nil is not "this device has no copy-only engine": it means the question cannot
-# be answered and the caller must skip instead of guessing. THAPI emits the
-# command_queue_group tracepoint only for root devices, and only when the
-# properties channel is enabled, so a list created on a sub-device lands here.
 def copy_only_ordinals(state, cmd_list)
   groups = device_command_queue_groups(state, cmd_list&.device&.handle)
   return nil unless groups
@@ -431,7 +420,8 @@ def check_event_pool_immediate_list_context_match(state, ctx, cmd_list, op)
 end
 
 # The MemoryAllocation whose range holds 'ptr', or nil.
-# allocations is an AllocationMap
+#   - allocations: an AllocationMap
+#   - ptr: any pointer (i.e., not necessarily a base ptr)
 def find_allocation(allocations, ptr)
   allocations[ptr]
 end
@@ -456,8 +446,7 @@ rescue ZEModel::AllocationMap::OverlapError => e
   allocations.insert(mem)
 end
 
-# Drops an allocation from a map. Callers reach this only with an allocation the
-# map is holding, so its base is a live key: this is free(ptr).
+# Drops an allocation from a map.
 def untrack_allocation(allocations, mem)
   allocations.delete(mem.base)
 end
@@ -593,7 +582,7 @@ def find_allocation_in_context(state, ctx, ctx_handle, ptr)
   allocations && find_allocation(allocations, ptr)
 end
 
-# Returns [memory, ctx_handle] for ptr, preferring the passed context (usually command list's context).
+# Returns [MemoryAllocation, context_handle] for ptr, preferring the passed context (usually command list's context).
 def find_known_memory(state, ctx, ptr, prefer_ctx_handle)
   if prefer_ctx_handle
     mem = find_allocation_in_context(state, ctx, prefer_ctx_handle, ptr)
@@ -670,8 +659,40 @@ def report_unsignaled_waits(state, ctx, waits)
   end
 end
 
+# The first cycle in a wait-for graph, or nil when there is none.
+def first_wait_for_cycle(roots, wait_for)
+  depth_on_path = {} # unit -> its index in path, while it is on the branch
+  done = {}          # unit -> true once fully explored, so it is never revisited
+
+  roots.each do |root|
+    next if done[root]
+
+    path = [root]
+    depth_on_path[root] = 0
+    # one frame per unit on the path, holding its not-yet-followed successors
+    stack = [wait_for[root].dup]
+
+    until stack.empty?
+      nxt = stack.last.shift
+      if nxt.nil? # successors exhausted: back out of this unit
+        finished = path.pop
+        depth_on_path.delete(finished)
+        done[finished] = true
+        stack.pop
+      elsif (i = depth_on_path[nxt]) # still on the branch: the cycle closes here
+        return path[i..]
+      elsif !done[nxt]
+        depth_on_path[nxt] = path.size
+        path.push(nxt)
+        stack.push(wait_for[nxt].dup)
+      end
+    end
+  end
+  nil
+end
+
 # Checks for a circular event dependency across the units still stuck at end of
-# trace, reporting the first cycle found since cycles overlap and share units.
+# trace, reporting the first cycle found.
 def check_circular_deadlock(state, units)
   stuck = units.reject { |u| u.blocked_on.empty? }
   return if stuck.empty?
@@ -680,25 +701,13 @@ def check_circular_deadlock(state, units)
   signalers = Hash.new { |h, k| h[k] = [] }
   stuck.each { |u| u.pending_signals.each { |ev| signalers[ev] << u } }
 
-  # adjacency: U -> V if U waits on an event V still owes
-  graph = RGL::DirectedAdjacencyGraph.new
-  stuck.each do |u|
-    graph.add_vertex(u)
-    u.blocked_on.each do |ev|
-      signalers[ev].each { |v| graph.add_edge(u, v) unless v.equal?(u) }
-    end
+  # wait-for graph: U -> V if U waits on an event V still owes.
+  wait_for = stuck.to_h do |u|
+    [u, u.blocked_on.flat_map { |ev| signalers[ev] }.reject { |v| v.equal?(u) }.uniq]
   end
 
-  # A back edge closes a cycle: its target is still on the current branch, which
-  # path tracks. Stop at the first cycle since cycles overlap and share units.
-  path = []
-  found = nil
-  visitor = RGL::DFSVisitor.new(graph)
-  visitor.set_examine_vertex_event_handler { |u| path.push(u) }
-  visitor.set_finish_vertex_event_handler { |_u| path.pop }
-  visitor.set_back_edge_event_handler { |_u, v| found ||= path[path.index(v)..] }
-  graph.depth_first_search(visitor) { |_u| }
-  report_deadlock_cycle(state, found) if found
+  cycle = first_wait_for_cycle(stuck, wait_for)
+  report_deadlock_cycle(state, cycle) if cycle
 end
 
 # Labels one node of a deadlock cycle as "<list>::<blocking API>".

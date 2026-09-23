@@ -256,9 +256,7 @@ data_DATA = \
 	ze_bindings_base.rb \
 	babeltrace_zeprofiling_apis.txt
 
-# Everything the ze_validator needs at run time, code and data alike. Installed
-# under its own directory so the require paths ('ze/validator/...') match the
-# layout, and only when the validator is built - nothing else reads these.
+# Everything the ze_validator needs
 ZE_VALIDATOR_SOURCES = \
 	validator/errors.rb \
 	validator/allocation_map.rb \

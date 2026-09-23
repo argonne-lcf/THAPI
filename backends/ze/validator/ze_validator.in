@@ -32,27 +32,18 @@ parser = OptionParser.new do |opts|
     $options[:live] = true
   end
 
-  opts.on('--no-report-leaks', 'Skip the end-of-trace object and memory leak report') do
-    $options[:report_leaks] = false
+  opts.on('--[no-]report-leaks',
+          'Report end-of-trace object and memory leaks (default: enabled)') do |v|
+    $options[:report_leaks] = v
   end
 
-  opts.on('--csv_export [CSV-FILE]',
+  opts.on('--csv-export[=CSV-FILE]',
           'Write the per-error-type counts to CSV, one row per diagnostic ' \
           "(default: #{DEFAULT_CSV_EXPORT})") do |file|
     $options[:csv_export] = file || DEFAULT_CSV_EXPORT
   end
 end
 parser.parse!
-
-# The optional argument makes "--csv_export trace_dir" ambiguous: OptionParser
-# hands the trace directory over as the file name and leaves nothing to
-# validate. A directory can never be the CSV output, so give it back to ARGV and
-# fall back to the default name.
-if $options[:csv_export] && File.directory?($options[:csv_export])
-  ARGV.unshift($options[:csv_export])
-  $options[:csv_export] = DEFAULT_CSV_EXPORT
-end
-
 
 def build_and_run_graph( source_location, sink_object )
   # build graph and set up source

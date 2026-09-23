@@ -17,15 +17,17 @@ class StateObject
     metadata = YAML.load_file(File.join(DATADIR, 'ze', 'validator', 'api_metadata.yaml'))
     @deprecated = metadata.fetch('deprecated')
     @device_properties = Hash.new { |h, k| h[k] = {} }
-    # Routes every finding: applies the per-kind cap and keeps the counts the
-    # end-of-trace summary reports.
     @reporter = ZEValidator::Reporter.new
-    # when set, finalze() also writes the per-kind counts there as CSV
+
+    # fullpath to a .csv file for exporting detected errors on 'finalize()'
     @csv_export = opts[:csv_export]
+
     # end-of-trace leak sweep, on unless --no-report-leaks turned it off
     @report_leaks = opts.fetch(:report_leaks, true)
+
     # APIs whose deprecation warning has already been printed.
     @deprecation_warned = Set.new
+
     @state = Hash.new { |h, k| h[k] = ZEModel::Node.new(k) }
     @ze_thread_safety = metadata.fetch('thread_unsafe')
     @lock_shared_object_on_entry = Hash.new { |h, k| h[k] = [] }

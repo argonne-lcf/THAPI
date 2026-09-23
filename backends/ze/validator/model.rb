@@ -9,16 +9,16 @@ module ZEModel
 
   # Which object owns which, following the containment of the specs
   OWNERSHIP = {
-    'context' => 'driver',
+    'context'           => 'driver',
     'memory_allocation' => 'context',
-    'event_pool' => 'context',
-    'command_queue' => 'context',
-    'command_list' => 'context',
-    'module' => 'context',
-    'module_build_log' => 'context',
-    'event' => 'event_pool',
-    'fence' => 'command_queue',
-    'kernel' => 'module'
+    'event_pool'        => 'context',
+    'command_queue'     => 'context',
+    'command_list'      => 'context',
+    'module'            => 'context',
+    'module_build_log'  => 'context',
+    'event'             => 'event_pool',
+    'fence'             => 'command_queue',
+    'kernel'            => 'module'
   }.freeze
 
   # OWNERSHIP inverted
@@ -32,14 +32,12 @@ module ZEModel
     attr_accessor :status
     attr_accessor :leak_reported
 
-    # returns what object the caller is
-    # e.g., 'Device' will return device
+    # returns the typename of the object: must match exactly 'OWNERSHIP' strings.
+    # e.g., 'Device' object has :typename = 'device'
     class << self
       attr_reader :typename
     end
 
-    # lock is needed to check for concurrent properties.
-    # e.g., calling the same APIs that can be called from simultaneous threads (zeCommandListAppendBarrier)
     def initialize(handle)
       @handle = handle
       @lock = nil
@@ -61,8 +59,8 @@ module ZEModel
       children(type).size
     end
 
-    # Reports a race: the trace is timestamp-ordered, so finding the object
-    # already locked means two calls really overlapped.
+    # Lock the object. If it already has been locked, report a race.
+    # This is typically to be used for thread safety checks on API parameters.
     def lock(state, ctx)
       if @lock
         state.print_race_condition(ctx, @lock, self.class.typename, @handle)
@@ -71,8 +69,7 @@ module ZEModel
       end
     end
 
-    # Releases only if this same call is the holder, so a call that lost the
-    # race above does not steal the real holder's lock on its way out.
+    # Unlock the object
     def unlock(ctx)
       return unless @lock == ctx
 
@@ -81,8 +78,8 @@ module ZEModel
 
     private
 
-    # Mirrors Process#objects: the container for a type is the instance
-    # variable named after its plural.
+    # The container for a type is the instance variable named after its plural.
+    # e.g., a 'Driver' has multiple 'Context' in the 'contexts' container member.
     def children(type)
       instance_variable_get(:"@#{type}s")
     end
@@ -91,9 +88,6 @@ module ZEModel
   class Driver < Object
     @typename = 'driver'
     attr_reader :devices
-    # handle -> Context. A driver is never destroyed, so this is where the
-    # contexts a program never destroyed are still sitting at the end of a
-    # trace, which is what makes them the leaks worth reporting.
     attr_reader :contexts
 
     def initialize(handle)
@@ -106,7 +100,6 @@ module ZEModel
   class Device < Object
     @typename = 'device'
     attr_reader :sub_devices
-    # checks look at (see check_group_property_queued)
     attr_accessor :property_fetched
     attr_accessor :cmd_queue_group_properties_queried
 
@@ -133,9 +126,7 @@ module ZEModel
     @typename = 'memory_allocation'
     attr_reader :context, :size, :owned_by # the Device for a device allocation; nil for host
     attr_accessor :memtypestr, :base # "device" | "host" | "shared"
-    # the zeMemFree that released this allocation, nil while live. Freed
-    # allocations are kept so a later reference is caught as use-after-free.
-    attr_accessor :freed_by
+    attr_accessor :freed_by # the zeMemFree that released this allocation, nil while live.
 
     def initialize(handle, context, size, owned_by, memtypestr)
       super(handle)
@@ -172,9 +163,12 @@ module ZEModel
 
   class EventPool < Object
     @typename = 'event_pool'
+
     attr_reader :context, :desc, :devices, :events
-    # slot indices not yet in use: zeEventCreate removes one (double use =
-    # error), zeEventDestroy puts it back (double free = error)
+
+    # slot indices not yet in use:
+    #   - zeEventCreate removes one (double use = error)
+    #   - zeEventDestroy puts it back (double free = error)
     attr_reader :indices
 
     def initialize(handle, context, desc, devices = nil)
@@ -242,8 +236,8 @@ module ZEModel
   class Fence < Object
     @typename = 'fence'
     attr_reader :command_queue, :desc, :not_signaled, :in_use, :signaled
-    # not_signaled -> in_use -> signaled -> not_signaled (zeFenceReset). Compared
-    # as `fence.status == fence.signaled`; see check_fence_misuse.
+
+    # not_signaled -> in_use -> signaled -> not_signaled (zeFenceReset).
     attr_accessor :status
 
     def initialize(handle, command_queue, desc)
@@ -292,13 +286,13 @@ module ZEModel
   class RecordedOp
     # :copy, :wait, :signal, :reset, :barrier, :ranges_barrier or :launch
     attr_reader :kind
-    attr_reader :signal, :waits, :params, :api # event this op signals on completion (nil if none)   # events that must be signaled before this op may run
+    attr_reader :signal # event this op signals on completion (nil if none)
+    attr_reader :waits # events that must be signaled before this op may run
+    attr_reader :params, :api
 
     def initialize(kind, signal: 0, waits: [], params: {}, api: nil)
       @kind = kind
-      # normalize a null (0) signal handle to nil so "does this op signal?" is a
-      # simple truthiness test
-      @signal = signal && signal != 0 ? signal : nil
+      @signal = signal == 0 ? nil : signal  # normalize 0 to nil
       @waits = waits
       @params = params
       @api = api || params[:api]
@@ -306,14 +300,22 @@ module ZEModel
   end
 
   class DeferredUnit
-    attr_reader :ops, :context, :label, :in_order # snapshot of the list's ops for this execution    # trace context captured at submit time      # e.g. "command_list (0x00007f...)", for messages
-    attr_accessor :cursor, :blocked_on # index of the next op to run; == ops.size means done # events the current op is still waiting for
+    attr_reader :ops        # snapshot of the list's ops for this execution
+    attr_reader :context    # trace context captured at submit time
+    attr_reader :label      # e.g. "command_list (0x00007f...)
+    attr_reader :in_order
+
+    attr_accessor :cursor     # index of the next op to run; == ops.size means done
+    attr_accessor :blocked_on # events the current op is still waiting for
+
     # Events this unit has not signaled yet. If unit U is blocked on an event
     # only in V's pending_signals, U waits on V: an edge in the wait-for graph.
     attr_accessor :pending_signals
+
     # the command list this unit came from, so list-scoped checks can find their
     # units without matching on the label string
     attr_reader :cmd_list_handle
+
     # true when this unit is the running tail of an immediate list rather than a
     # queue submission; only the latter counts as in-flight for a reset
     attr_reader :immediate
@@ -377,7 +379,7 @@ module ZEModel
 
   class Kernel < Object
     @typename = 'kernel'
-    attr_reader :module, :desc, :name # also how the kernel's context is found    # kernel name from the descriptor, for diagnostics
+    attr_reader :module, :desc, :name
 
     def initialize(handle, mod, desc, name)
       super(handle)
@@ -388,7 +390,7 @@ module ZEModel
   end
 
   class ApiCall
-    attr_reader :name, :params # the _entry payload, i.e. the call's input arguments
+    attr_reader :name, :params
 
     def initialize(name, params)
       @name = name
@@ -398,8 +400,8 @@ module ZEModel
 
   class Thread
     attr_reader :vtid
-    # a stack, not a single slot: a traced API may call another traced API on
-    # the same thread (e.g. zelLoaderDriverCheck calls zeInit)
+
+    # call stack: a traced API may call another traced API on the same thread
     attr_reader :call_stack
 
     def initialize(vtid)
@@ -414,15 +416,15 @@ module ZEModel
   end
 
   class Process
-    attr_reader :vpid, :threads, :devices, :contexts, :event_pools, :events, :command_queues, :fences, :command_lists, :modules, :module_build_logs # LTTng virtual pid  # tid -> Thread (auto-created on first sight)
+
     # handle -> object, one table per Level Zero object type
-    attr_reader :drivers
-    attr_reader :kernels
+    attr_reader :vpid
+    attr_reader :threads
+    attr_reader :drivers, :devices, :contexts, :kernels, :event_pools, :events, :command_queues, :fences, :command_lists, :modules, :module_build_logs
 
     def initialize(vpid)
       @vpid = vpid
       @threads = Hash.new { |h, k| h[k] = Thread.new(k) }
-      # can it model memory imports/exports??
       @drivers = {}
       @devices = {}
       @contexts = {}

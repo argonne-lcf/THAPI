@@ -136,12 +136,11 @@ AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
 # ze_validator is opt-in
 AC_ARG_ENABLE([ze-validator],
               AS_HELP_STRING([--enable-ze-validator],
-                             [Build and install ze_validator (needs the rgl and rbtree3 ruby gems)]),
+                             [Build and install ze_validator (needs the rbtree3 ruby gem)]),
               [enable_ze_validator="$enableval"],
               [enable_ze_validator="no"])
 AS_IF([test "x$enable_ze_validator" = xyes],
-      [AX_RUBY_EXTENSION([rgl], [yes])
-       AX_RUBY_EXTENSION([rbtree3 >= 1.1.0], [yes])])
+      [AX_RUBY_EXTENSION([rbtree3 >= 1.1.0], [yes])])
 AM_CONDITIONAL([ZE_VALIDATOR], [test "x$enable_ze_validator" = xyes])
 
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])

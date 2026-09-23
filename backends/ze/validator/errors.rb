@@ -168,7 +168,7 @@ module ZEValidator
           b.leaf :descriptor_stype_mismatch, 'descriptor carries the wrong stype'
           b.leaf :init_not_called,           'API called before zeInit or zeInitDrivers'
           b.leaf :api_never_returned,        'API call never returned'
-          b.leaf :deprecated_api, 'deprecated API used', severity: :warning
+          b.leaf :deprecated_api,            'deprecated API used', severity: :warning
         end
 
         b.category(:portability, 'portability', severity: :warning) do
@@ -223,16 +223,14 @@ module ZEValidator
       @capped = Set.new
     end
 
-    # Reports one finding.
+    # Reports one error.
     #
-    # id       leaf id in the catalog
+    # id       error id (leaf in the tree)
     # location the location fields, outermost first: [host, pid, tid] for a
     #          finding attributable to one call, [host, pid] for a process-wide
-    #          one. Each field gets its own bracket on the output line.
-    # message  the human-readable description, without any prefix
+    # message  the human-readable description
     # key      optional dedup key; a finding whose key was already reported is
-    #          counted but not printed, which keeps a loop over one object from
-    #          repeating itself
+    #          counted but not printed, avoiding redundant reports
     def report(id, location, message, key: nil)
       node = ErrorTree[id]
       @counts[node] += 1
@@ -345,8 +343,6 @@ module ZEValidator
       @out.puts format('%s%s %s %8s', prefix, label, '.' * leader, value)
     end
 
-    # True once this kind has used up its budget, printing the notice the first
-    # time so the reader knows the stream is truncated rather than exhausted.
     def capped?(node)
       return false if @printed[node] < MAX_REPORTS_PER_KIND
 
