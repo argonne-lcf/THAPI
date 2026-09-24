@@ -886,6 +886,25 @@ end
 #                                          _|
 #
 
+def get_pytorch_library_path
+  # Supported patterns:
+  # - iprof -- python3 model.py (torch env is active).
+  # - iprof -- venv/bin/python3 model.py (non-active torch env, with LTTNG_UST_PYTORCH_LIBRARY_PATH)
+  # - LTTNG_UST_PYTORCH_LIBRARY_PATH=${LIBTORCH_USED_BY_VENV}  iprof -- venv/bin/python3 model.py
+
+  torch_tested = Gem::Version.new('1.11.0')..Gem::Version.new('2.14.0')
+  torch_probe  = 'python3 -c "import torch; print(torch.__file__); print(torch.__version__)"'
+
+  lib = env_fetch_first('LTTNG_UST_PYTORCH_LIBRARY_PATH') || begin
+    file, version = exec(torch_probe, debug: false).split
+    version.slice(/\d+(\.\d+)*/).then { |v| torch_tested.cover?(Gem::Version.new(v)) || LOGGER.warn("THAPI: untested PyTorch version #{version}") }
+    file && File.join(File.dirname(file), 'lib')
+  end
+
+  lib || LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
+  lib
+end
+
 def all_env_tracers(usr_binary)
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -966,28 +985,9 @@ def all_env_tracers(usr_binary)
   end
 
   if OPTIONS[:'backend-names'].include?('pytorch')
-    # Supported patterns:
-    # - iprof -- python3 model.py (torch env is active).
-    # - iprof -- venv/bin/python3 model.py (non-active torch env, with LTTNG_UST_PYTORCH_LIBRARY_PATH)
-    # - LTTNG_UST_PYTORCH_LIBRARY_PATH=${LIBTORCH_USED_BY_VENV}  iprof -- venv/bin/python3 model.py
-
-    torch_lib = env_fetch_first('LTTNG_UST_PYTORCH_LIBRARY_PATH')
-
-    if torch_lib.nil?
-      torch_info = exec('python3 -c "import torch; print(torch.__file__); print(torch.__version__)"', debug: false)
-      torch_file, torch_version = torch_info.split("\n")
-      torch_lib = File.join(File.dirname(torch_file), 'lib') unless torch_file.nil?
-    end
-
-    if torch_lib.nil?
-      LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
-    else
-      tested = Gem::Version.new('1.11.0')..Gem::Version.new('2.14.0')
-      version = torch_version && Gem::Version.new(torch_version[/\d+(\.\d+)*/] || '0')
-      LOGGER.warn("THAPI: untested PyTorch version #{torch_version}") if version && !tested.cover?(version)
-
+    get_pytorch_library_path&.then do |lib|
       backends << 'pytorch'
-      h[%w[LD_LIBRARY_PATH prepend]] << torch_lib
+      h[%w[LD_LIBRARY_PATH prepend]] << lib
       h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerPytorch.so')
     end
   end
