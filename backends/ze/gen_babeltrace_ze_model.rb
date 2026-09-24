@@ -10,7 +10,8 @@ UNREAD_LENGTH = '0'
 def gen_struct_event_bt_model(registry, provider, struct)
   address = LTTng::TracepointField.new('ctf_integer_hex', 'uintptr_t', 'p', 'p')
   bytes = LTTng::TracepointField.new('lttng_ust_field_variable_length_blob', 'p_val', 'p', 'size_t',
-                                     UNREAD_LENGTH, LTTng::TracepointField::DEFAULT_MEDIA_TYPE)
+                                     UNREAD_LENGTH)
+  bytes.blob_type = struct
 
   gen_bt_event(registry, provider, struct,
                [['ctf_integer_hex', "#{struct} *", 'p', address],

@@ -53,7 +53,8 @@ def get_extra_fields_types_name(event)
   event['fields'].collect do |field|
     lttng = LTTng::TracepointField.new(*field)
     name = lttng.name.to_s
-    type = event['args'].find { |_t, n| n == name || n == name.gsub(/_vals?\z/, '') }[0]
+    type = LTTng.argument_type(event['args'], name)
+    lttng.blob_type = type
     field_types_name(lttng.macro.to_s, type, name, lttng)
   end.flatten(1)
 end
@@ -124,7 +125,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
       field[:type] = 'blob_dynamic'
       field[:length_field_location] = payload_length_field_location(name)
     end
-    field[:media_type] = lttng.media_type if lttng.media_type
+    field[:media_type] = lttng.media_type
     name_packed_struct(registry, member, type)
   else
     raise "unsupported lttng type: #{lttng.inspect}"

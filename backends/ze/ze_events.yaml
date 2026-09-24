@@ -8,7 +8,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer, uint32_t, deviceIdx, "deviceIdx"]
-    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(zes_device_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(zes_device_properties_t)"]
   - name: engineProperties
     args:
     - [zes_device_handle_t, hDevice]
@@ -17,7 +17,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hEngines, "(uintptr_t)hEngines"]
-    - [lttng_ust_field_variable_length_blob, pEngineProperties_val, pEngineProperties, size_t, "sizeof(zes_engine_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pEngineProperties_val, pEngineProperties, size_t, "sizeof(zes_engine_properties_t)"]
   - name: engineStats
     args:
     - [zes_device_handle_t, hDevice]
@@ -26,7 +26,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hEngines, "(uintptr_t)hEngines"]
-    - [lttng_ust_field_variable_length_blob, pEngineStats_val, pEngineStats, size_t, "sizeof(zes_engine_stats_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pEngineStats_val, pEngineStats, size_t, "sizeof(zes_engine_stats_t)"]
   - name: powerProperties
     args:
     - [zes_device_handle_t, hDevice]
@@ -35,7 +35,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hPowers, "(uintptr_t)hPowers"]
-    - [lttng_ust_field_variable_length_blob, pPowerProperties_val, pPowerProperties, size_t, "sizeof(zes_power_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pPowerProperties_val, pPowerProperties, size_t, "sizeof(zes_power_properties_t)"]
   - name: gpu_energy
     args:
     - [zes_device_handle_t, hDevice]
@@ -46,7 +46,7 @@ lttng_ust_ze_sampling:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hPowers, "(uintptr_t)hPowers"]
     - [ctf_integer, uint32_t, domainIdx, "domainIdx"]
-    - [lttng_ust_field_variable_length_blob, pEnergyCounter_val, pEnergyCounter, size_t, "sizeof(zes_power_energy_counter_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pEnergyCounter_val, pEnergyCounter, size_t, "sizeof(zes_power_energy_counter_t)"]
   - name: freqProperties
     args:
     - [zes_device_handle_t, hDevice]
@@ -55,7 +55,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hFrequency, "(uintptr_t)hFrequency"]
-    - [lttng_ust_field_variable_length_blob, pFreqProperties_val, pFreqProperties, size_t, "sizeof(zes_freq_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pFreqProperties_val, pFreqProperties, size_t, "sizeof(zes_freq_properties_t)"]
   - name: gpu_frequency
     args:
     - [zes_device_handle_t, hDevice]
@@ -66,7 +66,7 @@ lttng_ust_ze_sampling:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hFrequency, "(uintptr_t)hFrequency"]
     - [ctf_integer, uint32_t, domainIdx, "domainIdx"]
-    - [lttng_ust_field_variable_length_blob, pFreqState_val, pFreqState, size_t, "sizeof(zes_freq_state_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pFreqState_val, pFreqState, size_t, "sizeof(zes_freq_state_t)"]
   - name: fabricPortProperties
     args:
     - [zes_device_handle_t, hDevice]
@@ -75,7 +75,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hFabricPort, "(uintptr_t)hFabricPort"]
-    - [lttng_ust_field_variable_length_blob, pFabricPortProperties_val, pFabricPortProperties, size_t, "sizeof(zes_fabric_port_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pFabricPortProperties_val, pFabricPortProperties, size_t, "sizeof(zes_fabric_port_properties_t)"]
   - name: fabricPort
     args:
     - [zes_device_handle_t, hDevice]
@@ -85,8 +85,8 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hFabricPort, "(uintptr_t)hFabricPort"]
-    - [lttng_ust_field_variable_length_blob, pFabricPortState_val, pFabricPortState, size_t, "sizeof(zes_fabric_port_state_t)", "application/octet-stream"]
-    - [lttng_ust_field_variable_length_blob, pFabricPortThroughput_val, pFabricPortThroughput, size_t, "sizeof(zes_fabric_port_throughput_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pFabricPortState_val, pFabricPortState, size_t, "sizeof(zes_fabric_port_state_t)"]
+    - [lttng_ust_field_variable_length_blob, pFabricPortThroughput_val, pFabricPortThroughput, size_t, "sizeof(zes_fabric_port_throughput_t)"]
   - name: memoryProperties
     args:
     - [zes_device_handle_t, hDevice]
@@ -95,7 +95,7 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hMemModule, "(uintptr_t)hMemModule"]
-    - [lttng_ust_field_variable_length_blob, pMemModuleProperties_val, pMemModuleProperties, size_t, "sizeof(zes_mem_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pMemModuleProperties_val, pMemModuleProperties, size_t, "sizeof(zes_mem_properties_t)"]
   - name: memStats
     args:
     - [zes_device_handle_t, hDevice]
@@ -105,8 +105,8 @@ lttng_ust_ze_sampling:
     fields:
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hMemModule, "(uintptr_t)hMemModule"]
-    - [lttng_ust_field_variable_length_blob, pMemState_val, pMemState, size_t, "sizeof(zes_mem_state_t)", "application/octet-stream"]
-    - [lttng_ust_field_variable_length_blob, pMemBandwidth_val, pMemBandwidth, size_t, "sizeof(zes_mem_bandwidth_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pMemState_val, pMemState, size_t, "sizeof(zes_mem_state_t)"]
+    - [lttng_ust_field_variable_length_blob, pMemBandwidth_val, pMemBandwidth, size_t, "sizeof(zes_mem_bandwidth_t)"]
 lttng_ust_ze_profiling:
   events:
   - name: event_profiling
@@ -139,7 +139,7 @@ lttng_ust_ze_properties:
     - [ze_driver_properties_t *, pDriverProperties]
     fields:
     - [ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver"]
-    - [lttng_ust_field_variable_length_blob, pDriverProperties_val, pDriverProperties, size_t, "sizeof(ze_driver_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pDriverProperties_val, pDriverProperties, size_t, "sizeof(ze_driver_properties_t)"]
   - name: device
     args:
     - [ze_driver_handle_t, hDriver]
@@ -148,7 +148,7 @@ lttng_ust_ze_properties:
     fields:
     - [ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver"]
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
-    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)"]
   - name: subdevice
     args:
     - [ze_driver_handle_t, hDriver]
@@ -159,7 +159,7 @@ lttng_ust_ze_properties:
     - [ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver"]
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer_hex, uintptr_t, hSubDevice, "(uintptr_t)hSubDevice"]
-    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pDeviceProperties_val, pDeviceProperties, size_t, "sizeof(ze_device_properties_t)"]
   - name: command_queue_group
     args:
     - [ze_driver_handle_t, hDriver]
@@ -170,7 +170,7 @@ lttng_ust_ze_properties:
     - [ctf_integer_hex, uintptr_t, hDriver, "(uintptr_t)hDriver"]
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
     - [ctf_integer, uint32_t, pCount, pCount]
-    - [lttng_ust_field_variable_length_blob, pGroupProperties_vals, pGroupProperties, size_t, "pCount * sizeof(ze_command_queue_group_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pGroupProperties_vals, pGroupProperties, size_t, "pCount * sizeof(ze_command_queue_group_properties_t)"]
   - name: device_timer
     args:
     - [ze_device_handle_t, hDevice]
@@ -189,7 +189,7 @@ lttng_ust_ze_properties:
     fields:
     - [ctf_integer_hex, uintptr_t, hContext, "(uintptr_t)hContext"]
     - [ctf_integer_hex, uintptr_t, ptr, "(uintptr_t)ptr"]
-    - [lttng_ust_field_variable_length_blob, pMemAllocProperties_val, pMemAllocProperties, size_t, "sizeof(ze_memory_allocation_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pMemAllocProperties_val, pMemAllocProperties, size_t, "sizeof(ze_memory_allocation_properties_t)"]
     - [ctf_integer_hex, uintptr_t, hDevice, "(uintptr_t)hDevice"]
   - name: memory_info_range
     args:
@@ -208,7 +208,7 @@ lttng_ust_ze_properties:
     - [ze_kernel_properties_t *, pKernelProperties]
     fields:
     - [ctf_integer_hex, uintptr_t, hKernel, "(uintptr_t)hKernel"]
-    - [lttng_ust_field_variable_length_blob, pKernelProperties_val, pKernelProperties, size_t, "sizeof(ze_kernel_properties_t)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, pKernelProperties_val, pKernelProperties, size_t, "sizeof(ze_kernel_properties_t)"]
 lttng_ust_ze_build:
   events:
   - name: log

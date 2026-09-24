@@ -33,7 +33,7 @@ lttng_ust_opencl:
     - [ctf_integer, size_t, cb, cb]
     - [ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data"]
     - [ctf_string, errinfo_val, errinfo]
-    - [lttng_ust_field_variable_length_blob, private_info_vals, private_info, size_t, "(private_info ? cb : 0)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, private_info_vals, private_info, size_t, "(private_info ? cb : 0)"]
   - name: clCreateContextFromType_callback
     args:
     - ["const char *", errinfo]
@@ -46,7 +46,7 @@ lttng_ust_opencl:
     - [ctf_integer, size_t, cb, cb]
     - [ctf_integer_hex, uintptr_t, user_data, "(uintptr_t)user_data"]
     - [ctf_string, errinfo_val, errinfo]
-    - [lttng_ust_field_variable_length_blob, private_info_vals, private_info, size_t, "(private_info ? cb : 0)", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, private_info_vals, private_info, size_t, "(private_info ? cb : 0)"]
   - name: clSetMemObjectDestructorCallback_callback
     args:
     - [cl_mem, memobj]

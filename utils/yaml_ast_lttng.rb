@@ -58,6 +58,7 @@ module YAMLCAst
       ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(struct #{name})"
+      ev.blob_type = "struct #{name}"
       ev
     end
 
@@ -72,6 +73,7 @@ module YAMLCAst
       ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(union #{name})"
+      ev.blob_type = "union #{name}"
       ev
     end
   end
@@ -132,6 +134,7 @@ module YAMLCAst
         ev.macro = :lttng_ust_field_fixed_length_blob
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
+        ev.blob_type = name
       else
         super
       end
@@ -194,6 +197,7 @@ module YAMLCAst
           ev.type = :uint8_t
           ev.length = "(#{ev.length}) * sizeof(#{type.name})"
           ev.length_type = 'size_t'
+          ev.blob_type = type.name
         else
           super(type_classes)
         end

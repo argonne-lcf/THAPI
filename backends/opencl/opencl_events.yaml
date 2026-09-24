@@ -109,7 +109,7 @@ lttng_ust_opencl_dump:
     - [ctf_integer, uint64_t, enqueue_counter, enqueue_counter]
     - [ctf_integer, cl_uint, arg_index, arg_index]
     - [ctf_integer, size_t, arg_size, arg_size]
-    - [lttng_ust_field_variable_length_blob, arg_value, arg_value, size_t, "arg_value == NULL ? 0 : arg_size", "application/octet-stream"]
+    - [lttng_ust_field_variable_length_blob, arg_value, arg_value, size_t, "arg_value == NULL ? 0 : arg_size"]
   - name: svmptr_dump_event
     args:
     - [uint64_t, enqueue_counter]

@@ -394,11 +394,8 @@ class MetaParameter
     when *CL_FLOAT_SCALARS
       lttng_type = ["ctf_#{lttng_arr_type}_hex", CL_FLOAT_SCALARS_MAP[type]]
     when *CL_STRUCTS, 'void'
-      # Raw bytes rather than a run of numbers, so a blob. Its slots are not the
-      # ctf_* array ones: no element type, and a media type at the end.
       return ['lttng_ust_field_variable_length_blob', name + '_vals', expr,
-              *blob_length_args(stype, name, size),
-              LTTng::TracepointField::DEFAULT_MEDIA_TYPE]
+              *blob_length_args(stype, name, size)]
     else
       raise "Unknown Type: #{type.inspect} for #{name} in #{@command.prototype.name}!"
     end
@@ -440,7 +437,7 @@ class InScalar < InMetaParameter
       @lttng_in_type = ['ctf_float', type, name + '_val', nocheck ? "*#{name}" : "#{name} == NULL ? 0 : *#{name}"]
     when *CL_STRUCTS
       @lttng_in_type = ['lttng_ust_field_variable_length_blob', name + '_val', "(uint8_t *)#{name}", 'size_t',
-                        "#{name} == NULL ? 0 : sizeof(#{type})", LTTng::TracepointField::DEFAULT_MEDIA_TYPE]
+                        "#{name} == NULL ? 0 : sizeof(#{type})"]
     else
       raise "Unknown Type: #{type.inspect}!"
     end
@@ -734,8 +731,7 @@ end
 buffer_create_info = InMetaParameter.new(OPENCL_COMMANDS['clCreateSubBuffer'], 'buffer_create_info')
 buffer_create_info.instance_variable_set(:@lttng_in_type,
                                          ['lttng_ust_field_variable_length_blob', 'buffer_create_info_vals', 'buffer_create_info', 'size_t',
-                                          'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)',
-                                          LTTng::TracepointField::DEFAULT_MEDIA_TYPE])
+                                          'buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)'])
 
 OPENCL_COMMANDS['clCreateSubBuffer'].meta_parameters.push buffer_create_info
 

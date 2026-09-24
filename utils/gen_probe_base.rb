@@ -130,18 +130,13 @@ def print_struct_tracepoint_provider(provider, structs, include:)
 end
 
 def print_struct_tracepoint(provider, t)
-  puts <<~EOF
-    TRACEPOINT_EVENT(
-      #{provider},
-      #{t},
-      TP_ARGS(
-        #{t} *, p
-      ),
-      TP_FIELDS(
-        ctf_integer_hex(uintptr_t, p, (uintptr_t)(p))
-        lttng_ust_field_variable_length_blob(p_val, p, size_t, (p ? sizeof(#{t}) : 0), "application/octet-stream")
-      )
-    )
-
-  EOF
+  LTTng.print_tracepoint(provider, {
+                           'name' => t,
+                           'args' => [["#{t} *", 'p']],
+                           'fields' => [
+                             ['ctf_integer_hex', 'uintptr_t', 'p', '(uintptr_t)p'],
+                             ['lttng_ust_field_variable_length_blob', 'p_val', 'p', 'size_t',
+                              "(p ? sizeof(#{t}) : 0)"],
+                           ],
+                         })
 end

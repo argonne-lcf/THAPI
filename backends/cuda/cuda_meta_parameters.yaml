@@ -295,7 +295,7 @@ meta_parameters:
   cuMipmappedArrayGetLevel:
     - [OutScalar, pLevelArray]
   cuMemGetHandleForAddressRange:
-    - [OutLTTng, handle, lttng_ust_field_variable_length_blob, handle_val, handle, size_t, "handleType == CU_MEM_RANGE_HANDLE_TYPE_DMA_BUF_FD ? sizeof(int) : 0", "application/octet-stream"]
+    - [OutLTTng, handle, lttng_ust_field_variable_length_blob, handle_val, handle, size_t, "handleType == CU_MEM_RANGE_HANDLE_TYPE_DMA_BUF_FD ? sizeof(int) : 0"]
   cuMemAddressReserve:
     - [OutScalar, ptr]
   cuMemCreate:
@@ -311,10 +311,10 @@ meta_parameters:
     - [InScalar, location]
     - [OutScalar, flags]
   cuMemExportToShareableHandle:
-    - [OutLTTng, shareableHandle, lttng_ust_field_variable_length_blob, shareableHandle_val, shareableHandle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0", "application/octet-stream"]
+    - [OutLTTng, shareableHandle, lttng_ust_field_variable_length_blob, shareableHandle_val, shareableHandle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
   cuMemImportFromShareableHandle:
     - [OutScalar, handle]
-    - [InLTTng, osHandle, lttng_ust_field_variable_length_blob, osHandle_val, osHandle, size_t, "shHandleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0", "application/octet-stream"]
+    - [InLTTng, osHandle, lttng_ust_field_variable_length_blob, osHandle_val, osHandle, size_t, "shHandleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
   cuMemGetAllocationGranularity:
     - [InScalar, prop]
     - [OutScalar, granularity]
@@ -333,7 +333,7 @@ meta_parameters:
       attr == CU_MEMPOOL_ATTR_REUSE_ALLOW_INTERNAL_DEPENDENCIES ? sizeof(int) : \
       attr == CU_MEMPOOL_ATTR_RELEASE_THRESHOLD ? sizeof(cuuint64_t) : \
       attr == CU_MEMPOOL_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : \
-      attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0", "application/octet-stream"]
+      attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
   cuMemPoolGetAttribute:
     - [OutLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == CU_MEMPOOL_ATTR_REUSE_FOLLOW_EVENT_DEPENDENCIES ? sizeof(int) : \
@@ -343,7 +343,7 @@ meta_parameters:
       attr == CU_MEMPOOL_ATTR_RESERVED_MEM_CURRENT ? sizeof(cuuint64_t) : \
       attr == CU_MEMPOOL_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : \
       attr == CU_MEMPOOL_ATTR_USED_MEM_CURRENT ? sizeof(cuuint64_t) : \
-      attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0", "application/octet-stream"]
+      attr == CU_MEMPOOL_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
   cuMemPoolSetAccess:
     - [InArray, map, count]
   cuMemPoolGetAccess:
@@ -357,9 +357,9 @@ meta_parameters:
   cuMemAllocFromPoolAsync_ptsz:
     - [OutScalar, dptr]
   cuMemPoolExportToShareableHandle:
-    - [OutLTTng, handle_out, lttng_ust_field_variable_length_blob, handle_out_val, handle_out, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0", "application/octet-stream"]
+    - [OutLTTng, handle_out, lttng_ust_field_variable_length_blob, handle_out_val, handle_out, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
   cuMemPoolImportFromShareableHandle:
-    - [InLTTng, handle, lttng_ust_field_variable_length_blob, handle_val, handle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0", "application/octet-stream"]
+    - [InLTTng, handle, lttng_ust_field_variable_length_blob, handle_val, handle, size_t, "handleType == CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR ? sizeof(int) : 0"]
     - [OutScalar, pool_out]
   cuMemPoolExportPointer:
     - [OutScalar, shareData_out]
@@ -393,14 +393,14 @@ meta_parameters:
       attribute == CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE ? sizeof(CUmemoryPool) : \
       attribute == CU_POINTER_ATTRIBUTE_MAPPING_SIZE ? sizeof(size_t) : \
       attribute == CU_POINTER_ATTRIBUTE_MAPPING_BASE_ADDR ? sizeof(void *) : \
-      attribute == CU_POINTER_ATTRIBUTE_MEMORY_BLOCK_ID ? sizeof(unsigned long long) : 0", "application/octet-stream"]
+      attribute == CU_POINTER_ATTRIBUTE_MEMORY_BLOCK_ID ? sizeof(unsigned long long) : 0"]
   cuMemRangeGetAttribute:
     - [OutArray, data, dataSize]
   cuMemRangeGetAttributes:
     - [InArray, attributes, numAttributes]
     - [InArray, dataSizes, numAttributes]
   cuPointerSetAttribute:
-    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : 0", "application/octet-stream"]
+    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "attribute == CU_POINTER_ATTRIBUTE_SYNC_MEMOPS ? sizeof(uint8_t) : 0"]
   cuPointerGetAttributes:
     - [InArray, attributes, numAttributes]
     - [OutArray, data, numAttributes]
@@ -630,11 +630,11 @@ meta_parameters:
       attr == CU_GRAPH_MEM_ATTR_USED_MEM_CURRENT ? sizeof(cuuint64_t) : \
       attr == CU_GRAPH_MEM_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : \
       attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_CURRENT ? sizeof(cuuint64_t) : \
-      attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0", "application/octet-stream"]
+      attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
   cuDeviceSetGraphMemAttribute:
     - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == CU_GRAPH_MEM_ATTR_USED_MEM_HIGH ? sizeof(cuuint64_t) : \
-      attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0", "application/octet-stream"]
+      attr == CU_GRAPH_MEM_ATTR_RESERVED_MEM_HIGH ? sizeof(cuuint64_t) : 0"]
   cuGraphClone:
     - [OutScalar, phGraphClone]
   cuGraphNodeFindInClone:

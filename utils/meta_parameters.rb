@@ -347,24 +347,31 @@ class OutArrayByRef < ArrayByRefMetaParameter
   prepend Out
 end
 
-class OutLTTng < MetaParameter
-  prepend Out
-
+# A meta-parameter whose lttng field is given literally, slot by slot:
+#
+#   - [OutScalar, pStr]                      # a rule builds the field
+#   - [OutLTTng, handle, lttng_ust_field_variable_length_blob,
+#      handle_val, handle, size_t,
+#      "handleType == CU_MEM_RANGE_HANDLE_TYPE_DMA_BUF_FD ? sizeof(int) : 0"]
+#
+# The length is a conditional on another argument (`handleType`), so no rule
+# can compute it and the backend spells the row out. The bytes are still the
+# parameter's own, so `blob_type` comes from the declaration, not the row.
+class LTTngMetaParameter < MetaParameter
   def initialize(command, name, *args)
-    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
+    decl = command[name]
+    raise "Invalid parameter: #{name} for #{command.name}!" unless decl
 
     super(command, name)
     @lttng_type = LTTng::TracepointField.new(*args)
+    @lttng_type.blob_type = decl.type.to_s if @lttng_type.blob?
   end
 end
 
-class InLTTng < MetaParameter
+class OutLTTng < LTTngMetaParameter
+  prepend Out
+end
+
+class InLTTng < LTTngMetaParameter
   prepend In
-
-  def initialize(command, name, *args)
-    raise "Invalid parameter: #{name} for #{command.name}!" unless command[name]
-
-    super(command, name)
-    @lttng_type = LTTng::TracepointField.new(*args)
-  end
 end

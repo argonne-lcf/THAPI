@@ -59,6 +59,7 @@ def parse_field(field)
   when 'lttng_ust_field_variable_length_blob'
     d[:field_class][:type] = 'blob_dynamic'
     d[:field_class][:length_field_location] = payload_length_field_location(field['name'])
+    d[:field_class][:media_type] = LTTng::TracepointField.media_type(field['type'])
     d[:metadata] = { be_class: cl_to_class(field['type']) } if field['structure']
   when 'ctf_array'
     d[:field_class][:type] = 'array_static'
