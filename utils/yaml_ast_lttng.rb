@@ -55,9 +55,10 @@ module YAMLCAst
   class Struct
     def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
-      ev.macro = :ctf_array_text
+      ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(struct #{name})"
+      ev.blob_type = "struct #{name}"
       ev
     end
 
@@ -69,9 +70,10 @@ module YAMLCAst
   class Union
     def lttng_type(_type_classes)
       ev = LTTng::TracepointField.new
-      ev.macro = :ctf_array_text
+      ev.macro = :lttng_ust_field_fixed_length_blob
       ev.type = :uint8_t
       ev.length = "sizeof(union #{name})"
+      ev.blob_type = "union #{name}"
       ev
     end
   end
@@ -129,9 +131,10 @@ module YAMLCAst
         ev.macro = :ctf_integer
         ev.type = :int32_t
       when :aggregate
-        ev.macro = :ctf_array_text
+        ev.macro = :lttng_ust_field_fixed_length_blob
         ev.type = :uint8_t
         ev.length = "sizeof(#{name})"
+        ev.blob_type = name
       else
         super
       end
@@ -172,10 +175,7 @@ module YAMLCAst
         ev.macro = :"ctf_#{lttng_arr_type}_text"
         ev.type = type.name
       when YAMLCAst::CustomType
-        # A uint8_t array is binary data or text rather than a run of numbers,
-        # so it gets an aggregate's treatment -- bytes, sized in bytes -- even
-        # though the name classifies as an integer.
-        case type.name == 'uint8_t' ? :aggregate : type_classes.category_of(type.name)
+        case type_classes.array_category_of(type.name)
         when :address
           ev.macro = :"ctf_#{lttng_arr_type}_hex"
           ev.type = :uintptr_t
@@ -189,12 +189,15 @@ module YAMLCAst
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t
         when :aggregate
-          ev.macro = :"ctf_#{lttng_arr_type}_text"
+          # An element count times an element size. The array arm is only
+          # reached once a length is known -- a length-less array is logged as
+          # its address above -- so the total is always a run-time size_t, and
+          # the blob is always the variable-length one.
+          ev.macro = :lttng_ust_field_variable_length_blob
           ev.type = :uint8_t
-          if ev.length
-            ev.length = "(#{ev.length}) * sizeof(#{type.name})"
-            ev.length_type = 'size_t'
-          end
+          ev.length = "(#{ev.length}) * sizeof(#{type.name})"
+          ev.length_type = 'size_t'
+          ev.blob_type = type.name
         else
           super(type_classes)
         end

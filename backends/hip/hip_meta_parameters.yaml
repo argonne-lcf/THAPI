@@ -93,7 +93,7 @@ meta_parameters:
   hipPointerGetAttributes:
     - [OutScalar, attributes]
   hipPointerGetAttribute:
-    - [OutLTTng, data, ctf_sequence_text, uint8_t, data_val, data, size_t, "\
+    - [OutLTTng, data, lttng_ust_field_variable_length_blob, data_val, data, size_t, "\
       attribute == HIP_POINTER_ATTRIBUTE_CONTEXT ? 0 : \
       attribute == HIP_POINTER_ATTRIBUTE_MEMORY_TYPE ? sizeof(unsigned int) : \
       attribute == HIP_POINTER_ATTRIBUTE_DEVICE_POINTER ? sizeof(hipDeviceptr_t) : \
@@ -146,7 +146,7 @@ meta_parameters:
   hipMallocAsync:
     - [OutScalar, dev_ptr]
   hipMemPoolSetAttribute:
-    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
       attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
       attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
@@ -156,7 +156,7 @@ meta_parameters:
       attr == hipMemPoolAttrUsedMemCurrent ? 0 : \
       attr == hipMemPoolAttrUsedMemHigh ? 0 : 0"]
   hipMemPoolGetAttribute:
-    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [OutLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipMemPoolReuseFollowEventDependencies ? sizeof(int) : \
       attr == hipMemPoolReuseAllowOpportunistic ? sizeof(int) : \
       attr == hipMemPoolReuseAllowInternalDependencies ? sizeof(int) : \
@@ -176,10 +176,10 @@ meta_parameters:
   hipMallocFromPoolAsync:
     - [OutScalar, dev_ptr]
   hipMemPoolExportToShareableHandle:
-    - [OutLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
+    - [OutLTTng, shared_handle, lttng_ust_field_variable_length_blob, shared_handle_val, shared_handle, size_t, "\
       handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
   hipMemPoolImportFromShareableHandle:
-    - [InLTTng, shared_handle, ctf_sequence_text, uint8_t, shared_handle_val, shared_handle, size_t, "\
+    - [InLTTng, shared_handle, lttng_ust_field_variable_length_blob, shared_handle_val, shared_handle, size_t, "\
       handle_type == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
     - [OutScalar, mem_pool]
   hipMemPoolExportPointer:
@@ -516,13 +516,13 @@ meta_parameters:
   hipGraphEventWaitNodeGetEvent:
     - [OutScalar, event_out]
   hipDeviceGetGraphMemAttribute:
-    - [OutLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [OutLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipGraphMemAttrUsedMemCurrent ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrReservedMemCurrent ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
   hipDeviceSetGraphMemAttribute:
-    - [InLTTng, value, ctf_sequence_text, uint8_t, value_val, value, size_t, "\
+    - [InLTTng, value, lttng_ust_field_variable_length_blob, value_val, value, size_t, "\
       attr == hipGraphMemAttrUsedMemHigh ? sizeof(uint64_t) : \
       attr == hipGraphMemAttrReservedMemHigh ? sizeof(uint64_t) : 0"]
   hipUserObjectCreate:
@@ -533,7 +533,7 @@ meta_parameters:
     - [InScalar, prop]
     - [OutScalar, handle]
   hipMemExportToShareableHandle:
-    - [OutLTTng, shareableHandle, ctf_sequence_text, uint8_t, shareableHandle_val, shareableHandle, size_t, "\
+    - [OutLTTng, shareableHandle, lttng_ust_field_variable_length_blob, shareableHandle_val, shareableHandle, size_t, "\
       handleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
   hipMemGetAccess:
     - [InScalar, location]
@@ -544,7 +544,7 @@ meta_parameters:
   hipMemGetAllocationPropertiesFromHandle:
     - [OutScalar, prop]
   hipMemImportFromShareableHandle:
-    - [InLTTng, osHandle, ctf_sequence_text, uint8_t, osHandle_val, osHandle, size_t, "\
+    - [InLTTng, osHandle, lttng_ust_field_variable_length_blob, osHandle_val, osHandle, size_t, "\
       shHandleType == hipMemHandleTypePosixFileDescriptor ? sizeof(int) : 0"]
     - [OutScalar, handle]
   hipMemMapArrayAsync:

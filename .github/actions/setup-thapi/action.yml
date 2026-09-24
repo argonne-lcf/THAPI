@@ -42,11 +42,17 @@ runs:
       packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev llvm-dev
   - name: Install Ruby Dependencies
     shell: bash
-    # metababel 2.0.0 is a breaking release: it replaced the MIP-0
-    # `length_field_path` this branch emits with a MIP-1 field location. Pin to
-    # the series matching configure.ac's `metababel >= 1.1.3` until THAPI moves
-    # to MIP 1.
-    run: sudo gem install nokogiri babeltrace2 opencl_ruby_ffi 'metababel:~> 1.1' cast-to-yaml
+    run: sudo gem install nokogiri opencl_ruby_ffi metababel cast-to-yaml
+  - name: Install babeltrace2-ruby
+    shell: bash
+    # The published gem (0.1.5) predates BLOB support, so it cannot read the
+    # traces THAPI now writes. Build it from the branch until a release
+    # carries those commits.
+    run: |
+      git clone --depth 1 https://github.com/argonne-lcf/babeltrace2-ruby.git
+      cd babeltrace2-ruby
+      gem build babeltrace2.gemspec
+      sudo gem install --local ./babeltrace2-*.gem
   - name: Set PKG_CONFIG
     shell: bash
     run: |
@@ -70,10 +76,8 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/lttng/lttng-ust -b v2.14.0
+      git clone https://github.com/lttng/lttng-ust -b v2.16.0
       cd lttng-ust
-      wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/a57eb4fa1b2b8621bb0e83a6ec25e48e3a761d15/packages/lttng-ust/55cca69.diff
-      patch -p1 < 55cca69.diff
       ./bootstrap
       ./configure --disable-man-pages --prefix=$HOME/efficios_dep/
       make -j$(nproc)
@@ -82,7 +86,7 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-v2.14.0
+      git clone https://github.com/argonne-lcf/lttng-tools.git -b anl-v2.16.0
       cd lttng-tools
       ./bootstrap
       ./configure --disable-man-pages --disable-bin-lttng-crash --prefix=$HOME/efficios_dep
@@ -92,15 +96,8 @@ runs:
     shell: bash
     if: steps.efficios_dep.outputs.cache-hit != 'true'
     run: |
-      git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3
-      # TODO use anl-ms3-v2.1.2 when ctf.archive.reader doesn't segfault anymore
+      git clone https://github.com/argonne-lcf/babeltrace.git -b anl-ms3-v2.1.2
       cd babeltrace
-      # Fix include path
-      wget https://raw.githubusercontent.com/argonne-lcf/THAPI/4418916620496fd66cde0b3d5e241bed0a4c18a3/.github/workflows/bt_makefile.patch
-      patch -p1 < bt_makefile.patch
-      # Null char
-      wget https://raw.githubusercontent.com/argonne-lcf/THAPI-spack/ddc9a12a498331a7c312941df0d4e7078d03ae93/packages/babeltrace2/0001-Prevent-null-character-from-stopping-string-decoding.patch
-      patch -p1 < 0001-Prevent-null-character-from-stopping-string-decoding.patch
       ./bootstrap
       ./configure --disable-man-pages --prefix=$HOME/efficios_dep
       make -j$(nproc)
