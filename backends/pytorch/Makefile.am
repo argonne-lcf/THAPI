@@ -4,7 +4,7 @@ else
   WERROR =
 endif
 
-PYTORCH_STATIC_PROBES = pytorch
+PYTORCH_STATIC_PROBES = pytorch_tracepoints
 
 PYTORCH_STATIC_PROBES_TP = $(PYTORCH_STATIC_PROBES:=.tp)
 
@@ -13,7 +13,7 @@ PYTORCH_STATIC_PROBES_INCL = $(PYTORCH_STATIC_PROBES:=.h)
 PYTORCH_STATIC_PROBES_SRC = $(PYTORCH_STATIC_PROBES:=.c)
 
 $(PYTORCH_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/pytorch_events.yaml $(top_srcdir)/utils/gen_probe_base.rb
-	$(RUBY) $< $(srcdir)/pytorch_events.yaml lttng_ust_$* > $@
+	$(RUBY) $< $(srcdir)/pytorch_events.yaml lttng_ust_pytorch > $@
 
 %.h %.c: %.tp
 	$(LTTNG_GEN_TP) $< -o $*.c -o $*.h
@@ -41,8 +41,9 @@ CLEANFILES = \
 BUILT_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
-# Only -ltorch_cpu is needed: at::addGlobalCallback and at::RecordFunction::name
-# are both defined in libtorch_cpu.so.
+# Only -ltorch_cpu is needed: at::addGlobalCallback, at::RecordFunction::name
+# and at::RecordFuntion::overload_name symbols must be resolved to register 
+# entry/exit callbacks at load time.
 DUMMY_TORCH_LIBS = \
 	dummy_libs/libtorch_cpu.so
 
@@ -63,9 +64,6 @@ bin_SCRIPTS = \
 
 lib_LTLIBRARIES = libTracerPytorch.la
 
-# pytorch.c is only built once, into libpytorchtracepoints.la above; pull it
-# in via LIBADD rather than compiling it again here (a second copy would
-# clash with the first at link time: duplicate tracepoint symbols).
 nodist_libTracerPytorch_la_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
@@ -73,14 +71,44 @@ libTracerPytorch_la_SOURCES = \
 	tracer_pytorch.cpp
 
 libTracerPytorch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
-# -Wno-missing-field-initializers: LTTng's own tracepoint.h (not our code)
-#   aggregate-initializes structs without naming every field; clang is
-#   stricter than gcc about this under -Wextra.
-# -Wno-unused-private-field: RecordFunctionCallback's fields exist only to
-#   match PyTorch's real class layout byte-for-byte (see the comment in
-#   include/ATen/record_function.h) -- the real libtorch reads them, we
-#   never do, by design.
 libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-private-field $(WERROR) $(LTTNG_UST_CFLAGS)
 libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -avoid-version -module
 libTracerPytorch_la_LIBADD = libpytorchtracepoints.la
 EXTRA_libTracerPytorch_la_DEPENDENCIES = $(DUMMY_TORCH_LIBS)
+
+BTX_PYTORCH_GENERATED = \
+	btx_filter_pytorch/metababel/metababel.h \
+	btx_filter_pytorch/metababel/btx_component.h \
+	btx_filter_pytorch/metababel/btx_component.c \
+	btx_filter_pytorch/metababel/btx_upstream.h \
+	btx_filter_pytorch/metababel/btx_upstream.c \
+	btx_filter_pytorch/metababel/btx_downstream.h \
+	btx_filter_pytorch/metababel/btx_downstream.c \
+	btx_filter_pytorch/btx_main.c
+
+EXTRA_DIST += \
+	$(top_srcdir)/xprof/btx_interval_model.yaml \
+	$(srcdir)/btx_pytorch_model.yaml
+
+$(BTX_PYTORCH_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml $(srcdir)/btx_pytorch_model.yaml
+	$(METABABEL) -u $(srcdir)/btx_pytorch_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_pytorch -p pytorchinterval -c interval
+
+CLEANFILES += \
+	$(BTX_PYTORCH_GENERATED)
+
+BUILT_SOURCES += \
+	$(BTX_PYTORCH_GENERATED)
+
+nodist_libPyTorchInterval_la_SOURCES = \
+	$(BTX_PYTORCH_GENERATED)
+
+libPyTorchInterval_la_SOURCES = \
+	btx_pytorchinterval_callbacks.cpp
+
+libPyTorchInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./ -I./btx_filter_pytorch
+libPyTorchInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPyTorchInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPyTorchInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+bt2dir = $(pkglibdir)/bt2
+bt2_LTLIBRARIES = libPyTorchInterval.la

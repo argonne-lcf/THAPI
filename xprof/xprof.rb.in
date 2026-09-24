@@ -76,12 +76,11 @@ end
 #  \/ (_| |  | (_) |_| _>   |_ >< (/_ (_
 #
 def exec(cmd, opts: {}, debug: true, ignore_exit_codes: [])
-  return Open3.capture3(opts, cmd).first unless debug
+  stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
+  return [stdout_str, stderr_str, status] unless debug
 
   LOGGER.info { cmd }
   LOGGER.debug { opts } unless opts.empty?
-
-  stdout_str, stderr_str, status = Open3.capture3(opts, cmd)
   LOGGER.debug { stdout_str.strip } unless stdout_str.empty?
 
   unless status.success? || ignore_exit_codes.include?(status.exitstatus)
@@ -91,7 +90,8 @@ def exec(cmd, opts: {}, debug: true, ignore_exit_codes: [])
   end
 
   LOGGER.warn { stderr_str.strip } unless stderr_str.empty?
-  stdout_str
+
+  [stdout_str, stderr_str, status]
 end
 
 def launch_usr_bin(env, cmd)
@@ -153,7 +153,7 @@ def whichlib64(binary, *libs)
   whichlib64_bin = File.join(BINDIR, 'whichlib64')
   ld_path = [env_fetch_first('LD_LIBRARY_PATH'), env_fetch_first('CRAY_LD_LIBRARY_PATH')].compact.join(':')
 
-  stdout_str = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
+  stdout_str, _, _ = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
                     opts: { 'LD_LIBRARY_PATH' => ld_path },
                     ignore_exit_codes: [1, 2])
 
@@ -886,6 +886,25 @@ end
 #                                          _|
 #
 
+def get_pytorch_library_path
+  torch_tested = Gem::Version.new('1.11.0')..Gem::Version.new('2.14.0')
+  torch_probe  = 'python3 -c "import torch; print(torch.__file__); print(torch.__version__)"'
+
+  lib = env_fetch_first('LTTNG_UST_PYTORCH_LIBRARY_PATH') || begin
+    # Raises for other error codes, but only warns for 127 (python3 command not found) and 1 (ModuleNotFoundError)
+    stdout_str, _, status  = exec(torch_probe, ignore_exit_codes: [1, 127])
+    if status.success?
+      file, version = stdout_str.split
+      version.slice(/\d+(\.\d+)*/).then do |v|
+        torch_tested.cover?(Gem::Version.new(v)) || LOGGER.warn("Untested PyTorch version #{version}")
+      end
+      File.join(File.dirname(file), 'lib')
+    end
+  end
+
+  lib
+end
+
 def all_env_tracers(usr_binary)
   # Return the list of backends (used by local master to enable lttng events)
   # and the ENV used by any traced-ranks to preload THAPI tracers
@@ -966,18 +985,9 @@ def all_env_tracers(usr_binary)
   end
 
   if OPTIONS[:'backend-names'].include?('pytorch')
-    # Supported calling: iprof -- python3 model.py (torch env is active).
-    # Unsupported calling: iprof -- venv/bin/python3 module.py (non-active torch env)
-    # TODO: We need env vars to support the second calling convention.
-    torch_file = exec('python3 -c "import torch; print(torch.__file__)"', debug: false).strip
-    torch_lib = torch_file.empty? ? '' : File.join(File.dirname(torch_file), 'lib')
-    if torch_lib.empty?
-      LOGGER.warn('No torch module found for python3, pytorch backend will not be enabled')
-    else
+    get_pytorch_library_path&.then do |lib|
       backends << 'pytorch'
-      # LibTracerPytorch.so calls at::addGlobalCallback() and RecordFunction::name()
-      # both implemented in libtorch_cpu.so. The lib is reachable via LD_LIBRARY_PATH.
-      h[%w[LD_LIBRARY_PATH prepend]] << torch_lib
+      h[%w[LD_LIBRARY_PATH prepend]] << lib
       h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerPytorch.so')
     end
   end
@@ -1075,7 +1085,7 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
-            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'pytorch:6'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis
