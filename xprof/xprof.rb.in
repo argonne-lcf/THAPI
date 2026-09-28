@@ -153,9 +153,9 @@ def whichlib64(binary, *libs)
   whichlib64_bin = File.join(BINDIR, 'whichlib64')
   ld_path = [env_fetch_first('LD_LIBRARY_PATH'), env_fetch_first('CRAY_LD_LIBRARY_PATH')].compact.join(':')
 
-  stdout_str, _, _ = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
-                    opts: { 'LD_LIBRARY_PATH' => ld_path },
-                    ignore_exit_codes: [1, 2])
+  stdout_str, = exec("#{whichlib64_bin} #{binary} #{libs.join(' ')}",
+                     opts: { 'LD_LIBRARY_PATH' => ld_path },
+                     ignore_exit_codes: [1, 2])
 
   libs.zip(stdout_str.lines.map(&:strip)).filter_map do |lib, path|
     [lib, path] unless path.end_with?('not found')
@@ -892,7 +892,7 @@ def get_pytorch_library_path
 
   lib = env_fetch_first('LTTNG_UST_PYTORCH_LIBRARY_PATH') || begin
     # Raises for other error codes, but only warns for 127 (python3 command not found) and 1 (ModuleNotFoundError)
-    stdout_str, _, status  = exec(torch_probe, ignore_exit_codes: [1, 127])
+    stdout_str, _, status = exec(torch_probe, ignore_exit_codes: [1, 127])
     if status.success?
       file, version = stdout_str.split
       version.slice(/\d+(\.\d+)*/).then do |v|

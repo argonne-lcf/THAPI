@@ -77,14 +77,18 @@ typedef std::tuple<hostname_t, process_id_t, thread_id_t> hpt_t;
 
 typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_function_name> hpt_function_name_t;
 typedef std::tuple<thread_id_t, thapi_function_name> t_function_name_t;
-typedef std::tuple<hostname_t, process_id_t, thread_id_t, thapi_device_id, thapi_device_id,
+typedef std::tuple<hostname_t,
+                   process_id_t,
+                   thread_id_t,
+                   thapi_device_id,
+                   thapi_device_id,
                    thapi_function_name>
     hpt_device_function_name_t;
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id> hp_device_t;
 
 typedef std::tuple<hostname_t, process_id_t, thapi_device_id, thapi_device_id> hp_dsd_t;
-typedef std::tuple<hostname_t, std::string> hi_t;                // host + NIC interface
-typedef std::tuple<hostname_t, std::string, std::string> hic_t;  // host + NIC interface + counter
+typedef std::tuple<hostname_t, std::string> hi_t;               // host + NIC interface
+typedef std::tuple<hostname_t, std::string, std::string> hic_t; // host + NIC interface + counter
 typedef std::tuple<long, long> sd_t;
 typedef std::tuple<thread_id_t, thapi_function_name, long> tfn_ts_t;
 typedef std::tuple<thapi_function_name, long> fn_ts_t;

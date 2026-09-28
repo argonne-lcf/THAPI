@@ -1,5 +1,5 @@
-#include <ATen/record_function.h>
 #include "pytorch_tracepoints.h"
+#include <ATen/record_function.h>
 
 static std::unique_ptr<at::ObserverContext> on_entry(const at::RecordFunction &fn) {
   tracepoint(lttng_ust_pytorch, op_entry, fn.name(), fn.overload_name());
