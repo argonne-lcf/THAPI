@@ -119,6 +119,11 @@ jobs:
         python3 -m pip install --user -U pip
         python3 -m pip install --user -U ittapi
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+    - name: Install PyTorch (CPU)
+      run: |
+        python3 -m pip install --user -U pip
+        python3 -m pip install --user -U torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
     - name: Setup tmate session
       uses: mxschmitt/action-tmate@v3
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
