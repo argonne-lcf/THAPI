@@ -132,9 +132,6 @@ jobs:
         echo "TORCH_LIB=$TORCH_LIB"; ls -la "$TORCH_LIB"/libtorch_cpu.so
         echo "== does libtorch_cpu.so export at::addGlobalCallback? =="
         nm -D "$TORCH_LIB"/libtorch_cpu.so | grep 17addGlobalCallback || echo "NOT EXPORTED / not found in dynsym"
-    - name: Run iprof debug
-      run: |
-        run -55 iprof --debug 0 -- bash -c "exit 55"
     - name: Setup upterm session
       uses: owenthereal/action-upterm@v2
     # timeout-minutes converts a hang (e.g. the pytorch tracer deadlocking the
