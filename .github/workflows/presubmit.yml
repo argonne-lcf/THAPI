@@ -144,20 +144,34 @@ jobs:
     - name: Diagnose pytorch tracer load on failure
       if: ${{ failure() }}
       timeout-minutes: 2
+      shell: bash # plain bash, no -e, so a non-zero probe does not abort the step
       run: |
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
-        LT="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cpu.so"))')"
-        echo "== reproduce failing command (15s cap; 124 = timed out/hung) =="
-        timeout 15 iprof -- bash -c "exit 55" && rc=$? || rc=$?; echo "iprof exit=$rc"
-        echo "== which libtorch_cpu.so binds + any undefined symbol at load =="
-        LD_DEBUG=libs,bindings,reloc timeout 15 iprof -- bash -c "exit 55" 2>&1 \
-          | grep -iE "libtorch_cpu|addGlobalCallback|error|not found|undefined" | head -60 || true
+        LT="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cpu.so"))' 2>/dev/null)"
+        # Run a command fully detached: its own session, all stdio to a file (so
+        # lingering lttng children can never hold the step pipe open), SIGKILL on
+        # timeout (-s KILL, since iprof ignores SIGTERM during cleanup).
+        run() { # $1=logfile  rest=command
+          local log="$1"; shift
+          setsid timeout -s KILL 15 "$@" </dev/null >"$log" 2>&1
+          local rc=$?
+          echo "[exit=$rc]  (124=timed out/hung, 127=undefined symbol, 55=ok)"
+          return 0
+        }
+        echo "== reproduce failing command =="
+        run a.log iprof -- bash -c "exit 55"; sed -n '1,40p' a.log
+        echo "== loader trace: which libtorch_cpu.so binds + undefined symbols =="
+        LD_DEBUG=libs,bindings,reloc run b.log iprof -- bash -c "exit 55"
+        grep -iE "libtorch_cpu|addGlobalCallback|not found|undefined|symbol" b.log | head -60 || echo "(no matching loader lines)"
         echo "== do libtorch_cpu.so's own deps resolve? =="
-        ldd "$LT" | grep -i "not found" || echo "all deps of libtorch_cpu.so resolve"
-        echo "== isolated preload (no iprof env-building; 15s cap) =="
+        ldd "$LT" 2>&1 | grep -i "not found" || echo "all deps of libtorch_cpu.so resolve"
+        echo "== isolated preload (no iprof env-building) =="
         LD_LIBRARY_PATH="$(dirname "$LT"):$LD_LIBRARY_PATH" \
           LD_PRELOAD="$(pkg-config --variable=libdir thapi)/libTracerPytorch.so" \
-          timeout 15 bash -c "exit 55" && rc=$? || rc=$?; echo "isolated exit=$rc"
+          run c.log bash -c "exit 55"; sed -n '1,40p' c.log
+        # reap any tracer daemon still alive so the step can end promptly
+        pkill -KILL -f lttng-sessiond 2>/dev/null || true
+        echo "== diagnostics done =="
     # To get an SSH shell on the runner in the failed state:
     #   GitHub -> Actions -> Presubmit -> "Run workflow" -> tick "debug_enabled" -> Run.
     # On failure this pauses the job and prints an "ssh ...@nyc1.tmate.io" line in the log.
