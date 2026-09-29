@@ -154,6 +154,10 @@ jobs:
         LD_LIBRARY_PATH="$(dirname "$LT"):$LD_LIBRARY_PATH" \
           LD_PRELOAD="$(pkg-config --variable=libdir thapi)/libTracerPytorch.so" \
           bash -c "exit 55" && rc=$? || rc=$?; echo "isolated exit=$rc"
+    # To get an SSH shell on the runner in the failed state:
+    #   GitHub -> Actions -> Presubmit -> "Run workflow" -> tick "debug_enabled" -> Run.
+    # On failure this pauses the job and prints an "ssh ...@nyc1.tmate.io" line in the log.
+    # Connect with that command; access is limited to the actor who launched the run.
     - name: Debug over SSH on failure (tmate)
       uses: mxschmitt/action-tmate@v3
       if: ${{ failure() && github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
