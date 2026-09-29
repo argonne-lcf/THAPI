@@ -124,15 +124,25 @@ jobs:
         python3 -m pip install --user -U pip
         python3 -m pip install --user -U torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
-      if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        # --- diagnostics: which python3 the iprof probe uses, and whether the tracer can resolve against it ---
+        echo "== which python3 =="; which -a python3
+        echo "== python3 --version =="; python3 --version
+        echo "== probe as iprof runs it =="; python3 -c "import torch; print(torch.__file__); print(torch.__version__)"
+        TORCH_LIB="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib"))')"
+        echo "TORCH_LIB=$TORCH_LIB"; ls -la "$TORCH_LIB"/libtorch_cpu.so
+        echo "== does libtorch_cpu.so export at::addGlobalCallback? =="
+        nm -D "$TORCH_LIB"/libtorch_cpu.so | grep 17addGlobalCallback || echo "NOT EXPORTED / not found in dynsym"
     - name: Integration test
       run: |
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
         bats ${TEST_EXCLUDES} integration_tests/
         # Run the tests twice to make sure we do a proper cleanup
         bats ${TEST_EXCLUDES} integration_tests/
+    - name: Debug over SSH on failure (tmate)
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ failure() && github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+      with:
+        limit-access-to-actor: true
   build-in-tree-and-check:
     needs: efficios_dep
     name: Build in Tree ubuntu-24.04
