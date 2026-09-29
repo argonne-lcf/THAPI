@@ -138,6 +138,7 @@ jobs:
     - run: ./autogen.sh
     - run: ./configure
     - run: make
+    - run: if git status --porcelain -uall | grep '^??'; then echo "::error::Untracked files after build, run ./utils/gitignore-build-files.sh"; exit 1; fi
     - run: make check
       env:
         THAPI_VALGRIND: 1
