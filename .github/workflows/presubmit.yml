@@ -144,8 +144,11 @@ jobs:
     - name: Diagnose pytorch tracer load on failure
       if: ${{ failure() }}
       timeout-minutes: 2
-      shell: bash # plain bash, no -e, so a non-zero probe does not abort the step
       run: |
+        # GitHub's default shell keeps `-e -o pipefail`; turn it off so a
+        # non-zero probe (e.g. iprof exiting 127) does not abort the step
+        # before the diagnostics below print.
+        set +e +o pipefail
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
         LT="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cpu.so"))' 2>/dev/null)"
         # Run a command fully detached: its own session, all stdio to a file (so
