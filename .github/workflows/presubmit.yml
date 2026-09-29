@@ -132,6 +132,11 @@ jobs:
         echo "TORCH_LIB=$TORCH_LIB"; ls -la "$TORCH_LIB"/libtorch_cpu.so
         echo "== does libtorch_cpu.so export at::addGlobalCallback? =="
         nm -D "$TORCH_LIB"/libtorch_cpu.so | grep 17addGlobalCallback || echo "NOT EXPORTED / not found in dynsym"
+    - name: Run iprof debug
+      run: |
+        run -55 iprof --debug 0 -- bash -c "exit 55"
+    - name: Setup upterm session
+      uses: owenthereal/action-upterm@v2
     # timeout-minutes converts a hang (e.g. the pytorch tracer deadlocking the
     # tracee) into a step failure, so the diagnostic step below actually runs.
     # - name: Integration test
@@ -141,23 +146,6 @@ jobs:
     #     bats ${TEST_EXCLUDES} integration_tests/
     #     # Run the tests twice to make sure we do a proper cleanup
     #     bats ${TEST_EXCLUDES} integration_tests/
-
-    - name: Setup tmate session
-      id: tmate
-      uses: mxschmitt/action-tmate@v3
-      with:
-        detached: true
-    
-    # This step prints the credentials cleanly using standard echo
-    - name: Print tmate connection details
-      run: |
-        echo "SSH: ${{ steps.tmate.outputs.ssh-command }}"
-        echo "Web URL: ${{ steps.tmate.outputs.web-url }}"
-    
-    # Manually pause the workflow so it doesn't instantly close
-    - name: Keep alive
-      run: sleep 1800 # 30 minutes
-
   build-in-tree-and-check:
     needs: efficios_dep
     name: Build in Tree ubuntu-24.04
