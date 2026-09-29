@@ -118,6 +118,12 @@ jobs:
       run: |
         python3 -m pip install --user -U pip
         python3 -m pip install --user -U ittapi
+    - name: Install PyTorch (CPU)
+      run: |
+        python3 -m pip install --user -U pip
+        python3 -m pip install --user -U torch
+    - name: Add $HOME/.local/bin to the GITHUB_PATH
+      run: |
         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
     - name: Setup remote-ssh session
       uses: owenthereal/action-upterm@v2
