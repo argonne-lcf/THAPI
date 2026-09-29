@@ -72,7 +72,7 @@ libTracerPytorch_la_SOURCES = \
 
 libTracerPytorch_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./
 libTracerPytorch_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-private-field $(WERROR) $(LTTNG_UST_CFLAGS)
-libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -ltorch_cpu -avoid-version -module
+libTracerPytorch_la_LDFLAGS = $(LTTNG_UST_LIBS) -Ldummy_libs -Wl,--no-as-needed -ltorch_cpu -Wl,--as-needed -avoid-version -module
 libTracerPytorch_la_LIBADD = libpytorchtracepoints.la
 EXTRA_libTracerPytorch_la_DEPENDENCIES = $(DUMMY_TORCH_LIBS)
 
