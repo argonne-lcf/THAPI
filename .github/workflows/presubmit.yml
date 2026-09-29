@@ -138,6 +138,22 @@ jobs:
         bats ${TEST_EXCLUDES} integration_tests/
         # Run the tests twice to make sure we do a proper cleanup
         bats ${TEST_EXCLUDES} integration_tests/
+    - name: Diagnose pytorch tracer load on failure
+      if: ${{ failure() }}
+      run: |
+        export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
+        LT="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cpu.so"))')"
+        echo "== reproduce failing command =="
+        iprof -- bash -c "exit 55" && rc=$? || rc=$?; echo "iprof exit=$rc"
+        echo "== which libtorch_cpu.so binds + any undefined symbol at load =="
+        LD_DEBUG=libs,bindings,reloc iprof -- bash -c "exit 55" 2>&1 \
+          | grep -iE "libtorch_cpu|addGlobalCallback|error|not found|undefined" | head -60 || true
+        echo "== do libtorch_cpu.so's own deps resolve? =="
+        ldd "$LT" | grep -i "not found" || echo "all deps of libtorch_cpu.so resolve"
+        echo "== isolated preload (no iprof env-building) =="
+        LD_LIBRARY_PATH="$(dirname "$LT"):$LD_LIBRARY_PATH" \
+          LD_PRELOAD="$(pkg-config --variable=libdir thapi)/libTracerPytorch.so" \
+          bash -c "exit 55" && rc=$? || rc=$?; echo "isolated exit=$rc"
     - name: Debug over SSH on failure (tmate)
       uses: mxschmitt/action-tmate@v3
       if: ${{ failure() && github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
