@@ -132,7 +132,10 @@ jobs:
         echo "TORCH_LIB=$TORCH_LIB"; ls -la "$TORCH_LIB"/libtorch_cpu.so
         echo "== does libtorch_cpu.so export at::addGlobalCallback? =="
         nm -D "$TORCH_LIB"/libtorch_cpu.so | grep 17addGlobalCallback || echo "NOT EXPORTED / not found in dynsym"
+    # timeout-minutes converts a hang (e.g. the pytorch tracer deadlocking the
+    # tracee) into a step failure, so the diagnostic step below actually runs.
     - name: Integration test
+      timeout-minutes: 10
       run: |
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
         bats ${TEST_EXCLUDES} integration_tests/
@@ -140,20 +143,21 @@ jobs:
         bats ${TEST_EXCLUDES} integration_tests/
     - name: Diagnose pytorch tracer load on failure
       if: ${{ failure() }}
+      timeout-minutes: 5
       run: |
         export PKG_CONFIG_PATH=./build/ici/lib/pkgconfig/:${PKG_CONFIG_PATH}
         LT="$(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cpu.so"))')"
-        echo "== reproduce failing command =="
-        iprof -- bash -c "exit 55" && rc=$? || rc=$?; echo "iprof exit=$rc"
+        echo "== reproduce failing command (30s cap; 124 = timed out/hung) =="
+        timeout 30 iprof -- bash -c "exit 55" && rc=$? || rc=$?; echo "iprof exit=$rc"
         echo "== which libtorch_cpu.so binds + any undefined symbol at load =="
-        LD_DEBUG=libs,bindings,reloc iprof -- bash -c "exit 55" 2>&1 \
+        LD_DEBUG=libs,bindings,reloc timeout 30 iprof -- bash -c "exit 55" 2>&1 \
           | grep -iE "libtorch_cpu|addGlobalCallback|error|not found|undefined" | head -60 || true
         echo "== do libtorch_cpu.so's own deps resolve? =="
         ldd "$LT" | grep -i "not found" || echo "all deps of libtorch_cpu.so resolve"
-        echo "== isolated preload (no iprof env-building) =="
+        echo "== isolated preload (no iprof env-building; 30s cap) =="
         LD_LIBRARY_PATH="$(dirname "$LT"):$LD_LIBRARY_PATH" \
           LD_PRELOAD="$(pkg-config --variable=libdir thapi)/libTracerPytorch.so" \
-          bash -c "exit 55" && rc=$? || rc=$?; echo "isolated exit=$rc"
+          timeout 30 bash -c "exit 55" && rc=$? || rc=$?; echo "isolated exit=$rc"
     # To get an SSH shell on the runner in the failed state:
     #   GitHub -> Actions -> Presubmit -> "Run workflow" -> tick "debug_enabled" -> Run.
     # On failure this pauses the job and prints an "ssh ...@nyc1.tmate.io" line in the log.
