@@ -112,3 +112,21 @@ libPyTorchInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 bt2dir = $(pkglibdir)/bt2
 bt2_LTLIBRARIES = libPyTorchInterval.la
+
+#
+# ----------------------------------------------------------------------
+# Enable pretty.print in babeltrace_thapi
+# ----------------------------------------------------------------------
+#
+
+babeltrace_pytorch_lib.rb: $(srcdir)/gen_babeltrace_pytorch_lib.rb $(top_srcdir)/utils/gen_babeltrace_lib_helper.rb $(top_srcdir)/utils/gen_probe_base.rb $(srcdir)/btx_pytorch_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+EXTRA_DIST += \
+	gen_babeltrace_pytorch_lib.rb
+
+CLEANFILES += \
+	babeltrace_pytorch_lib.rb
+
+data_DATA = \
+	babeltrace_pytorch_lib.rb
