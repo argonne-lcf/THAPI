@@ -125,13 +125,14 @@ AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
    AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
-PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
-PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
+# For blob support
+PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.1])
+PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.16])
 
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
-AX_RUBY_EXTENSION([metababel >= 1.1.3], [yes])
+AX_RUBY_EXTENSION([metababel >= 2.0.0], [yes])
 
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory])
 

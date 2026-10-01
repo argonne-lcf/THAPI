@@ -50,7 +50,7 @@ def render_field(naming, field)
     end
   when 'double', 'single'
     plain
-  when 'string'
+  when 'string', 'blob_static', 'blob_dynamic'
     be_class ? render_packed_struct(name, be_class) : %(s << "#{name}: \#{defi["#{name}"].inspect}")
   when 'array_dynamic', 'array_static'
     element = fc[:element_field_class]

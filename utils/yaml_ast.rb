@@ -428,6 +428,14 @@ INT_SIZE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[1]] }.to_h
 FFI_INT_TYPE_MAP = INT_TYPE_MAP.map { |k, v| [k, v[2]] }.to_h
 INT_TYPES = INT_TYPE_MAP.keys
 
+# The C names for a byte. A buffer of these is binary data -- an opaque payload
+# or a packed struct -- rather than a run of numbers worth printing, so it is
+# recorded as raw bytes. An API's own typedefs of them are found transitively.
+BYTE_TYPES = %w[
+  uint8_t
+  int8_t
+].freeze
+
 # Integer types the tracer logs in hex rather than decimal. An API can name
 # more of its own -- see ApiModel's hex_ints.
 HEX_INT_TYPES = %w[
@@ -471,7 +479,7 @@ end
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
 # category has to contain both to answer "is this an integer?" in one lookup.
 TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
-                         keyword_init: true) do
+                         :bytes, keyword_init: true) do
   # The one category a typedef name falls into, or nil when this API never
   # names it. The order is the answer: an object typedef is a pointer under the
   # hood and a hex int is an integer, so the more specific category has to win.
@@ -485,6 +493,14 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
     when *enums then :enum
     when *structs, *unions then :aggregate
     end
+  end
+
+  # The category an ARRAY of `name` falls into. A run of bytes is binary data --
+  # an opaque buffer, or a struct in its packed form -- so it records as raw
+  # bytes exactly as an aggregate does. One byte on its own is just a number,
+  # which is why this answer differs from category_of's.
+  def array_category_of(name)
+    bytes.include?(name) ? :aggregate : category_of(name)
   end
 
   def aggregate?(name)
@@ -507,6 +523,7 @@ def find_all_types(types, hex_ints: [])
   TypeClasses.new(
     objects: objects, integers: integers, pointers: pointers,
     hex_ints: HEX_INT_TYPES + hex_ints,
+    bytes: transitive_closure(types, BYTE_TYPES.dup),
     enums: find_types(types, YAMLCAst::Enum),
     structs: find_types(types, YAMLCAst::Struct),
     unions: find_types(types, YAMLCAst::Union)
