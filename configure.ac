@@ -125,8 +125,13 @@ AX_COMPARE_VERSION([$H2YAML_VERSION], [ge], [$H2YAML_MIN_VERSION],
    AC_MSG_ERROR([h2yaml version $H2YAML_VERSION is too old, need >= $H2YAML_MIN_VERSION])])
 
 PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
-PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.0])
-PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.10])
+# Both floors are the BLOB port. We write raw bytes as BLOB fields and read them
+# back, so each half of the round trip needs a version that knows the field:
+# lttng-ust 2.16 for the lttng_ust_field_fixed_length_blob tracepoint macro, and
+# babeltrace2 2.1 for the bt_field_class_blob_* API that metababel generates
+# against. Given an older one, the build fails on a name it has never heard of.
+PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.1])
+PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.16])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 
 AX_RUBY_EXTENSION([nokogiri], [yes])
