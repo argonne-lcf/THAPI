@@ -7,7 +7,7 @@
 
 #include <metababel/metababel.h>
 
-using ToggleKey = std::tuple<std::string, int64_t>;
+using ToggleKey = std::tuple<std::string, int64_t, int64_t>;
 using ToggleMap = std::map<ToggleKey, bool>;
 
 static void init(void **data) { *data = new ToggleMap[2]; }
@@ -17,7 +17,7 @@ static void finalize(void *data) { delete[] static_cast<ToggleMap *>(data); }
 static void thapi_auto_stop_callback(
     void *btx_handle, void *maps, int64_t cpuid, const char *hostname, int64_t vpid, int64_t vtid) {
   auto &auto_map = static_cast<ToggleMap *>(maps)[0];
-  auto key = ToggleKey{std::string(hostname), vpid};
+  auto key = ToggleKey{std::string(hostname), vpid, vtid};
   /* If we have seen the auto_map trace before, we will just ignore it. */
   if (auto_map.count(key))
     return;
@@ -30,14 +30,14 @@ static void thapi_auto_stop_callback(
 static void thapi_start_callback(
     void *btx_handle, void *maps, int64_t cpuid, const char *hostname, int64_t vpid, int64_t vtid) {
   auto &map = static_cast<ToggleMap *>(maps)[1];
-  auto key = ToggleKey{std::string(hostname), vpid};
+  auto key = ToggleKey{std::string(hostname), vpid, vtid};
   map[key] = true;
 }
 
 static void thapi_stop_callback(
     void *btx_handle, void *maps, int64_t cpuid, const char *hostname, int64_t vpid, int64_t vtid) {
   auto &map = static_cast<ToggleMap *>(maps)[1];
-  auto key = ToggleKey{std::string(hostname), vpid};
+  auto key = ToggleKey{std::string(hostname), vpid, vtid};
   map[key] = false;
 }
 
@@ -49,17 +49,20 @@ static void push_downstream(void *btx_handle, void *maps, const bt_message *msg)
     const bt_field *ccf = bt_event_borrow_common_context_field_const(event);
     const bt_field *vpid =
         ccf ? bt_field_structure_borrow_member_field_by_name_const(ccf, "vpid") : nullptr;
+    const bt_field *vtid =
+        ccf ? bt_field_structure_borrow_member_field_by_name_const(ccf, "vtid") : nullptr;
 
     /* Each trace (one per host) carries its own hostname in its environment. */
     const bt_trace *trace = bt_stream_borrow_trace_const(bt_event_borrow_stream_const(event));
     const bt_value *hostname =
         bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
 
-    /* Events we cannot attribute to a process are not subject to toggling. */
-    if (vpid && hostname) {
+    /* Events we cannot attribute to a thread are not subject to toggling. */
+    if (vpid && vtid && hostname) {
       uint64_t vpid_v = bt_field_integer_signed_get_value(vpid);
+      uint64_t vtid_v = bt_field_integer_signed_get_value(vtid);
       auto &map = static_cast<ToggleMap *>(maps)[1];
-      auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v};
+      auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v, vtid_v};
       push_msg = map[key];
     }
   }

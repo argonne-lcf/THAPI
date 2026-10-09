@@ -218,3 +218,23 @@ mpi_tracer_env() {
   [ "$status" -eq 0 ]
   [[ "$output" == *lttng_ust_mpi:MPI_Init_entry* ]]
 }
+
+# Toggling is per thread: a thread's calls are traced only after its own
+# thapi_start(), and another thread's thapi_stop() does not affect it.
+@test "toggle_plugin_per_thread" {
+  rm -rf toggle_traces 2>/dev/null
+
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_threads.c \
+    -o toggle_threads -pthread ${THAPI_LDFLAGS}
+
+  iprof_summary=$(THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) \
+    timeout 40s ${MPIRUN} -n 1 iprof --toggle-on --trace-output toggle_traces \
+    -- ./toggle_threads)
+
+  # Traced: the main thread called thapi_start(), and the worker's thapi_stop()
+  # did not stop it, so we should see one MPI_Comm_rank() (see toggle_threads.c).
+  [ "$(count_calls MPI_Comm_rank <<<"$iprof_summary")" -eq 1 ]
+  # Not traced: the worker thread never called thapi_start(), so we shouldn't
+  # see MPI_Comm_size() (see toggle_threads.c).
+  [ "$(count_calls MPI_Comm_size <<<"$iprof_summary")" -eq 0 ]
+}
