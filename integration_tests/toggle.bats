@@ -201,3 +201,20 @@ mpi_tracer_env() {
   # Both ranks called thapi_start() before MPI_Comm_rank.
   [ "$(count_calls MPI_Comm_rank <<<"$output")" -eq 2 ]
 }
+
+# Events without a vpid in their common context cannot be attributed to a
+# process or thread: the toggle filter must let them through, not crash.
+@test "toggle_plugin_events_without_vpid" {
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+
+  home=$(lttng_start 0 no-context)
+  env LTTNG_HOME="${home}" $(mpi_tracer_env ./mpi_helloworld) ./mpi_helloworld
+  lttng_stop "${home}"
+
+  # We use `trace` here instead of `tally` as `tally` won't show any counted MPI
+  # API calls due to the lack of context (vpid and vtid). Without context, the MPI
+  # interval filter can't match entry/exit events.
+  run babeltrace_thapi trace --toggle-on "${home}"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_mpi:MPI_Init_entry* ]]
+}

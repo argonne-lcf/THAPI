@@ -47,17 +47,21 @@ static void push_downstream(void *btx_handle, void *maps, const bt_message *msg)
   if (bt_message_get_type(msg) == BT_MESSAGE_TYPE_EVENT) {
     const bt_event *event = bt_message_event_borrow_event_const(msg);
     const bt_field *ccf = bt_event_borrow_common_context_field_const(event);
-    const bt_field *vpid = bt_field_structure_borrow_member_field_by_name_const(ccf, "vpid");
-    uint64_t vpid_v = bt_field_integer_signed_get_value(vpid);
+    const bt_field *vpid =
+        ccf ? bt_field_structure_borrow_member_field_by_name_const(ccf, "vpid") : nullptr;
 
     /* Each trace (one per host) carries its own hostname in its environment. */
     const bt_trace *trace = bt_stream_borrow_trace_const(bt_event_borrow_stream_const(event));
     const bt_value *hostname =
         bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
 
-    auto &map = static_cast<ToggleMap *>(maps)[1];
-    auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v};
-    push_msg = map[key];
+    /* Events we cannot attribute to a process are not subject to toggling. */
+    if (vpid && hostname) {
+      uint64_t vpid_v = bt_field_integer_signed_get_value(vpid);
+      auto &map = static_cast<ToggleMap *>(maps)[1];
+      auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v};
+      push_msg = map[key];
+    }
   }
 
   if (push_msg) {
