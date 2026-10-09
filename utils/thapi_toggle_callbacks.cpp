@@ -1,5 +1,4 @@
 #include <cinttypes>
-#include <climits>
 #include <cstdint>
 #include <cstdio>
 
@@ -10,8 +9,6 @@
 
 using ToggleKey = std::tuple<std::string, int64_t>;
 using ToggleMap = std::map<ToggleKey, bool>;
-
-static char hostname_s[HOST_NAME_MAX + 1];
 
 static void init(void **data) { *data = new ToggleMap[2]; }
 
@@ -35,7 +32,6 @@ static void thapi_start_callback(
   auto &map = static_cast<ToggleMap *>(maps)[1];
   auto key = ToggleKey{std::string(hostname), vpid};
   map[key] = true;
-  strncpy(hostname_s, hostname, HOST_NAME_MAX);
 }
 
 static void thapi_stop_callback(
@@ -54,8 +50,13 @@ static void push_downstream(void *btx_handle, void *maps, const bt_message *msg)
     const bt_field *vpid = bt_field_structure_borrow_member_field_by_name_const(ccf, "vpid");
     uint64_t vpid_v = bt_field_integer_signed_get_value(vpid);
 
+    /* Each trace (one per host) carries its own hostname in its environment. */
+    const bt_trace *trace = bt_stream_borrow_trace_const(bt_event_borrow_stream_const(event));
+    const bt_value *hostname =
+        bt_trace_borrow_environment_entry_value_by_name_const(trace, "hostname");
+
     auto &map = static_cast<ToggleMap *>(maps)[1];
-    auto key = ToggleKey{std::string(hostname_s), vpid_v};
+    auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v};
     push_msg = map[key];
   }
 

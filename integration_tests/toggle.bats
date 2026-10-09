@@ -95,3 +95,109 @@ count_processors() {
   [ "$count_1" -eq 1 ]
   [ "$count_2" -eq 0 ]
 }
+
+# Count the calls of the API function $1 in the tally read on stdin.
+count_calls() {
+  awk -F'|' -v name="$1" '$1 ~ name {c = int($4)} END {print c + 0}'
+}
+
+# The tests below trace with hand-made LTTng sessions instead of iprof, to
+# control what iprof always sets up. Session name ($1, MPI rank id in these
+# tests) gets its own session daemon, with LTTNG_HOME set to
+# ${BATS_TEST_TMPDIR}/lttng_home/$1, and writes its trace to
+# ${BATS_TEST_TMPDIR}/lttng_home/$1/trace. $2 is context or no-context: whether
+# events carry the vpid/vtid context. Prints the session's LTTNG_HOME, which
+# the traced application and lttng_stop need to reach its session daemon, and
+# babeltrace_thapi to find its trace.
+#
+# The body is a subshell with `set -e`: callers capture the output with $(...),
+# where bats would otherwise not stop on a failing command.
+lttng_start() (
+  set -e
+  local home=${BATS_TEST_TMPDIR}/lttng_home/$1
+  local out=${home}/trace
+  local context=$2
+
+  # Store pipe's write end (fd 1) to fd 3 and point fd 1 (stdout) to
+  # fd 2 (stderr).
+  exec 3>&1 1>&2
+
+  local fake_hostname_so=${BATS_TEST_TMPDIR}/toggle_fake_hostname.so
+  if [ ! -f "${fake_hostname_so}" ]; then
+    cc -shared -fPIC ./integration_tests/toggle_fake_hostname.c -o \
+      "${fake_hostname_so}"
+  fi
+
+  mkdir -p "${home}"
+  # The session daemon takes the trace's hostname from gethostname() when
+  # the session is created, and LTTng has no option to set it. Preloading
+  # toggle_fake_hostname.c overrides gethostname() in this daemon to return
+  # the value of THAPI_FAKE_HOSTNAME when it is set.
+  LTTNG_HOME="${home}" LD_PRELOAD="${fake_hostname_so}" \
+    THAPI_FAKE_HOSTNAME="host$1" lttng-sessiond --daemonize --quiet
+  LTTNG_HOME="${home}" lttng create toggle_test -o "${out}"
+  LTTNG_HOME="${home}" lttng enable-channel --userspace --blocking-timeout=inf \
+    chan
+  if [ "${context}" = context ]; then
+    LTTNG_HOME="${home}" lttng add-context --userspace --channel=chan \
+      -t vpid -t vtid
+  fi
+  LTTNG_HOME="${home}" lttng enable-event --userspace --channel=chan \
+    'lttng_ust_mpi:*,lttng_ust_toggle:*'
+  LTTNG_HOME="${home}" lttng start
+
+  # echo lttng_home to pipe's write end.
+  echo "${home}" >&3
+)
+
+# Stop and destroy the session of the LTTNG_HOME $1 printed by lttng_start.
+lttng_stop() {
+  LTTNG_HOME="$1" lttng stop
+  LTTNG_HOME="$1" lttng destroy
+}
+
+# Kill the session daemons started by lttng_start, even if the test failed.
+teardown() {
+  for pid_file in "${BATS_TEST_TMPDIR}"/lttng_home/*/.lttng/lttng-sessiond.pid; do
+    if [ -f "${pid_file}" ]; then
+      kill "$(cat "${pid_file}")" || true
+    fi
+  done
+}
+
+# Environment preloading THAPI's MPI tracer into binary $1 (as tracer_mpi.sh
+# does).
+mpi_tracer_env() {
+  local pkglibdir
+  pkglibdir=$(pkg-config --variable=libdir thapi)/thapi
+  echo LTTNG_UST_ALLOW_BLOCKING=1 \
+    LTTNG_UST_MPI_LIBMPI="$(ldd "$1" | awk '/libmpi\.so/ {print $3; exit}')" \
+    LD_LIBRARY_PATH="${pkglibdir}/mpi:${LD_LIBRARY_PATH}" \
+    LD_PRELOAD="${pkglibdir}/mpi/libmpi.so"
+}
+
+# Each rank must be matched against its own hostname, not the hostname of the
+# last thapi_start() seen. Fake a two-host run: each rank registers with its own
+# session daemon, which records its own hostname (see lttng_start).
+@test "toggle_plugin_multi_host" {
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_multi_host.c -o \
+    toggle_multi_host ${THAPI_LDFLAGS}
+
+  home0=$(lttng_start 0 context)
+  home1=$(lttng_start 1 context)
+
+  # We launch two programs below and each registers with the session daemon based
+  # on its own LTTNG_HOME (set using -env).
+  local prog=(env $(mpi_tracer_env ./toggle_multi_host) ./toggle_multi_host)
+  timeout 40s ${MPIRUN} -n 1 -env LTTNG_HOME "${home0}" "${prog[@]}" : \
+    -n 1 -env LTTNG_HOME "${home1}" "${prog[@]}"
+
+  lttng_stop "${home0}"
+  lttng_stop "${home1}"
+
+  run babeltrace_thapi tally --toggle-on --backends mpi "${home0}" "${home1}"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "2 Hostnames | 2 Processes" ]]
+  # Both ranks called thapi_start() before MPI_Comm_rank.
+  [ "$(count_calls MPI_Comm_rank <<<"$output")" -eq 2 ]
+}
