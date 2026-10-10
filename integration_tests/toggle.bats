@@ -3,8 +3,6 @@
 setup_file() {
   export THAPI_INCFLAGS="-I$(pkg-config --variable=includedir thapi)"
   export THAPI_LDFLAGS="-Wl,-rpath,$(pkg-config --variable=libdir thapi) $(pkg-config --libs thapi)"
-  # needed for toggle api dlopen test.
-  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(pkg-config --variable=libdir thapi)
 }
 
 get_unique_jobid() {
@@ -39,7 +37,8 @@ get_unique_jobid() {
   rm -rf toggle_traces 2>/dev/null
 
   cc ./integration_tests/toggle_dlopen.c -o toggle_dlopen -ldl
-  iprof --trace-output toggle_traces --no-analysis -- ./toggle_dlopen
+  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(pkg-config --variable=libdir thapi) \
+    iprof --trace-output toggle_traces --no-analysis -- ./toggle_dlopen
 
   # Check expected trace counts.
   dir=$(ls -d -1 ./toggle_traces/*/)
@@ -53,52 +52,40 @@ get_unique_jobid() {
   [ "$auto_stop_count" -eq 2 ]
 }
 
-# Trace and analyse in a single iprof call: `--toggle-on` gates the events on the
-# lttng_ust_toggle start/stop tracepoints, and iprof prints the tally to stdout.
-count_base() {
+# Run toggle_mpi variant $2 on $1 ranks with `iprof --toggle-on`. iprof prints
+# the tally to stdout.
+iprof_toggle_mpi() {
   rm -rf toggle_traces 2>/dev/null
 
-  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi ${THAPI_LDFLAGS}
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi \
+    ${THAPI_LDFLAGS}
 
-  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s mpirun -n $1 \
-    iprof --toggle-on --trace-output toggle_traces -- ./toggle_mpi $2
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s \
+    ${MPIRUN} -n $1 iprof --toggle-on --trace-output toggle_traces -- ./toggle_mpi $2
 }
 
-# Count the number of traced API calls: the tally's `Total` row, whose 4th
-# `|`-separated column is the call count (see general.bats `default_summary`).
-count_traces() {
-  count_base $1 $2 | awk -F'|' '/Total/ {c = int($4)} END {print c + 0}'
+# Count the tally of calls of API function $1, or of all functions with `Total`:
+# the 4th `|`-separated column of that row (see general.bats `default_summary`).
+count_calls() {
+  awk -F'|' -v name="$1" '{n = $1; gsub(/ /, "", n)} n == name {c = int($4)} END {print c + 0}'
+}
+
+# Count the processes that emitted traced API calls: the `Processes` field of
+# the header of the tally.
+count_processes() {
+  grep -oP '\d+(?= Processes)' || echo 0
 }
 
 @test "toggle_plugin_mpi_np_1" {
-  count_0=$(count_traces 1 0)
-  count_1=$(count_traces 1 1)
-  count_2=$(count_traces 1 2)
-
-  [ "$count_0" -eq 2 ]
-  [ "$count_1" -eq 1 ]
-  [ "$count_2" -eq 0 ]
-}
-
-# Count the number of processes that emitted traced API calls: the `Processes`
-# field of the tally header.
-count_processors() {
-  count_base $1 $2 | grep -oP '\d+(?= Processes)' || echo 0
+  [ "$(iprof_toggle_mpi 1 0 | count_calls Total)" -eq 2 ]
+  [ "$(iprof_toggle_mpi 1 1 | count_calls Total)" -eq 1 ]
+  [ "$(iprof_toggle_mpi 1 2 | count_calls Total)" -eq 0 ]
 }
 
 @test "toggle_plugin_mpi_np_2" {
-  count_0=$(count_processors 2 0)
-  count_1=$(count_processors 2 1)
-  count_2=$(count_processors 2 2)
-
-  [ "$count_0" -eq 2 ]
-  [ "$count_1" -eq 1 ]
-  [ "$count_2" -eq 0 ]
-}
-
-# Count the calls of the API function $1 in the tally read on stdin.
-count_calls() {
-  awk -F'|' -v name="$1" '$1 ~ name {c = int($4)} END {print c + 0}'
+  [ "$(iprof_toggle_mpi 2 0 | count_processes)" -eq 2 ]
+  [ "$(iprof_toggle_mpi 2 1 | count_processes)" -eq 1 ]
+  [ "$(iprof_toggle_mpi 2 2 | count_processes)" -eq 0 ]
 }
 
 # The tests below trace with hand-made LTTng sessions instead of iprof, to
