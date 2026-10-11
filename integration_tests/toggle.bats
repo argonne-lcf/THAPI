@@ -12,8 +12,8 @@ get_unique_jobid() {
 @test "toggle_api" {
   rm -rf toggle_traces 2>/dev/null
 
-  cc ${THAPI_INCFLAGS} ./integration_tests/toggle.c -o toggle ${THAPI_LDFLAGS}
-  iprof --trace-output toggle_traces --no-analysis -- ./toggle
+  cc ${THAPI_INCFLAGS} ./integration_tests/toggle_api.c -o toggle_api ${THAPI_LDFLAGS}
+  iprof --trace-output toggle_traces --no-analysis -- ./toggle_api
 
   # Make sure auto_stop comes before stop.
   babeltrace_thapi ./toggle_traces | awk 'BEGIN { seen_auto = 0 }
@@ -33,7 +33,7 @@ get_unique_jobid() {
   [ "$auto_stop_count" -eq 1 ]
 }
 
-@test "toggle_api_dlopen" {
+@test "toggle_dlopen" {
   rm -rf toggle_traces 2>/dev/null
 
   cc ./integration_tests/toggle_dlopen.c -o toggle_dlopen -ldl
@@ -76,13 +76,13 @@ count_processes() {
   grep -oP '\d+(?= Processes)' || echo 0
 }
 
-@test "toggle_plugin_mpi_np_1" {
+@test "toggle_mpi_np_1" {
   [ "$(iprof_toggle_mpi 1 0 | count_calls Total)" -eq 2 ]
   [ "$(iprof_toggle_mpi 1 1 | count_calls Total)" -eq 1 ]
   [ "$(iprof_toggle_mpi 1 2 | count_calls Total)" -eq 0 ]
 }
 
-@test "toggle_plugin_mpi_np_2" {
+@test "toggle_mpi_np_2" {
   [ "$(iprof_toggle_mpi 2 0 | count_processes)" -eq 2 ]
   [ "$(iprof_toggle_mpi 2 1 | count_processes)" -eq 1 ]
   [ "$(iprof_toggle_mpi 2 2 | count_processes)" -eq 0 ]
@@ -109,18 +109,18 @@ lttng_start() (
   # fd 2 (stderr).
   exec 3>&1 1>&2
 
-  local fake_hostname_so=${BATS_TEST_TMPDIR}/toggle_fake_hostname.so
-  if [ ! -f "${fake_hostname_so}" ]; then
-    cc -shared -fPIC ./integration_tests/toggle_fake_hostname.c -o \
-      "${fake_hostname_so}"
+  local hostname_so=${BATS_TEST_TMPDIR}/toggle_multi_host_gethostname.so
+  if [ ! -f "${hostname_so}" ]; then
+    cc -shared -fPIC ./integration_tests/toggle_multi_host_gethostname.c -o \
+      "${hostname_so}"
   fi
 
   mkdir -p "${home}"
   # The session daemon takes the trace's hostname from gethostname() when
   # the session is created, and LTTng has no option to set it. Preloading
-  # toggle_fake_hostname.c overrides gethostname() in this daemon to return
-  # the value of THAPI_FAKE_HOSTNAME when it is set.
-  LTTNG_HOME="${home}" LD_PRELOAD="${fake_hostname_so}" \
+  # toggle_multi_host_gethostname.c overrides gethostname() in this daemon
+  # to return the value of THAPI_FAKE_HOSTNAME when it is set.
+  LTTNG_HOME="${home}" LD_PRELOAD="${hostname_so}" \
     THAPI_FAKE_HOSTNAME="host$1" lttng-sessiond --daemonize --quiet
   LTTNG_HOME="${home}" lttng create toggle_test -o "${out}"
   LTTNG_HOME="${home}" lttng enable-channel --userspace --blocking-timeout=inf \
@@ -166,7 +166,7 @@ mpi_tracer_env() {
 # Each rank must be matched against its own hostname, not the hostname of the
 # last thapi_start() seen. Fake a two-host run: each rank registers with its own
 # session daemon, which records its own hostname (see lttng_start).
-@test "toggle_plugin_multi_host" {
+@test "toggle_multi_host" {
   mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_multi_host.c -o \
     toggle_multi_host ${THAPI_LDFLAGS}
 
@@ -191,7 +191,7 @@ mpi_tracer_env() {
 
 # Events without a vpid in their common context cannot be attributed to a
 # process or thread: the toggle filter must let them through, not crash.
-@test "toggle_plugin_events_without_vpid" {
+@test "toggle_events_without_vpid" {
   mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
 
   home=$(lttng_start 0 no-context)
@@ -208,7 +208,7 @@ mpi_tracer_env() {
 
 # Toggling is per thread: a thread's calls are traced only after its own
 # thapi_start(), and another thread's thapi_stop() does not affect it.
-@test "toggle_plugin_per_thread" {
+@test "toggle_threads" {
   rm -rf toggle_traces 2>/dev/null
 
   mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_threads.c \
