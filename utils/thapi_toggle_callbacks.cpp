@@ -63,7 +63,10 @@ static void push_downstream(void *btx_handle, void *maps, const bt_message *msg)
       uint64_t vtid_v = bt_field_integer_signed_get_value(vtid);
       auto &map = static_cast<ToggleMap *>(maps)[1];
       auto key = ToggleKey{std::string(bt_value_string_get(hostname)), vpid_v, vtid_v};
-      push_msg = map[key];
+      /* A thread with no toggle event yet is not traced. find() rather than
+       * operator[], so that looking it up does not add it to the map. */
+      auto it = map.find(key);
+      push_msg = it != map.end() && it->second;
     }
   }
 
