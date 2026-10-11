@@ -5,6 +5,10 @@
 #error "LTTNG_UST_CONSTRUCTOR_PRIO is not defined."
 #endif
 
+#if LTTNG_UST_CONSTRUCTOR_PRIO >= 65535
+#error "LTTNG_UST_CONSTRUCTOR_PRIO + 1 is not a valid constructor priority."
+#endif
+
 void thapi_start(void) { tracepoint(lttng_ust_toggle, start); }
 
 void thapi_stop(void) { tracepoint(lttng_ust_toggle, stop); }
