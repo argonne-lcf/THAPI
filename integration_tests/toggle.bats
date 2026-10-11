@@ -88,6 +88,30 @@ count_processes() {
   [ "$(iprof_toggle_mpi 2 2 | count_processes)" -eq 0 ]
 }
 
+# The toggle filter consumes the lttng_ust_toggle events (start, stop and
+# auto_stop alike) in their callbacks: none of them is forwarded downstream,
+# while the MPI calls between thapi_start() and thapi_stop() are.
+@test "toggle_events_consumed" {
+  rm -rf toggle_traces 2>/dev/null
+
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi \
+    ${THAPI_LDFLAGS}
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s \
+    ${MPIRUN} -n 1 iprof --no-analysis --trace-output toggle_traces -- ./toggle_mpi 0
+
+  # Without the toggle filter, the trace has the start and stop events.
+  run babeltrace_thapi trace ./toggle_traces
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_toggle:start* ]]
+  [[ "$output" == *lttng_ust_toggle:stop* ]]
+
+  # With it, the MPI calls are kept, but none of the toggle events.
+  run babeltrace_thapi trace --toggle-on ./toggle_traces
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_mpi:MPI_Comm_rank_entry* ]]
+  [[ "$output" != *lttng_ust_toggle:* ]]
+}
+
 # The tests below trace with hand-made LTTng sessions instead of iprof, to
 # control what iprof always sets up. Session name ($1, MPI rank id in these
 # tests) gets its own session daemon, with LTTNG_HOME set to
