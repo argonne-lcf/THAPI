@@ -41,9 +41,7 @@ CLEANFILES = \
 BUILT_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
-# Only -ltorch_cpu is needed: at::addGlobalCallback, at::RecordFunction::name
-# and at::RecordFuntion::overload_name symbols must be resolved to register 
-# entry/exit callbacks at load time.
+# -ltorch_cpu resolves  at::addGlobalCallback, at::RecordFunction::name, at::RecordFuntion::overload_name.
 DUMMY_TORCH_LIBS = \
 	dummy_libs/libtorch_cpu.so
 
@@ -130,3 +128,53 @@ CLEANFILES += \
 
 data_DATA = \
 	babeltrace_pytorch_lib.rb
+
+#
+# ----------------------------------------------------------------------
+# Tests
+# ----------------------------------------------------------------------
+#
+
+TRACE_COMMON = \
+	tests/basic_op_name.thapi_text_pretty \
+	tests/basic_op_overload_name.thapi_text_pretty \
+	tests/nested_ops_simple.thapi_text_pretty \
+	tests/nested_ops_interleaved.thapi_text_pretty \
+	tests/deeply_nested_ops.thapi_text_pretty \
+	tests/exit_without_entry.thapi_text_pretty \
+	tests/multithreaded_ops.thapi_text_pretty
+
+BTX_PYTORCH_GENERATED_SOURCE_TEST = \
+	btx_source_pytorch_test/metababel/metababel.h \
+	btx_source_pytorch_test/metababel/btx_component.h \
+	btx_source_pytorch_test/metababel/btx_component.c \
+	btx_source_pytorch_test/metababel/btx_downstream.h \
+	btx_source_pytorch_test/metababel/btx_downstream.c \
+	btx_source_pytorch_test/btx_main.c
+
+$(BTX_PYTORCH_GENERATED_SOURCE_TEST) &: btx_pytorch_model.yaml
+	$(METABABEL) -d btx_pytorch_model.yaml -t SOURCE -o btx_source_pytorch_test -p pytorchtest -c test
+
+noinst_LTLIBRARIES += libtestpytorchsource.la
+nodist_libtestpytorchsource_la_SOURCES = $(BTX_PYTORCH_GENERATED_SOURCE_TEST)
+libtestpytorchsource_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./btx_source_pytorch_test/
+libtestpytorchsource_la_CFLAGS = -fPIC -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+
+TRACE_OUT = $(TRACE_COMMON:.thapi_text_pretty=.bt_text_pretty)
+
+TESTS = $(TRACE_COMMON)
+
+TEST_EXTENSIONS = .thapi_text_pretty
+THAPI_TEXT_PRETTY_LOG_COMPILER = $(top_builddir)/utils/test_wrapper_thapi_text_pretty.sh
+AM_THAPI_TEXT_PRETTY_LOG_FLAGS = backends/pytorch pytorch ./btx_source_pytorch_test/ .libs/libtestpytorchsource.a
+
+check_DATA = \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
+
+EXTRA_DIST += \
+	$(TRACE_COMMON) \
+	$(TRACE_OUT)
+
+CLEANFILES += \
+	$(BTX_PYTORCH_GENERATED_SOURCE_TEST)

@@ -1,0 +1,2 @@
+12:00:00.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "op_name", overload_name: "op_overload_name" }
+12:00:00.000000001 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "op_name", overload_name: "op_overload_name" }

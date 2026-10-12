@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::sigmoid", overload_name: "" }
+

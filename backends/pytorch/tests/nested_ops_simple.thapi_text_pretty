@@ -1,0 +1,5 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::linear", overload_name: "" }
+12:00:00.000000010 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::matmul", overload_name: "" }
+12:00:00.000000020 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::matmul", overload_name: "" }
+12:00:00.000000030 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::linear", overload_name: "" }
+
