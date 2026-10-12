@@ -41,7 +41,7 @@ CLEANFILES = \
 BUILT_SOURCES = \
 	$(PYTORCH_STATIC_PROBES_INCL)
 
-# -ltorch_cpu resolves  at::addGlobalCallback, at::RecordFunction::name, at::RecordFuntion::overload_name.
+# -ltorch_cpu resolves at::addGlobalCallback, at::RecordFunction::name, at::RecordFuntion::overload_name.
 DUMMY_TORCH_LIBS = \
 	dummy_libs/libtorch_cpu.so
 
@@ -97,19 +97,19 @@ CLEANFILES += \
 BUILT_SOURCES += \
 	$(BTX_PYTORCH_GENERATED)
 
-nodist_libPyTorchInterval_la_SOURCES = \
+nodist_libPYTORCHInterval_la_SOURCES = \
 	$(BTX_PYTORCH_GENERATED)
 
-libPyTorchInterval_la_SOURCES = \
+libPYTORCHInterval_la_SOURCES = \
 	btx_pytorchinterval_callbacks.cpp
 
-libPyTorchInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./ -I./btx_filter_pytorch
-libPyTorchInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libPyTorchInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
-libPyTorchInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+libPYTORCHInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./ -I./btx_filter_pytorch
+libPYTORCHInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPYTORCHInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
+libPYTORCHInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libPyTorchInterval.la
+bt2_LTLIBRARIES = libPYTORCHInterval.la
 
 #
 # ----------------------------------------------------------------------
