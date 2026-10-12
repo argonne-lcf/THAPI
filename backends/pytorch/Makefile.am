@@ -136,13 +136,13 @@ data_DATA = \
 #
 
 TRACE_COMMON = \
-	tests/basic_op_name-Aa.thapi_text_pretty \
-	tests/basic_op_overload_name-Aa.thapi_text_pretty \
-	tests/nested_ops_simple-ABba.thapi_text_pretty \
-	tests/nested_ops_interleaved-ABab.thapi_text_pretty \
-	tests/deeply_nested_ops-ABCcba.thapi_text_pretty \
-	tests/exit_without_entry-a.thapi_text_pretty \
-	tests/multithreaded_ops-AaBb.thapi_text_pretty
+	tests/basic_op_name-AA.thapi_text_pretty \
+	tests/basic_op_overload_name-AA.thapi_text_pretty \
+	tests/nested_ops_simple-ABBA.thapi_text_pretty \
+	tests/nested_ops_interleaved-ABAB.thapi_text_pretty \
+	tests/deeply_nested_ops-ABCCBA.thapi_text_pretty \
+	tests/exit_without_entry-A.thapi_text_pretty \
+	tests/multithreaded_ops-AABB.thapi_text_pretty
 
 BTX_PYTORCH_GENERATED_SOURCE_TEST = \
 	btx_source_pytorch_test/metababel/metababel.h \
