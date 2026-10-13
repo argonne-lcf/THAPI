@@ -153,8 +153,8 @@ BTX_PYTORCH_GENERATED_SOURCE_TEST = \
 	btx_source_pytorch_test/metababel/btx_downstream.c \
 	btx_source_pytorch_test/btx_main.c
 
-$(BTX_PYTORCH_GENERATED_SOURCE_TEST) &: btx_pytorch_model.yaml
-	$(METABABEL) -d btx_pytorch_model.yaml -t SOURCE -o btx_source_pytorch_test -p pytorchtest -c test
+$(BTX_PYTORCH_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_pytorch_model.yaml
+	$(METABABEL) -d $(srcdir)/btx_pytorch_model.yaml -t SOURCE -o btx_source_pytorch_test -p pytorchtest -c test
 
 noinst_LTLIBRARIES += libtestpytorchsource.la
 nodist_libtestpytorchsource_la_SOURCES = $(BTX_PYTORCH_GENERATED_SOURCE_TEST)
