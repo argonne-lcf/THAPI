@@ -1,4 +1,0 @@
-12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::add", overload_name: "Tensor" }
-12:00:01.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::mul", overload_name: "Tensor" }
-12:00:02.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::add", overload_name: "Tensor" }
-12:00:03.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::mul", overload_name: "Tensor" }

@@ -1,4 +1,5 @@
 #include "xprof_utils.hpp"
+#include <cassert>
 #include <metababel/metababel.h>
 #include <string>
 #include <unordered_map>
@@ -6,7 +7,7 @@
 
 // PyTorch requies a per-thread LIFO stack since there is reentrace and nesting calls.
 struct data_s {
-  std::unordered_map<hpt_t, std::vector<std::pair<std::string, int64_t>>> entry_stack;
+  std::unordered_map<hpt_t, std::vector<int64_t>> entry_stack;
 };
 typedef struct data_s data_t;
 
@@ -28,8 +29,7 @@ static void lttng_ust_pytorch_op_entry_callback(void *btx_handle,
                                                 uint64_t vtid,
                                                 char *name,
                                                 char *overload_name) {
-  static_cast<data_t *>(usr_data)->entry_stack[{hostname, vpid, vtid}].push_back(
-      {qualified_name(name, overload_name), ts});
+  static_cast<data_t *>(usr_data)->entry_stack[{hostname, vpid, vtid}].push_back(ts);
 }
 
 static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
@@ -43,17 +43,12 @@ static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
   auto *state = static_cast<data_t *>(usr_data);
   auto &stack = state->entry_stack[{hostname, vpid, vtid}];
 
-  const std::string exit_name = qualified_name(name, overload_name);
-  // Empty stack means underflow; name mismatch means non-LIFO exit order
-  const bool err = stack.empty() || stack.back().first != exit_name;
-  int64_t entry_ts = ts;
-  if (!stack.empty()) {
-    entry_ts = stack.back().second;
-    stack.pop_back();
-  }
+  assert(!stack.empty() && "op_exit with no matching op_entry");
+  const int64_t entry_ts = stack.back();
+  stack.pop_back();
 
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_PYTORCH,
-                              exit_name.c_str(), (ts - entry_ts), err);
+                              qualified_name(name, overload_name).c_str(), (ts - entry_ts), false);
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {
