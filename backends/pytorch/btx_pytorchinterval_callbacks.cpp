@@ -6,7 +6,7 @@
 
 // PyTorch requies a per-thread LIFO stack since there is reentrace and nesting calls.
 struct data_s {
-  std::unordered_map<hpt_t, std::vector<int64_t>> entry_stack;
+  std::unordered_map<hpt_t, std::vector<std::pair<std::string, int64_t>>> entry_stack;
 };
 typedef struct data_s data_t;
 
@@ -14,10 +14,8 @@ static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; 
 
 static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
-// PyTorch identifies an operator by TWO strings: a schema name (e.g.
-// "aten::abs") and an overload name (e.g. "" for the default overload, "out"
-// Joining them here keeps e.g. "aten::abs" and "aten::abs.out" distinguishable
-// in the trace instead of both showing up as plain "aten::abs".
+// Combine schema name and overload name (e.g. "aten::abs" + "out") so
+// different overloads don't collapse into the same trace entry.
 static std::string qualified_name(const char *name, const char *overload_name) {
   return (overload_name[0] == '\0') ? name : std::string(name) + "." + overload_name;
 }
@@ -28,9 +26,10 @@ static void lttng_ust_pytorch_op_entry_callback(void *btx_handle,
                                                 const char *hostname,
                                                 int64_t vpid,
                                                 uint64_t vtid,
-                                                char * /*name*/,
-                                                char * /*overload_name*/) {
-  static_cast<data_t *>(usr_data)->entry_stack[{hostname, vpid, vtid}].push_back(ts);
+                                                char *name,
+                                                char *overload_name) {
+  static_cast<data_t *>(usr_data)->entry_stack[{hostname, vpid, vtid}].push_back(
+      {qualified_name(name, overload_name), ts});
 }
 
 static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
@@ -44,17 +43,17 @@ static void lttng_ust_pytorch_op_exit_callback(void *btx_handle,
   auto *state = static_cast<data_t *>(usr_data);
   auto &stack = state->entry_stack[{hostname, vpid, vtid}];
 
-  // Empty means an exit arrived with no matching entry
-  const bool err = stack.empty();
+  const std::string exit_name = qualified_name(name, overload_name);
+  // Empty stack means underflow; name mismatch means non-LIFO exit order
+  const bool err = stack.empty() || stack.back().first != exit_name;
   int64_t entry_ts = ts;
-  if (!err) {
-    entry_ts = stack.back();
+  if (!stack.empty()) {
+    entry_ts = stack.back().second;
     stack.pop_back();
   }
 
-  const std::string full_name = qualified_name(name, overload_name);
   btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_PYTORCH,
-                              full_name.c_str(), (ts - entry_ts), err);
+                              exit_name.c_str(), (ts - entry_ts), err);
 }
 
 void btx_register_usr_callbacks(void *btx_handle) {

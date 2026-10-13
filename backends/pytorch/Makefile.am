@@ -142,7 +142,8 @@ TRACE_COMMON = \
 	tests/nested_ops_interleaved-ABAB.thapi_text_pretty \
 	tests/deeply_nested_ops-ABCCBA.thapi_text_pretty \
 	tests/exit_without_entry-A.thapi_text_pretty \
-	tests/multithreaded_ops-AABB.thapi_text_pretty
+	tests/multithreaded_ops-AABB.thapi_text_pretty \
+	tests/reentrant_op-AAAA.thapi_text_pretty
 
 BTX_PYTORCH_GENERATED_SOURCE_TEST = \
 	btx_source_pytorch_test/metababel/metababel.h \
