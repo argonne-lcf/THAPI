@@ -1,2 +1,2 @@
-lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::add.Tensor", dur = 0, err = true }
-lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::mul.Tensor", dur = 0, err = true }
+lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000010, backend = 10 }, { name = "aten::add.Tensor", dur = 10, err = true }
+lttng:host: { hostname = "testhost", vpid = 1, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::mul.Tensor", dur = 30, err = true }

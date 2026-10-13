@@ -1,1 +1,1 @@
-lttng:host: { hostname = "testnode", vpid = 0, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::relu", dur = 0, err = false }
+lttng:host: { hostname = "testnode", vpid = 0, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::relu", dur = 10, err = false }

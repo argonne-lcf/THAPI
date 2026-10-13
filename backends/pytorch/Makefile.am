@@ -153,8 +153,11 @@ BTX_PYTORCH_GENERATED_SOURCE_TEST = \
 	btx_source_pytorch_test/metababel/btx_downstream.c \
 	btx_source_pytorch_test/btx_main.c
 
-$(BTX_PYTORCH_GENERATED_SOURCE_TEST) &: $(srcdir)/btx_pytorch_model.yaml
-	$(METABABEL) -d $(srcdir)/btx_pytorch_model.yaml -t SOURCE -o btx_source_pytorch_test -p pytorchtest -c test
+$(abs_builddir)/btx_pytorch_model.yaml: $(srcdir)/btx_pytorch_model.yaml
+	cp $< $@
+
+$(BTX_PYTORCH_GENERATED_SOURCE_TEST) &: $(abs_builddir)/btx_pytorch_model.yaml
+	$(METABABEL) -d $(abs_builddir)/btx_pytorch_model.yaml -t SOURCE -o btx_source_pytorch_test -p pytorchtest -c test
 
 noinst_LTLIBRARIES += libtestpytorchsource.la
 nodist_libtestpytorchsource_la_SOURCES = $(BTX_PYTORCH_GENERATED_SOURCE_TEST)
@@ -178,4 +181,5 @@ EXTRA_DIST += \
 	$(TRACE_OUT)
 
 CLEANFILES += \
-	$(BTX_PYTORCH_GENERATED_SOURCE_TEST)
+	$(BTX_PYTORCH_GENERATED_SOURCE_TEST) \
+	$(abs_builddir)/btx_pytorch_model.yaml
