@@ -1,68 +1,67 @@
----
 lttng_ust_cuda_args:
   events:
   - name: arg_count
     args:
-    - [ CUfunction, f ]
-    - [ size_t, argCount ]
+    - [CUfunction, f]
+    - [size_t, argCount]
     fields:
-    - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
-    - [ ctf_integer, size_t, argCount, argCount ]
+    - [ctf_integer_hex, uintptr_t, f, "(uintptr_t)f"]
+    - [ctf_integer, size_t, argCount, argCount]
   - name: arg_value
     args:
-    - [ CUfunction, f ]
-    - [ size_t, argIndex ]
-    - [ "void *", kernelParam ]
-    - [ size_t, argSize ]
+    - [CUfunction, f]
+    - [size_t, argIndex]
+    - ["void *", kernelParam]
+    - [size_t, argSize]
     fields:
-    - [ ctf_integer_hex, uintptr_t, f, "(uintptr_t)f" ]
-    - [ ctf_integer, size_t, argIndex, argIndex ]
-    - [ ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam" ]
-    - [ ctf_sequence_text, uint8_t, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0" ]
+    - [ctf_integer_hex, uintptr_t, f, "(uintptr_t)f"]
+    - [ctf_integer, size_t, argIndex, argIndex]
+    - [ctf_integer_hex, uintptr_t, kernelParam, "(uintptr_t)kernelParam"]
+    - [lttng_ust_field_variable_length_blob, kernelParam_val, "(uint8_t *)kernelParam", size_t, "kernelParam ? argSize : 0"]
 lttng_ust_cuda_profiling:
   events:
   - name: event_profiling
     args:
-    - [ CUevent, hStart ]
-    - [ CUevent, hStop ]
+    - [CUevent, hStart]
+    - [CUevent, hStop]
     fields:
-    - [ ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart" ]
-    - [ ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop" ]
+    - [ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart"]
+    - [ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop"]
   - name: event_profiling_results
     args:
-    - [ CUevent, hStart ]
-    - [ CUevent, hStop ]
-    - [ CUresult, startStatus ]
-    - [ CUresult, stopStatus ]
-    - [ CUresult, status ]
-    - [ float, milliseconds ]
+    - [CUevent, hStart]
+    - [CUevent, hStop]
+    - [CUresult, startStatus]
+    - [CUresult, stopStatus]
+    - [CUresult, status]
+    - [float, milliseconds]
     fields:
-    - [ ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart" ]
-    - [ ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop" ]
-    - [ ctf_integer, CUresult, startStatus, startStatus ]
-    - [ ctf_integer, CUresult, stopStatus, stopStatus ]
-    - [ ctf_integer, CUresult, status, status ]
-    - [ ctf_float, float, milliseconds, milliseconds ]
+    - [ctf_integer_hex, uintptr_t, hStart, "(uintptr_t)hStart"]
+    - [ctf_integer_hex, uintptr_t, hStop, "(uintptr_t)hStop"]
+    - [ctf_integer, CUresult, startStatus, startStatus]
+    - [ctf_integer, CUresult, stopStatus, stopStatus]
+    - [ctf_integer, CUresult, status, status]
+    - [ctf_float, float, milliseconds, milliseconds]
 lttng_ust_cuda_exports:
   events:
   - name: export_called
     args:
-    - [ CUuuid *, pExportTableId ]
-    - [ size_t, exportOffset ]
+    - [CUuuid *, pExportTableId]
+    - [size_t, exportOffset]
     fields:
-    - [ ctf_integer_hex, uintptr_t, pExportTableId, "(uintptr_t)pExportTableId" ]
-    - [ ctf_integer_hex, size_t, exportOffset, exportOffset ]
-    - [ ctf_sequence_text, uint8_t, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)" ]
+    - [ctf_integer_hex, uintptr_t, pExportTableId, "(uintptr_t)pExportTableId"]
+    - [ctf_integer_hex, size_t, exportOffset, exportOffset]
+    - [lttng_ust_field_variable_length_blob, pExportTableId_val, pExportTableId, size_t, "sizeof(CUuuid)"]
 lttng_ust_cuda_properties:
   events:
   - name: device
     args:
-    - [ int,  ordinal ]
-    - [ CUdevice , device ]
-    - [ char *, name ]
-    - [ CUuuid *, uuid ]
+    - [int, ordinal]
+    - [CUdevice, device]
+    - [char *, name]
+    - [CUuuid *, uuid]
     fields:
-    - [ ctf_integer, int, ordinal, ordinal ]
-    - [ ctf_integer_hex, int, device, device ]
-    - [ ctf_string, name, name ]
-    - [ ctf_sequence_text, uint8_t, uuid, uuid, size_t, "sizeof(CUuuid)" ]
+    - [ctf_integer, int, ordinal, ordinal]
+    - [ctf_integer_hex, int, device, device]
+    - [ctf_string, name, name]
+    - [lttng_ust_field_variable_length_blob, uuid, uuid, size_t, "sizeof(CUuuid)"]

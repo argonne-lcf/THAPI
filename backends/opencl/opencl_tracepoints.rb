@@ -4,19 +4,25 @@ require_relative '../../utils/LTTng'
 # tracepoint fields travel as raw [macro, *args] tuples rather than as
 # utils/LTTng.rb's TracepointField objects.
 module LTTngFieldTuple
+  # Which slot holds what is already declared once, per macro, by
+  # LTTng::TracepointField::FIELDS. Read the position from there rather than
+  # re-encoding it here: a macro with no `type` slot, such as a blob, would
+  # otherwise shift every field after it.
+  def self.slot(args, key)
+    i = LTTng::TracepointField::FIELDS.fetch(args[0].to_sym).index(key)
+    i && args[i + 1]
+  end
+
   def self.name(*args)
-    case args[0]
-    when 'ctf_string'
-      args[1]
-    when 'ctf_enum'
-      args[4]
-    else
-      args[2]
-    end
+    slot(args, :name)
+  end
+
+  def self.expression(*args)
+    slot(args, :expression)
   end
 
   def self.array?(*args)
-    args[0].match('array') || args[0].match('sequence')
+    args[0].match('array') || args[0].match('sequence') || args[0].match('blob')
   end
 
   def self.string?(*args)
@@ -25,17 +31,6 @@ module LTTngFieldTuple
 
   def self.enum?(*args)
     args[0].match('enum')
-  end
-
-  def self.expression(*args)
-    case args[0]
-    when 'ctf_string'
-      args[2]
-    when 'ctf_enum'
-      args[5]
-    else
-      args[3]
-    end
   end
 end
 
@@ -67,7 +62,7 @@ def get_field(args, field)
     res['string'] = true
     res.delete('pointer')
   end
-  res['enum_type'] = field[2] if LTTngFieldTuple.enum?(*field)
+  res['enum_type'] = LTTngFieldTuple.slot(field, :enum_name) if LTTngFieldTuple.enum?(*field)
   res['lttng'] = field[0]
   [name, res]
 end

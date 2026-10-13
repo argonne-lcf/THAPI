@@ -76,8 +76,15 @@ module LTTng
       ctf_sequence_network_hex: %i[type name expression length_type length],
       ctf_sequence_text: %i[type name expression length_type length],
       ctf_string: %i[name expression],
+      lttng_ust_field_fixed_length_blob: %i[name expression length],
+      lttng_ust_field_variable_length_blob: %i[name expression length_type length],
     }
-    attr_accessor :macro, :expression, :type, :provider_name, :enum_name, :length, :length_type, :cast
+    # `void *` is encoded as a blob. Put some media type for those.
+    DEFAULT_MEDIA_TYPE = 'application/octet-stream'.freeze
+    # Other blobs have their type as media type, prefixed by BLOB_ARCH.
+    BLOB_ARCH = 'x86-64'
+    attr_accessor :macro, :expression, :type, :provider_name, :enum_name, :length, :length_type, :cast,
+                  :blob_type
     attr_reader :name
 
     def initialize(*args)
@@ -99,11 +106,34 @@ module LTTng
       @expression = m[2]
     end
 
+    def self.media_type(c_type)
+      t = c_type.to_s.sub(/\Aconst /, '').delete('*').strip
+      t.empty? || t == 'void' ? DEFAULT_MEDIA_TYPE : "#{BLOB_ARCH}/#{t}"
+    end
+
+    def media_type
+      TracepointField.media_type(@blob_type)
+    end
+
+    BLOB_MACROS = FIELDS.keys.grep(/_blob\z/).freeze
+
+    def blob?
+      BLOB_MACROS.include?(@macro)
+    end
+
     def call_string
-      str = "#{@macro}("
-      str << [@provider_name, @enum_name, @type, @name, @cast ? "(#{@cast})(#{@expression})" : @expression,
-              @length_type, @length].compact.join(', ')
-      str << ')'
+      expr = @cast ? "(#{@cast})(#{@expression})" : @expression
+      media_type = "\"#{self.media_type}\""
+      args =
+        case @macro
+        when :lttng_ust_field_fixed_length_blob
+          [@name, expr, @length, media_type]
+        when :lttng_ust_field_variable_length_blob
+          [@name, expr, @length_type, @length, media_type]
+        else
+          [@provider_name, @enum_name, @type, @name, expr, @length_type, @length]
+        end
+      "#{@macro}(#{args.compact.join(', ')})"
     end
 
     def name=(n)
@@ -128,6 +158,13 @@ module LTTng
     EOF
   end
 
+  # The C type of the argument a field records. A field is named after its
+  # argument, plus a `_val`/`_vals` suffix when it reads through a pointer.
+  def self.argument_type(args, field_name)
+    name = field_name.sub(/_vals?\z/, '')
+    args.find { |_type, arg_name| arg_name == name }&.first
+  end
+
   def self.print_tracepoint(namespace, tp, phase = nil, suffix: nil)
     puts <<~EOF
       TRACEPOINT_EVENT(
@@ -141,7 +178,11 @@ module LTTng
   ),
   TP_FIELDS(
 EOF
-    fields = tp[phase || 'fields'].to_a.collect { |(f, *args)| "#{f}(#{args.join(', ')})" }
+    fields = tp[phase || 'fields'].to_a.collect do |field|
+      f = TracepointField.new(*field)
+      f.blob_type = argument_type(tp['args'], f.name.to_s) if f.blob?
+      f.call_string
+    end
     puts indented(fields) unless fields.empty?
     puts <<~EOF
         )
