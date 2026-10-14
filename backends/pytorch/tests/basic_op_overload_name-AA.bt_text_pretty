@@ -1,0 +1,1 @@
+lttng:host: { hostname = "testnode", vpid = 0, vtid = 1, ts = 1704110400000000000, backend = 10 }, { name = "aten::add.Tensor", dur = 1000000000, err = false }

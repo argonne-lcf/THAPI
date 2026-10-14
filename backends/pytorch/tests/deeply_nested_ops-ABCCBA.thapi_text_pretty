@@ -1,0 +1,6 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::addmm", overload_name: "" }
+12:00:01.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::matmul", overload_name: "" }
+12:00:02.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::mm", overload_name: "" }
+12:00:03.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::mm", overload_name: "" }
+12:00:04.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::matmul", overload_name: "" }
+12:00:05.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::addmm", overload_name: "" }

@@ -1,0 +1,4 @@
+12:00:00.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::norm", overload_name: "Scalar" }
+12:00:01.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::norm", overload_name: "Scalar" }
+12:00:02.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::norm", overload_name: "Scalar" }
+12:00:03.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::norm", overload_name: "Scalar" }

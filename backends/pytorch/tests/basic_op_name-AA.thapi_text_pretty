@@ -1,0 +1,2 @@
+12:00:00.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_entry: { name: "aten::relu", overload_name: "" }
+12:00:01.000000000 - testnode - vpid: 0, vtid: 1 - lttng_ust_pytorch:op_exit: { name: "aten::relu", overload_name: "" }
