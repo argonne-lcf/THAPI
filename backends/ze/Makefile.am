@@ -173,6 +173,11 @@ CLEANFILES += tracer_ze.c
 bin_SCRIPTS = \
 	tracer_ze.sh
 
+if ZE_VALIDATOR
+  bin_SCRIPTS += validator/ze_validator
+endif
+
+
 noinst_LTLIBRARIES = libzetracepoints.la
 
 nodist_libzetracepoints_la_SOURCES = \
@@ -250,6 +255,23 @@ data_DATA = \
 	$(ZE_BINDINGS) \
 	ze_bindings_base.rb \
 	babeltrace_zeprofiling_apis.txt
+
+# Everything the ze_validator needs
+ZE_VALIDATOR_SOURCES = \
+	validator/errors.rb \
+	validator/allocation_map.rb \
+	validator/model.rb \
+	validator/callbacks.rb \
+	validator/semantics.rb \
+	validator/state_object.rb \
+	validator/api_metadata.yaml
+
+EXTRA_DIST += $(ZE_VALIDATOR_SOURCES)
+
+if ZE_VALIDATOR
+  ze_validatordir = $(datadir)/ze/validator
+  ze_validator_DATA = $(ZE_VALIDATOR_SOURCES)
+endif
 
 xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 	cp $< $@
