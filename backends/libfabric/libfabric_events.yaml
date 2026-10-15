@@ -1,0 +1,21 @@
+lttng_ust_libfabric:
+  events:
+  - name: fi_fabric_entry
+    args:
+    - ["const void *", attr]
+    - ["const void *", fabric]
+    - ["const void *", context]
+    fields:
+    - [ctf_integer_hex, uintptr_t, attr, "(uintptr_t)attr"]
+    - [ctf_integer_hex, uintptr_t, fabric, "(uintptr_t)fabric"]
+    - [ctf_integer_hex, uintptr_t, context, "(uintptr_t)context"]
+
+  - name: fi_fabric_exit
+    args:
+    - [int, result]
+    - ["const void *", fabric]
+    fields:
+    - [ctf_integer, int, result, result]
+    - [ctf_integer_hex, uintptr_t, fabric, "(uintptr_t)fabric"]
+
+
