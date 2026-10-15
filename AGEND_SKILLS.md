@@ -11,10 +11,11 @@ THAPI is splited into 2 main componant:
 - For "intercept" tracer (where we intercept call), we split the tracepoint into `_entry`, and `_exit` tracepoint. This allow to debug "hang/ segault" during the function we trace
   - We use metatadata information, stored in yaml file, to know which args are input or output
 ```
-foo(int a_input, *b_output)
+foo(int a_input, * struct b_output) {
   gen_tracepoint(a_input)
   call foo_orig
-  gen_tracepoint(b_output)
+  gen_tracepoint(b_output, b_output_val)
+}
 
 ```
 - The tracepoint contain the `hostname`, vpid, vtid.
