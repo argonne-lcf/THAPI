@@ -1,0 +1,8 @@
+12:00:00.000000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ze:zeCommandListAppendBarrier_entry: { hCommandList: 0x1000000000000000, hSignalEvent: 0x0000000000000000, numWaitEvents: 0, phWaitEvents: 0x0000000000000000, _phWaitEvents_vals_length: 0, phWaitEvents_vals: 0x0000000000000000 }
+12:00:00.010000000 - testhost - vpid: 2, vtid: 1 - lttng_ust_ze:zeCommandListAppendBarrier_entry: { hCommandList: 0x1000000000000000, hSignalEvent: 0x0000000000000000, numWaitEvents: 0, phWaitEvents: 0x0000000000000000, _phWaitEvents_vals_length: 0, phWaitEvents_vals: 0x0000000000000000 }
+12:00:00.020000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ze_profiling:event_profiling: { hEvent: 0x1000000000000000 }
+12:00:00.030000000 - testhost - vpid: 2, vtid: 1 - lttng_ust_ze_profiling:event_profiling: { hEvent: 0x2000000000000000 }
+12:00:00.040000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ze:zeCommandListAppendBarrier_exit: { zeResult: ZE_RESULT_SUCCESS }
+12:00:00.050000000 - testhost - vpid: 2, vtid: 1 - lttng_ust_ze:zeCommandListAppendBarrier_exit: { zeResult: ZE_RESULT_SUCCESS }
+12:00:00.060000000 - testhost - vpid: 1, vtid: 1 - lttng_ust_ze_profiling:event_profiling_results: { hEvent: 0x1000000000000000, status: ZE_RESULT_SUCCESS, timestampStatus: ZE_RESULT_SUCCESS, globalStart: 0, globalEnd: 10, contextStart: 0, contextEnd: 10 }
+12:00:00.070000000 - testhost - vpid: 2, vtid: 1 - lttng_ust_ze_profiling:event_profiling_results: { hEvent: 0x2000000000000000, status: ZE_RESULT_SUCCESS, timestampStatus: ZE_RESULT_SUCCESS, globalStart: 0, globalEnd: 20, contextStart: 0, contextEnd: 10 }

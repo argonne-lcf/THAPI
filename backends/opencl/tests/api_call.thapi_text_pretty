@@ -1,0 +1,2 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clLinkProgram_entry: { context: 1, num_devices: 1, device_list: 0, options: 0, num_input_programs: 0, input_programs: 0, pfn_notify: 0, user_data: 0, errcode_ret: 0, _device_list_vals_length: 0, device_list_vals: 0, options_val: "", _input_programs_vals_length: 0, input_programs_vals: 0 }
+12:00:00.001000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clLinkProgram_exit: { program: 1, errcode_ret_val: 0 }
