@@ -1,21 +1,87 @@
-lttng_ust_libfabric:
+lttng_ust_fi:
   events:
-  - name: fi_fabric_entry
+  - name: op_entry
     args:
-    - ["const void *", attr]
-    - ["const void *", fabric]
-    - ["const void *", context]
+    - ["const char *", op]
+    - [uint32_t, ep_id]
+    - ["const void *", op_context]
     fields:
-    - [ctf_integer_hex, uintptr_t, attr, "(uintptr_t)attr"]
-    - [ctf_integer_hex, uintptr_t, fabric, "(uintptr_t)fabric"]
-    - [ctf_integer_hex, uintptr_t, context, "(uintptr_t)context"]
+    - [ctf_string, op, op]
+    - [ctf_integer, uint32_t, ep_id, ep_id]
+    - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
 
-  - name: fi_fabric_exit
+  - name: op_exit
     args:
-    - [int, result]
-    - ["const void *", fabric]
+    - ["const char *", op]
+    - [uint32_t, ep_id]
+    - ["const char *", src_addr]
+    - ["const char *", peer_addr]
+    - ["const char *", direction]
+    - [uint64_t, iov_count]
+    - [uint64_t, size_bytes]
+    - [int64_t, ret]
+    - ["const void *", op_context]
     fields:
-    - [ctf_integer, int, result, result]
-    - [ctf_integer_hex, uintptr_t, fabric, "(uintptr_t)fabric"]
+    - [ctf_string, op, op]
+    - [ctf_integer, uint32_t, ep_id, ep_id]
+    - [ctf_string, src_addr, src_addr]
+    - [ctf_string, peer_addr, peer_addr]
+    - [ctf_string, direction, direction]
+    - [ctf_integer, uint64_t, iov_count, iov_count]
+    - [ctf_integer, uint64_t, size_bytes, size_bytes]
+    - [ctf_integer, int64_t, ret, ret]
+    - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
 
+  - name: cq_completion
+    args:
+    - ["const char *", op]
+    - [uint32_t, obj_id]
+    - ["const char *", src_addr]
+    - ["const char *", peer_addr]
+    - [uint64_t, size_bytes]
+    - [int64_t, ret]
+    - ["const void *", op_context]
+    fields:
+    - [ctf_string, op, op]
+    - [ctf_integer, uint32_t, obj_id, obj_id]
+    - [ctf_string, src_addr, src_addr]
+    - [ctf_string, peer_addr, peer_addr]
+    - [ctf_integer, uint64_t, size_bytes, size_bytes]
+    - [ctf_integer, int64_t, ret, ret]
+    - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
 
+  - name: ctrl_entry
+    args:
+    - ["const char *", op]
+    - [uint32_t, obj_id]
+    fields:
+    - [ctf_string, op, op]
+    - [ctf_integer, uint32_t, obj_id, obj_id]
+
+  - name: ctrl_exit
+    args:
+    - ["const char *", op]
+    - [uint32_t, obj_id]
+    - [int64_t, ret]
+    fields:
+    - [ctf_string, op, op]
+    - [ctf_integer, uint32_t, obj_id, obj_id]
+    - [ctf_integer, int64_t, ret, ret]
+
+  - name: ep_info
+    args:
+    - [uint32_t, ep_id]
+    - ["const char *", src_addr]
+    - ["const char *", domain_name]
+    - [uint32_t, topo_valid]
+    - [uint32_t, group]
+    - [uint32_t, switch_id]
+    - [uint32_t, port]
+    fields:
+    - [ctf_integer, uint32_t, ep_id, ep_id]
+    - [ctf_string, src_addr, src_addr]
+    - [ctf_string, domain_name, domain_name]
+    - [ctf_integer, uint32_t, topo_valid, topo_valid]
+    - [ctf_integer, uint32_t, group, group]
+    - [ctf_integer, uint32_t, switch_id, switch_id]
+    - [ctf_integer, uint32_t, port, port]
