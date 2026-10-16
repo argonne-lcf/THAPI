@@ -50,29 +50,27 @@ _Atomic unsigned int fit_av_gen = 0;
 /* logging (stderr, not the trace -- this is for debugging the tracer) */
 /* ------------------------------------------------------------------ */
 
-void fit_log(const char *fmt, ...)
-{
-	va_list ap;
+void fit_log(const char *fmt, ...) {
+  va_list ap;
 
-	if (!fit_cfg.verbose)
-		return;
+  if (!fit_cfg.verbose)
+    return;
 
-	fprintf(stderr, "[fi_trace] ");
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-	fputc('\n', stderr);
+  fprintf(stderr, "[fi_trace] ");
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  fputc('\n', stderr);
 }
 
 /* ------------------------------------------------------------------ */
 /* configuration                                                      */
 /* ------------------------------------------------------------------ */
 
-static int env_int(const char *name, int dflt)
-{
-	const char *v = getenv(name);
+static int env_int(const char *name, int dflt) {
+  const char *v = getenv(name);
 
-	return v ? atoi(v) : dflt;
+  return v ? atoi(v) : dflt;
 }
 
 /*
@@ -83,40 +81,38 @@ static int env_int(const char *name, int dflt)
  * messaging, "LTTNG_UST_FI_OPS=tagged" is measurably cheaper than filtering on
  * the LTTng side.
  */
-static void parse_ops(const char *v)
-{
-	if (!v || !*v) {
-		fit_cfg.trace_msg = fit_cfg.trace_tagged = fit_cfg.trace_rma = 1;
-		return;
-	}
+static void parse_ops(const char *v) {
+  if (!v || !*v) {
+    fit_cfg.trace_msg = fit_cfg.trace_tagged = fit_cfg.trace_rma = 1;
+    return;
+  }
 
-	fit_cfg.trace_msg = fit_cfg.trace_tagged = fit_cfg.trace_rma = 0;
+  fit_cfg.trace_msg = fit_cfg.trace_tagged = fit_cfg.trace_rma = 0;
 
-	if (strstr(v, "msg"))
-		fit_cfg.trace_msg = 1;
-	if (strstr(v, "tagged"))
-		fit_cfg.trace_tagged = 1;
-	if (strstr(v, "rma"))
-		fit_cfg.trace_rma = 1;
+  if (strstr(v, "msg"))
+    fit_cfg.trace_msg = 1;
+  if (strstr(v, "tagged"))
+    fit_cfg.trace_tagged = 1;
+  if (strstr(v, "rma"))
+    fit_cfg.trace_rma = 1;
 }
 
-void fit_config_init(void)
-{
-	fit_cfg.enabled      = env_int("LTTNG_UST_FI_ENABLE", 1);
-	fit_cfg.resolve      = env_int("LTTNG_UST_FI_RESOLVE", 1);
-	fit_cfg.trace_rx     = env_int("LTTNG_UST_FI_RX", 1);
-	fit_cfg.trace_srx    = env_int("LTTNG_UST_FI_SRX", 0);
-	fit_cfg.trace_eagain = env_int("LTTNG_UST_FI_EAGAIN", 1);
-	fit_cfg.trace_cq     = env_int("LTTNG_UST_FI_CQ", 1);
-	fit_cfg.verbose      = env_int("LTTNG_UST_FI_VERBOSE", 0);
-	parse_ops(getenv("LTTNG_UST_FI_OPS"));
+void fit_config_init(void) {
+  fit_cfg.enabled = env_int("LTTNG_UST_FI_ENABLE", 1);
+  fit_cfg.resolve = env_int("LTTNG_UST_FI_RESOLVE", 1);
+  fit_cfg.trace_rx = env_int("LTTNG_UST_FI_RX", 1);
+  fit_cfg.trace_srx = env_int("LTTNG_UST_FI_SRX", 0);
+  fit_cfg.trace_eagain = env_int("LTTNG_UST_FI_EAGAIN", 1);
+  fit_cfg.trace_cq = env_int("LTTNG_UST_FI_CQ", 1);
+  fit_cfg.verbose = env_int("LTTNG_UST_FI_VERBOSE", 0);
+  parse_ops(getenv("LTTNG_UST_FI_OPS"));
 
-	/*
-	 * fit_cfg.host / host_len / dir / bufsz / max_records are no longer
-	 * read.  They stay in struct fit_config only so that fi_trace.h does
-	 * not have to change; drop them once you are sure nothing else refers
-	 * to them.
-	 */
+  /*
+   * fit_cfg.host / host_len / dir / bufsz / max_records are no longer
+   * read.  They stay in struct fit_config only so that fi_trace.h does
+   * not have to change; drop them once you are sure nothing else refers
+   * to them.
+   */
 }
 
 /* ------------------------------------------------------------------ */
@@ -130,23 +126,22 @@ void fit_config_init(void)
  * field.  Measured once where the string is produced, as before, so the hot
  * path only memcpys.
  */
-void fit_sanitize(char *s, size_t *len_out)
-{
-	size_t n = 0;
+void fit_sanitize(char *s, size_t *len_out) {
+  size_t n = 0;
 
-	if (!s) {
-		if (len_out)
-			*len_out = 0;
-		return;
-	}
+  if (!s) {
+    if (len_out)
+      *len_out = 0;
+    return;
+  }
 
-	for (; s[n]; n++) {
-		if ((unsigned char)s[n] < 0x20 || (unsigned char)s[n] == 0x7f)
-			s[n] = '_';
-	}
+  for (; s[n]; n++) {
+    if ((unsigned char)s[n] < 0x20 || (unsigned char)s[n] == 0x7f)
+      s[n] = '_';
+  }
 
-	if (len_out)
-		*len_out = n;
+  if (len_out)
+    *len_out = n;
 }
 
 /*
@@ -162,10 +157,7 @@ void fit_sanitize(char *s, size_t *len_out)
  * spacing between completions from one reap as an artifact of the loop, not a
  * real arrival pattern.
  */
-uint64_t fit_now_us(void)
-{
-	return 0;
-}
+uint64_t fit_now_us(void) { return 0; }
 
 /* ------------------------------------------------------------------ */
 /* data-path records                                                  */
@@ -178,94 +170,94 @@ uint64_t fit_now_us(void)
  * payload rides on the exit event, where it was already being computed before
  * this port.
  */
-void fit_record_entry(struct fit_ep *h, const char *op, char dir,
-		      const void *context)
-{
-	if (dir == 'R' && !fit_cfg.trace_rx)
-		return;
+void fit_record_entry(struct fit_ep *h, const char *op, char dir, const void *context) {
+  if (dir == 'R' && !fit_cfg.trace_rx)
+    return;
 
-	tracepoint(lttng_ust_fi, op_entry, op, h->ep_id, context);
+  tracepoint(lttng_ust_fi, op_entry, op, h->ep_id, context);
 }
 
-void fit_record(struct fit_ep *h, const char *op, char dir, fi_addr_t peer,
-		size_t bytes, size_t iov_count, ssize_t ret,
-		const void *context)
-{
-	char scratch[FIT_ADDR_MAX];
-	const char *peer_str;
-	size_t peer_len = 0;
+void fit_record(struct fit_ep *h,
+                const char *op,
+                char dir,
+                fi_addr_t peer,
+                size_t bytes,
+                size_t iov_count,
+                ssize_t ret,
+                const void *context) {
+  char scratch[FIT_ADDR_MAX];
+  const char *peer_str;
+  size_t peer_len = 0;
 
-	if (dir == 'R' && !fit_cfg.trace_rx)
-		return;
+  if (dir == 'R' && !fit_cfg.trace_rx)
+    return;
 
-	/*
-	 * A -FI_EAGAIN return means the provider refused the operation and the
-	 * application will retry; no bytes moved.  Applications that spin on a
-	 * busy endpoint can generate thousands of these, which swamps the real
-	 * transfers, so they can be dropped.
-	 *
-	 * Dropping the exit here leaves the matching op_entry unpaired, and the
-	 * analysis side discards an entry that never closes.  That is the
-	 * intended behaviour, but it does mean LTTNG_UST_FI_EAGAIN=0 makes the
-	 * entry/exit counts in a raw trace dump disagree -- do not go looking
-	 * for a bug there.
-	 */
-	if (ret == -FI_EAGAIN && !fit_cfg.trace_eagain)
-		return;
+  /*
+   * A -FI_EAGAIN return means the provider refused the operation and the
+   * application will retry; no bytes moved.  Applications that spin on a
+   * busy endpoint can generate thousands of these, which swamps the real
+   * transfers, so they can be dropped.
+   *
+   * Dropping the exit here leaves the matching op_entry unpaired, and the
+   * analysis side discards an entry that never closes.  That is the
+   * intended behaviour, but it does mean LTTNG_UST_FI_EAGAIN=0 makes the
+   * entry/exit counts in a raw trace dump disagree -- do not go looking
+   * for a bug there.
+   */
+  if (ret == -FI_EAGAIN && !fit_cfg.trace_eagain)
+    return;
 
-	if (!h->src_valid)
-		fit_ep_resolve_src(h);
+  if (!h->src_valid)
+    fit_ep_resolve_src(h);
 
-	peer_str = fit_ep_peer_str(h, peer, scratch, sizeof(scratch), &peer_len);
+  peer_str = fit_ep_peer_str(h, peer, scratch, sizeof(scratch), &peer_len);
 
-	tracepoint(lttng_ust_fi, op_exit, op, h->ep_id, h->src, peer_str,
-		   (dir == 'R') ? "rx" : "tx", (uint64_t)iov_count,
-		   (uint64_t)bytes, (int64_t)ret,
-		   /* An operation the provider refused never became
-		    * outstanding, so it will produce no completion and must
-		    * not be joined to one. */
-		   ret ? NULL : context);
+  tracepoint(lttng_ust_fi, op_exit, op, h->ep_id, h->src, peer_str, (dir == 'R') ? "rx" : "tx",
+             (uint64_t)iov_count, (uint64_t)bytes, (int64_t)ret,
+             /* An operation the provider refused never became
+              * outstanding, so it will produce no completion and must
+              * not be joined to one. */
+             ret ? NULL : context);
 }
 
-void fit_record_cq(struct fit_cq *c, const char *op, fi_addr_t peer,
-		   size_t bytes, ssize_t ret, const void *context,
-		   uint64_t now)
-{
-	char scratch[FIT_ADDR_MAX];
-	const char *peer_str = "fi_addr_unspec";
-	size_t peer_len = sizeof("fi_addr_unspec") - 1;
-	const char *src = "unknown";
-	struct fit_ep *h = c->ep;
+void fit_record_cq(struct fit_cq *c,
+                   const char *op,
+                   fi_addr_t peer,
+                   size_t bytes,
+                   ssize_t ret,
+                   const void *context,
+                   uint64_t now) {
+  char scratch[FIT_ADDR_MAX];
+  const char *peer_str = "fi_addr_unspec";
+  size_t peer_len = sizeof("fi_addr_unspec") - 1;
+  const char *src = "unknown";
+  struct fit_ep *h = c->ep;
 
-	(void)now;	/* LTTng stamps the event; see fit_now_us() */
+  (void)now; /* LTTng stamps the event; see fit_now_us() */
 
-	/* The CQ usually serves exactly one endpoint, in which case its local
-	 * address and id describe this record too. */
-	if (h) {
-		if (!h->src_valid)
-			fit_ep_resolve_src(h);
-		src = h->src;
-		peer_str = fit_ep_peer_str(h, peer, scratch, sizeof(scratch),
-					   &peer_len);
-	}
+  /* The CQ usually serves exactly one endpoint, in which case its local
+   * address and id describe this record too. */
+  if (h) {
+    if (!h->src_valid)
+      fit_ep_resolve_src(h);
+    src = h->src;
+    peer_str = fit_ep_peer_str(h, peer, scratch, sizeof(scratch), &peer_len);
+  }
 
-	tracepoint(lttng_ust_fi, cq_completion, op,
-		   h ? h->ep_id : c->cq_id, src, peer_str,
-		   (uint64_t)bytes, (int64_t)ret, context);
+  tracepoint(lttng_ust_fi, cq_completion, op, h ? h->ep_id : c->cq_id, src, peer_str,
+             (uint64_t)bytes, (int64_t)ret, context);
 }
 
 /* ------------------------------------------------------------------ */
 /* control-path records                                               */
 /* ------------------------------------------------------------------ */
 
-void fit_record_ctrl_entry(const char *op, unsigned int obj_id)
-{
-	tracepoint(lttng_ust_fi, ctrl_entry, op, obj_id);
+void fit_record_ctrl_entry(const char *op, unsigned int obj_id) {
+  tracepoint(lttng_ust_fi, ctrl_entry, op, obj_id);
 }
 
-void fit_record_ctrl_exit(const char *op, unsigned int obj_id, int ret)
-{
-	tracepoint(lttng_ust_fi, ctrl_exit, op, obj_id, (int64_t)ret);
+void fit_record_ctrl_exit(const char *op, unsigned int obj_id, int ret) {
+  tracepoint(lttng_ust_fi, ctrl_exit, op, obj_id, (int64_t)ret);
 }
 
 /* ------------------------------------------------------------------ */
@@ -282,20 +274,18 @@ void fit_record_ctrl_exit(const char *op, unsigned int obj_id, int ret)
  * by NIC address while the interval stream is keyed by ep_id, and the mapping
  * between them has to come from somewhere.
  */
-void fit_record_ep_info(unsigned int ep_id, const char *src, size_t src_len,
-			const struct fit_topo *t)
-{
-	(void)src_len;
+void fit_record_ep_info(unsigned int ep_id,
+                        const char *src,
+                        size_t src_len,
+                        const struct fit_topo *t) {
+  (void)src_len;
 
-	if (!fit_armed || !src)
-		return;
+  if (!fit_armed || !src)
+    return;
 
-	tracepoint(lttng_ust_fi, ep_info, ep_id, src,
-		   (t && t->valid) ? t->name : "",
-		   (t && t->valid) ? 1u : 0u,
-		   (t && t->valid) ? t->group : 0u,
-		   (t && t->valid) ? t->sw : 0u,
-		   (t && t->valid) ? t->port : 0u);
+  tracepoint(lttng_ust_fi, ep_info, ep_id, src, (t && t->valid) ? t->name : "",
+             (t && t->valid) ? 1u : 0u, (t && t->valid) ? t->group : 0u,
+             (t && t->valid) ? t->sw : 0u, (t && t->valid) ? t->port : 0u);
 }
 
 /*

@@ -16,31 +16,31 @@
 #include <sys/uio.h>
 
 #include <rdma/fabric.h>
-#include <rdma/fi_domain.h>
-#include <rdma/fi_eq.h>
-#include <rdma/fi_endpoint.h>
 #include <rdma/fi_cm.h>
-#include <rdma/fi_tagged.h>
-#include <rdma/fi_rma.h>
+#include <rdma/fi_domain.h>
+#include <rdma/fi_endpoint.h>
+#include <rdma/fi_eq.h>
 #include <rdma/fi_errno.h>
+#include <rdma/fi_rma.h>
+#include <rdma/fi_tagged.h>
 
-#define FIT_ADDR_MAX     96	/* "fi_addr_cxi://0x04656600" and friends */
+#define FIT_ADDR_MAX 96 /* "fi_addr_cxi://0x04656600" and friends */
 #define FIT_RAW_ADDR_MAX 64
-#define FIT_REC_MAX      1024	/* worst-case bytes of one CSV line        */
+#define FIT_REC_MAX 1024 /* worst-case bytes of one CSV line        */
 
 #ifndef fit_container_of
-#define fit_container_of(ptr, type, member) \
-	((type *)((char *)(ptr) - offsetof(type, member)))
+#define fit_container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
 #endif
 
 struct fit_ep;
 struct fit_cq;
 struct fit_topo;
 
-void fit_record_entry(struct fit_ep *h, const char *op, char dir,
-		      const void *context);
-void fit_record_ep_info(unsigned int ep_id, const char *src,
-			size_t src_len, const struct fit_topo *t);
+void fit_record_entry(struct fit_ep *h, const char *op, char dir, const void *context);
+void fit_record_ep_info(unsigned int ep_id,
+                        const char *src,
+                        size_t src_len,
+                        const struct fit_topo *t);
 void fit_record_ctrl_entry(const char *op, unsigned int obj_id);
 void fit_record_ctrl_exit(const char *op, unsigned int obj_id, int ret);
 
@@ -49,21 +49,21 @@ void fit_record_ctrl_exit(const char *op, unsigned int obj_id, int ret);
 /* ------------------------------------------------------------------ */
 
 struct fit_config {
-	int   enabled;		/* FI_TRACE_ENABLE      */
-	int   resolve;		/* FI_TRACE_RESOLVE     */
-	int   trace_msg;	/* FI_TRACE_OPS         */
-	int   trace_tagged;
-	int   trace_rma;
-	int   trace_rx;		/* FI_TRACE_RX          */
-	int   trace_srx;	/* FI_TRACE_SRX         */
-	int   trace_eagain;	/* FI_TRACE_EAGAIN      */
-	int   trace_cq;		/* FI_TRACE_CQ          */
-	int   verbose;		/* FI_TRACE_VERBOSE     */
-	size_t bufsz;		/* FI_TRACE_BUFSZ       */
-	uint64_t max_records;	/* FI_TRACE_MAX_RECORDS */
-	char  dir[4096];	/* FI_TRACE_DIR         */
-	char  host[256];
-	size_t host_len;
+  int enabled;   /* FI_TRACE_ENABLE      */
+  int resolve;   /* FI_TRACE_RESOLVE     */
+  int trace_msg; /* FI_TRACE_OPS         */
+  int trace_tagged;
+  int trace_rma;
+  int trace_rx;         /* FI_TRACE_RX          */
+  int trace_srx;        /* FI_TRACE_SRX         */
+  int trace_eagain;     /* FI_TRACE_EAGAIN      */
+  int trace_cq;         /* FI_TRACE_CQ          */
+  int verbose;          /* FI_TRACE_VERBOSE     */
+  size_t bufsz;         /* FI_TRACE_BUFSZ       */
+  uint64_t max_records; /* FI_TRACE_MAX_RECORDS */
+  char dir[4096];       /* FI_TRACE_DIR         */
+  char host[256];
+  size_t host_len;
 };
 
 /* CSV fields are sanitised and measured once, where they are produced,
@@ -86,15 +86,15 @@ void fit_log(const char *fmt, ...);
 /* ------------------------------------------------------------------ */
 
 struct fit_peer {
-	fi_addr_t key;
-	size_t    len;		/* strlen(str), precomputed */
-	char      str[FIT_ADDR_MAX];
+  fi_addr_t key;
+  size_t len; /* strlen(str), precomputed */
+  char str[FIT_ADDR_MAX];
 };
 
 struct fit_peer_tab {
-	size_t                cap;	/* power of two */
-	struct fit_peer_tab  *older;	/* retired tables, freed at ep close */
-	_Atomic(struct fit_peer *) slot[];
+  size_t cap;                 /* power of two */
+  struct fit_peer_tab *older; /* retired tables, freed at ep close */
+  _Atomic(struct fit_peer *) slot[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -113,18 +113,17 @@ struct fit_peer_tab {
 /* ------------------------------------------------------------------ */
 
 struct fit_topo {
-	int      valid;			/* 0 if the provider would not say */
-	unsigned group;			/* dragonfly group                 */
-	unsigned sw;			/* switch within the group         */
-	unsigned port;			/* port on that switch             */
-	char     name[64];		/* domain name, e.g. "cxi2"        */
-	size_t   name_len;
+  int valid;      /* 0 if the provider would not say */
+  unsigned group; /* dragonfly group                 */
+  unsigned sw;    /* switch within the group         */
+  unsigned port;  /* port on that switch             */
+  char name[64];  /* domain name, e.g. "cxi2"        */
+  size_t name_len;
 };
 
 /* Ask the provider where this domain's NIC is.  Leaves t->valid 0 on
  * anything that is not CXI, or a CXI too old to answer. */
-void fit_topo_resolve(struct fit_topo *t, struct fid_domain *domain,
-		      const struct fi_info *info);
+void fit_topo_resolve(struct fit_topo *t, struct fid_domain *domain, const struct fi_info *info);
 
 /* Record one endpoint's location, once, when its address is known. */
 
@@ -138,37 +137,37 @@ void fit_topo_resolve(struct fit_topo *t, struct fid_domain *domain,
 /* ------------------------------------------------------------------ */
 
 struct fit_ep {
-	/* our vtables -- must stay first-class members for container_of */
-	struct fi_ops_msg     msg;
-	struct fi_ops_tagged  tagged;
-	struct fi_ops_rma     rma;
-	struct fi_ops         fid_ops;
-	struct fi_ops_ep      ep_ops;
+  /* our vtables -- must stay first-class members for container_of */
+  struct fi_ops_msg msg;
+  struct fi_ops_tagged tagged;
+  struct fi_ops_rma rma;
+  struct fi_ops fid_ops;
+  struct fi_ops_ep ep_ops;
 
-	/* the provider's originals */
-	const struct fi_ops_msg    *o_msg;
-	const struct fi_ops_tagged *o_tagged;
-	const struct fi_ops_rma    *o_rma;
-	const struct fi_ops        *o_fid;
-	const struct fi_ops_ep     *o_ep;
+  /* the provider's originals */
+  const struct fi_ops_msg *o_msg;
+  const struct fi_ops_tagged *o_tagged;
+  const struct fi_ops_rma *o_rma;
+  const struct fi_ops *o_fid;
+  const struct fi_ops_ep *o_ep;
 
-	struct fid_ep  *ep;
-	struct fid_av  *av;		/* bound AV, used to render addresses */
-	unsigned int    ep_id;
+  struct fid_ep *ep;
+  struct fid_av *av; /* bound AV, used to render addresses */
+  unsigned int ep_id;
 
-	/* Points into the owning domain's hook state, which outlives every
-	 * endpoint on it.  NULL for an endpoint we met without its domain. */
-	const struct fit_topo *topo;
-	int             topo_written;
+  /* Points into the owning domain's hook state, which outlives every
+   * endpoint on it.  NULL for an endpoint we met without its domain. */
+  const struct fit_topo *topo;
+  int topo_written;
 
-	char            src[FIT_ADDR_MAX];
-	size_t          src_len;
-	int             src_valid;
+  char src[FIT_ADDR_MAX];
+  size_t src_len;
+  int src_valid;
 
-	pthread_mutex_t lock;		/* serialises inserts + src resolution */
-	_Atomic(struct fit_peer_tab *) peers;
-	size_t          peer_cnt;	/* written under lock */
-	unsigned int    peer_gen;	/* fit_av_gen when the table was built */
+  pthread_mutex_t lock; /* serialises inserts + src resolution */
+  _Atomic(struct fit_peer_tab *) peers;
+  size_t peer_cnt;       /* written under lock */
+  unsigned int peer_gen; /* fit_av_gen when the table was built */
 };
 
 /*
@@ -184,29 +183,29 @@ extern _Atomic unsigned int fit_av_gen;
 void fit_ep_peers_free(struct fit_ep *h);
 
 struct fit_domain {
-	struct fi_ops_domain        ops;
-	struct fi_ops               fid_ops;
-	const struct fi_ops_domain *orig;
-	const struct fi_ops        *o_fid;
+  struct fi_ops_domain ops;
+  struct fi_ops fid_ops;
+  const struct fi_ops_domain *orig;
+  const struct fi_ops *o_fid;
 
-	/* Resolved once at hook time and handed to every endpoint this
-	 * domain creates.  The address of this member is what endpoints
-	 * hold, so the struct must not move. */
-	struct fit_topo             topo;
+  /* Resolved once at hook time and handed to every endpoint this
+   * domain creates.  The address of this member is what endpoints
+   * hold, so the struct must not move. */
+  struct fit_topo topo;
 };
 
 struct fit_fabric {
-	struct fi_ops_fabric        ops;
-	struct fi_ops               fid_ops;
-	const struct fi_ops_fabric *orig;
-	const struct fi_ops        *o_fid;
+  struct fi_ops_fabric ops;
+  struct fi_ops fid_ops;
+  const struct fi_ops_fabric *orig;
+  const struct fi_ops *o_fid;
 };
 
 struct fit_av {
-	struct fi_ops_av            ops;
-	struct fi_ops               fid_ops;
-	const struct fi_ops_av     *orig;
-	const struct fi_ops        *o_fid;
+  struct fi_ops_av ops;
+  struct fi_ops fid_ops;
+  const struct fi_ops_av *orig;
+  const struct fi_ops *o_fid;
 };
 
 /*
@@ -216,21 +215,21 @@ struct fit_av {
  * subtracting their timestamps gives the latency the application saw.
  */
 struct fit_cq {
-	struct fi_ops_cq            ops;
-	struct fi_ops               fid_ops;
-	const struct fi_ops_cq     *orig;
-	const struct fi_ops        *o_fid;
+  struct fi_ops_cq ops;
+  struct fi_ops fid_ops;
+  const struct fi_ops_cq *orig;
+  const struct fi_ops *o_fid;
 
-	struct fid_cq  *cq;
-	enum fi_cq_format format;
-	size_t          entry_sz;	/* 0 if the format is unknown */
+  struct fid_cq *cq;
+  enum fi_cq_format format;
+  size_t entry_sz; /* 0 if the format is unknown */
 
-	/* The endpoint this CQ was bound to, so a completion can be
-	 * attributed to a local NIC address.  Left NULL if more than one
-	 * endpoint binds the same CQ, because then it would be a guess. */
-	struct fit_ep  *ep;
-	int             ep_ambiguous;
-	unsigned int    cq_id;
+  /* The endpoint this CQ was bound to, so a completion can be
+   * attributed to a local NIC address.  Left NULL if more than one
+   * endpoint binds the same CQ, because then it would be a guess. */
+  struct fit_ep *ep;
+  int ep_ambiguous;
+  unsigned int cq_id;
 };
 
 /* ------------------------------------------------------------------ */
@@ -246,14 +245,23 @@ void fit_writer_flush_all(void);
  * application's op_context, recorded so the completion can be matched to
  * this record; it is dropped when the provider refused the operation,
  * since nothing became outstanding. */
-void fit_record(struct fit_ep *h, const char *op, char dir, fi_addr_t peer,
-		size_t bytes, size_t iov_count, ssize_t ret,
-		const void *context);
+void fit_record(struct fit_ep *h,
+                const char *op,
+                char dir,
+                fi_addr_t peer,
+                size_t bytes,
+                size_t iov_count,
+                ssize_t ret,
+                const void *context);
 
 /* Emit one completion record.  now is the time the batch was reaped. */
-void fit_record_cq(struct fit_cq *c, const char *op, fi_addr_t peer,
-		   size_t bytes, ssize_t ret, const void *context,
-		   uint64_t now);
+void fit_record_cq(struct fit_cq *c,
+                   const char *op,
+                   fi_addr_t peer,
+                   size_t bytes,
+                   ssize_t ret,
+                   const void *context,
+                   uint64_t now);
 
 uint64_t fit_now_us(void);
 
@@ -261,13 +269,13 @@ uint64_t fit_now_us(void);
 /* address rendering                                                  */
 /* ------------------------------------------------------------------ */
 
-void        fit_ep_resolve_src(struct fit_ep *h);
+void fit_ep_resolve_src(struct fit_ep *h);
 
 /* Returns a sanitised, NUL-terminated peer string and its length.  The
  * result may point into the endpoint's peer cache (stable until the
  * endpoint closes) or into the caller's scratch buffer. */
-const char *fit_ep_peer_str(struct fit_ep *h, fi_addr_t peer, char *scratch,
-			    size_t scratch_len, size_t *len_out);
+const char *fit_ep_peer_str(
+    struct fit_ep *h, fi_addr_t peer, char *scratch, size_t scratch_len, size_t *len_out);
 
 /* ------------------------------------------------------------------ */
 /* installers                                                         */
@@ -281,26 +289,24 @@ void fit_hook_ep(struct fid_ep *ep, const struct fit_topo *topo);
 void fit_hook_av(struct fid_av *av);
 void fit_hook_cq(struct fid_cq *cq, enum fi_cq_format format);
 
-static inline size_t fit_iov_len(const struct iovec *iov, size_t count)
-{
-	size_t i, total = 0;
+static inline size_t fit_iov_len(const struct iovec *iov, size_t count) {
+  size_t i, total = 0;
 
-	if (!iov)
-		return 0;
-	for (i = 0; i < count; i++)
-		total += iov[i].iov_len;
-	return total;
+  if (!iov)
+    return 0;
+  for (i = 0; i < count; i++)
+    total += iov[i].iov_len;
+  return total;
 }
 
-static inline size_t fit_rma_iov_len(const struct fi_rma_iov *iov, size_t count)
-{
-	size_t i, total = 0;
+static inline size_t fit_rma_iov_len(const struct fi_rma_iov *iov, size_t count) {
+  size_t i, total = 0;
 
-	if (!iov)
-		return 0;
-	for (i = 0; i < count; i++)
-		total += iov[i].len;
-	return total;
+  if (!iov)
+    return 0;
+  for (i = 0; i < count; i++)
+    total += iov[i].len;
+  return total;
 }
 
 #endif /* FI_TRACE_H */

@@ -805,7 +805,7 @@ module LocalMaster
                         in: File::NULL, out: log_path, err: [:child, :out])
     @sessiond_waiter = Process.detach(pid)
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 20
-
+    ready = false
     begin
       loop do
         if @sessiond_waiter.join(0)
@@ -823,9 +823,8 @@ module LocalMaster
         end
         sleep 0.1
       end
-    rescue Exception
-      lttng_stop_foreground
-      raise
+    ensure
+      lttng_stop_foreground unless ready
     end
   end
 
@@ -843,6 +842,7 @@ module LocalMaster
         begin
           Process.kill('KILL', waiter.pid)
         rescue Errno::ESRCH
+          # The daemon exited between the check and the signal.
         end
         waiter.join
       end

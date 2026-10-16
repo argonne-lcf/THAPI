@@ -36,19 +36,19 @@
 /* ------------------------------------------------------------------ */
 
 struct posting_s {
-  int64_t     ts;            /* when the application posted            */
-  std::string op;            /* "fi_send", "fi_trecv", ...             */
-  std::string peer;          /* as known at posting time; a wildcard
-                                receive will be corrected by the
-                                completion, which knows the real sender */
-  uint64_t    posted_bytes;  /* buffer length, not transferred length  */
+  int64_t ts;            /* when the application posted            */
+  std::string op;        /* "fi_send", "fi_trecv", ...             */
+  std::string peer;      /* as known at posting time; a wildcard
+                            receive will be corrected by the
+                            completion, which knows the real sender */
+  uint64_t posted_bytes; /* buffer length, not transferred length  */
 };
 
 struct ep_info_s {
   std::string src_addr;
   std::string domain_name;
-  bool        topo_valid;
-  uint32_t    group, switch_id, port;
+  bool topo_valid;
+  uint32_t group, switch_id, port;
 };
 
 struct data_s {
@@ -75,29 +75,24 @@ struct data_s {
    */
   std::unordered_map<std::string, posting_s> outstanding;
 
-  std::unordered_map<std::string, ep_info_s> endpoints;  /* key: host/pid/ep_id */
+  std::unordered_map<std::string, ep_info_s> endpoints; /* key: host/pid/ep_id */
 };
 typedef struct data_s data_t;
 
 static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
 
-static void btx_finalize_component(void *usr_data) {
-  delete static_cast<data_t *>(usr_data);
-}
+static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-static std::string ctx_key(const char *hostname, int64_t vpid,
-                           uintptr_t op_context) {
-  return std::string(hostname) + "/" + std::to_string(vpid) + "/" +
-         std::to_string(op_context);
+static std::string ctx_key(const char *hostname, int64_t vpid, uintptr_t op_context) {
+  return std::string(hostname) + "/" + std::to_string(vpid) + "/" + std::to_string(op_context);
 }
 
 static std::string ep_key(const char *hostname, int64_t vpid, uint32_t ep_id) {
-  return std::string(hostname) + "/" + std::to_string(vpid) + "/" +
-         std::to_string(ep_id);
+  return std::string(hostname) + "/" + std::to_string(vpid) + "/" + std::to_string(ep_id);
 }
 
 /*
@@ -105,19 +100,16 @@ static std::string ep_key(const char *hostname, int64_t vpid, uint32_t ep_id) {
  * NIC when we know it.  This is the string that shows up in iprof's traffic
  * table, so it wants to be stable and greppable rather than pretty.
  */
-static std::string traffic_metadata(data_t *s, const char *hostname,
-                                    int64_t vpid, uint32_t ep_id,
-                                    const std::string &peer) {
+static std::string traffic_metadata(
+    data_t *s, const char *hostname, int64_t vpid, uint32_t ep_id, const std::string &peer) {
   auto it = s->endpoints.find(ep_key(hostname, vpid, ep_id));
   if (it == s->endpoints.end())
     return peer;
 
   std::string m = it->second.src_addr + "->" + peer;
   if (it->second.topo_valid)
-    m += " [" + it->second.domain_name + " g" +
-         std::to_string(it->second.group) + "s" +
-         std::to_string(it->second.switch_id) + "p" +
-         std::to_string(it->second.port) + "]";
+    m += " [" + it->second.domain_name + " g" + std::to_string(it->second.group) + "s" +
+         std::to_string(it->second.switch_id) + "p" + std::to_string(it->second.port) + "]";
   return m;
 }
 
@@ -125,19 +117,34 @@ static std::string traffic_metadata(data_t *s, const char *hostname,
 /* data path                                                          */
 /* ------------------------------------------------------------------ */
 
-static void op_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                              const char *hostname, int64_t vpid, uint64_t vtid,
-                              char *op, uint32_t ep_id, uintptr_t op_context) {
+static void op_entry_callback(void *btx_handle,
+                              void *usr_data,
+                              int64_t ts,
+                              const char *hostname,
+                              int64_t vpid,
+                              uint64_t vtid,
+                              char *op,
+                              uint32_t ep_id,
+                              uintptr_t op_context) {
   auto *s = static_cast<data_t *>(usr_data);
   s->op_stack[{hostname, vpid, vtid}].push_back({ts, op});
 }
 
-static void op_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *hostname, int64_t vpid, uint64_t vtid,
-                             char *op, uint32_t ep_id, char *src_addr,
-                             char *peer_addr, char *direction,
-                             uint64_t iov_count, uint64_t size_bytes,
-                             int64_t ret, uintptr_t op_context) {
+static void op_exit_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *hostname,
+                             int64_t vpid,
+                             uint64_t vtid,
+                             char *op,
+                             uint32_t ep_id,
+                             char *src_addr,
+                             char *peer_addr,
+                             char *direction,
+                             uint64_t iov_count,
+                             uint64_t size_bytes,
+                             int64_t ret,
+                             uintptr_t op_context) {
   auto *s = static_cast<data_t *>(usr_data);
   auto &stack = s->op_stack[{hostname, vpid, vtid}];
 
@@ -149,7 +156,7 @@ static void op_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
   if (stack.empty())
     return;
 
-  const int64_t     entry_ts = stack.back().first;
+  const int64_t entry_ts = stack.back().first;
   const std::string entry_op = stack.back().second;
   stack.pop_back();
 
@@ -159,9 +166,8 @@ static void op_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
    * failure, but it is also not work the application wanted, and flagging it
    * makes it visible in the tally instead of inflating the success counts.
    */
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts,
-                              BACKEND_FI, entry_op.c_str(), (ts - entry_ts),
-                              (ret < 0));
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_FI,
+                              entry_op.c_str(), (ts - entry_ts), (ret < 0));
 
   if (ret < 0)
     return; /* nothing became outstanding; the tracer already nulled context */
@@ -181,15 +187,21 @@ static void op_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
    * is recycled the instant an operation completes, so at most one live entry
    * per key is correct; an overwrite means we missed a completion.
    */
-  s->outstanding[ctx_key(hostname, vpid, op_context)] = {entry_ts, entry_op,
-                                                         peer_addr, size_bytes};
+  s->outstanding[ctx_key(hostname, vpid, op_context)] = {entry_ts, entry_op, peer_addr, size_bytes};
 }
 
-static void cq_completion_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                   const char *hostname, int64_t vpid,
-                                   uint64_t vtid, char *op, uint32_t obj_id,
-                                   char *src_addr, char *peer_addr,
-                                   uint64_t size_bytes, int64_t ret,
+static void cq_completion_callback(void *btx_handle,
+                                   void *usr_data,
+                                   int64_t ts,
+                                   const char *hostname,
+                                   int64_t vpid,
+                                   uint64_t vtid,
+                                   char *op,
+                                   uint32_t obj_id,
+                                   char *src_addr,
+                                   char *peer_addr,
+                                   uint64_t size_bytes,
+                                   int64_t ret,
                                    uintptr_t op_context) {
   auto *s = static_cast<data_t *>(usr_data);
 
@@ -214,9 +226,8 @@ static void cq_completion_callback(void *btx_handle, void *usr_data, int64_t ts,
    * that.  Compare against the CXI counters (iprof --backends fi,cxi) when you
    * need the hardware view.
    */
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, post.ts,
-                              BACKEND_FI, (post.op + ".transfer").c_str(),
-                              (ts - post.ts), (ret < 0));
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, post.ts, BACKEND_FI,
+                              (post.op + ".transfer").c_str(), (ts - post.ts), (ret < 0));
 
   if (ret < 0)
     return;
@@ -228,30 +239,39 @@ static void cq_completion_callback(void *btx_handle, void *usr_data, int64_t ts,
    * left.  Likewise peer_addr: a wildcard receive posts FI_ADDR_UNSPEC and
    * only fi_cq_readfrom() reveals who actually sent.
    */
-  const std::string peer =
-      (peer_addr && peer_addr[0] && std::string(peer_addr) != "fi_addr_unspec")
-          ? peer_addr
-          : post.peer;
+  const std::string peer = (peer_addr && peer_addr[0] && std::string(peer_addr) != "fi_addr_unspec")
+                               ? peer_addr
+                               : post.peer;
 
-  btx_push_message_lttng_traffic(
-      btx_handle, hostname, vpid, vtid, post.ts, BACKEND_FI, post.op.c_str(),
-      size_bytes, traffic_metadata(s, hostname, vpid, obj_id, peer).c_str());
+  btx_push_message_lttng_traffic(btx_handle, hostname, vpid, vtid, post.ts, BACKEND_FI,
+                                 post.op.c_str(), size_bytes,
+                                 traffic_metadata(s, hostname, vpid, obj_id, peer).c_str());
 }
 
 /* ------------------------------------------------------------------ */
 /* control path                                                       */
 /* ------------------------------------------------------------------ */
 
-static void ctrl_entry_callback(void *btx_handle, void *usr_data, int64_t ts,
-                                const char *hostname, int64_t vpid,
-                                uint64_t vtid, char *op, uint32_t obj_id) {
+static void ctrl_entry_callback(void *btx_handle,
+                                void *usr_data,
+                                int64_t ts,
+                                const char *hostname,
+                                int64_t vpid,
+                                uint64_t vtid,
+                                char *op,
+                                uint32_t obj_id) {
   auto *s = static_cast<data_t *>(usr_data);
   s->ctrl_stack[{hostname, vpid, vtid}].push_back({ts, op});
 }
 
-static void ctrl_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
-                               const char *hostname, int64_t vpid,
-                               uint64_t vtid, char *op, uint32_t obj_id,
+static void ctrl_exit_callback(void *btx_handle,
+                               void *usr_data,
+                               int64_t ts,
+                               const char *hostname,
+                               int64_t vpid,
+                               uint64_t vtid,
+                               char *op,
+                               uint32_t obj_id,
                                int64_t ret) {
   auto *s = static_cast<data_t *>(usr_data);
   auto &stack = s->ctrl_stack[{hostname, vpid, vtid}];
@@ -263,44 +283,46 @@ static void ctrl_exit_callback(void *btx_handle, void *usr_data, int64_t ts,
    * which opens an endpoint, which binds a CQ.  A separate stack from the data
    * path keeps that nesting from interleaving with postings.
    */
-  const int64_t     entry_ts = stack.back().first;
+  const int64_t entry_ts = stack.back().first;
   const std::string entry_op = stack.back().second;
   stack.pop_back();
 
-  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts,
-                              BACKEND_FI, entry_op.c_str(), (ts - entry_ts),
-                              (ret < 0));
+  btx_push_message_lttng_host(btx_handle, hostname, vpid, vtid, entry_ts, BACKEND_FI,
+                              entry_op.c_str(), (ts - entry_ts), (ret < 0));
 }
 
 /* ------------------------------------------------------------------ */
 /* endpoint description                                               */
 /* ------------------------------------------------------------------ */
 
-static void ep_info_callback(void *btx_handle, void *usr_data, int64_t ts,
-                             const char *hostname, int64_t vpid, uint64_t vtid,
-                             uint32_t ep_id, char *src_addr, char *domain_name,
-                             uint32_t topo_valid, uint32_t group,
-                             uint32_t switch_id, uint32_t port) {
+static void ep_info_callback(void *btx_handle,
+                             void *usr_data,
+                             int64_t ts,
+                             const char *hostname,
+                             int64_t vpid,
+                             uint64_t vtid,
+                             uint32_t ep_id,
+                             char *src_addr,
+                             char *domain_name,
+                             uint32_t topo_valid,
+                             uint32_t group,
+                             uint32_t switch_id,
+                             uint32_t port) {
   auto *s = static_cast<data_t *>(usr_data);
-  s->endpoints[ep_key(hostname, vpid, ep_id)] = {
-      src_addr, domain_name, topo_valid != 0, group, switch_id, port};
+  s->endpoints[ep_key(hostname, vpid, ep_id)] = {src_addr, domain_name, topo_valid != 0,
+                                                 group,    switch_id,   port};
 }
 
 /* ------------------------------------------------------------------ */
 
 void btx_register_usr_callbacks(void *btx_handle) {
-  btx_register_callbacks_initialize_component(btx_handle,
-                                              &btx_initialize_component);
-  btx_register_callbacks_finalize_component(btx_handle,
-                                            &btx_finalize_component);
+  btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
+  btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
 
   btx_register_callbacks_lttng_ust_fi_op_entry(btx_handle, &op_entry_callback);
   btx_register_callbacks_lttng_ust_fi_op_exit(btx_handle, &op_exit_callback);
-  btx_register_callbacks_lttng_ust_fi_cq_completion(btx_handle,
-                                                    &cq_completion_callback);
-  btx_register_callbacks_lttng_ust_fi_ctrl_entry(btx_handle,
-                                                 &ctrl_entry_callback);
-  btx_register_callbacks_lttng_ust_fi_ctrl_exit(btx_handle,
-                                                &ctrl_exit_callback);
+  btx_register_callbacks_lttng_ust_fi_cq_completion(btx_handle, &cq_completion_callback);
+  btx_register_callbacks_lttng_ust_fi_ctrl_entry(btx_handle, &ctrl_entry_callback);
+  btx_register_callbacks_lttng_ust_fi_ctrl_exit(btx_handle, &ctrl_exit_callback);
   btx_register_callbacks_lttng_ust_fi_ep_info(btx_handle, &ep_info_callback);
 }

@@ -9,7 +9,6 @@ lttng_ust_fi:
     - [ctf_string, op, op]
     - [ctf_integer, uint32_t, ep_id, ep_id]
     - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
-
   - name: op_exit
     args:
     - ["const char *", op]
@@ -31,7 +30,6 @@ lttng_ust_fi:
     - [ctf_integer, uint64_t, size_bytes, size_bytes]
     - [ctf_integer, int64_t, ret, ret]
     - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
-
   - name: cq_completion
     args:
     - ["const char *", op]
@@ -49,7 +47,6 @@ lttng_ust_fi:
     - [ctf_integer, uint64_t, size_bytes, size_bytes]
     - [ctf_integer, int64_t, ret, ret]
     - [ctf_integer_hex, uintptr_t, op_context, "(uintptr_t)op_context"]
-
   - name: ctrl_entry
     args:
     - ["const char *", op]
@@ -57,7 +54,6 @@ lttng_ust_fi:
     fields:
     - [ctf_string, op, op]
     - [ctf_integer, uint32_t, obj_id, obj_id]
-
   - name: ctrl_exit
     args:
     - ["const char *", op]
@@ -67,7 +63,6 @@ lttng_ust_fi:
     - [ctf_string, op, op]
     - [ctf_integer, uint32_t, obj_id, obj_id]
     - [ctf_integer, int64_t, ret, ret]
-
   - name: ep_info
     args:
     - [uint32_t, ep_id]
