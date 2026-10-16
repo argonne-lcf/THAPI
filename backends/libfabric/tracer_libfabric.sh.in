@@ -1,0 +1,90 @@
+#!/bin/sh
+#
+# Standalone driver: set up an LTTng session, preload the tracer, run the
+# application.  No analysis -- inspect the resulting CTF with
+# babeltrace_thapi, or just `babeltrace2 ~/lttng-traces/thapi-fi-session-*`.
+#
+# This is a developer convenience for checking that tracepoints fire at all.
+# For real use go through iprof, which also handles the per-rank session setup
+# that this script does not:
+#
+#     iprof --backends fi -- ./app
+#     mpirun -n 64 -- iprof --backends fi -- ./app
+#
+exec_prefix=@prefix@
+libdir=@libdir@
+prefix=@prefix@
+datarootdir=@datarootdir@
+datadir=@datadir@
+
+display_help() {
+  echo "Usage:"
+  echo " $(basename $0) [options] [--] <application> <application-arguments>"
+  echo "  --help                        Show this screen"
+  echo "  --version                     Print the version string"
+  echo ""
+  echo "Environment:"
+  echo "  LTTNG_UST_FI_ENABLE=0         Load but do not hook anything"
+  echo "  LTTNG_UST_FI_OPS=msg,tagged,rma   Which op families to swap in"
+  echo "  LTTNG_UST_FI_RX=0             Skip receive postings"
+  echo "  LTTNG_UST_FI_SRX=0            Skip shared receive contexts"
+  echo "  LTTNG_UST_FI_EAGAIN=0         Drop -FI_EAGAIN postings"
+  echo "  LTTNG_UST_FI_CQ=0             Do not hook completion queues"
+  echo "  LTTNG_UST_FI_RESOLVE=0        Do not resolve addresses via the AV"
+  echo "  LTTNG_UST_FI_VERBOSE=1        Tracer diagnostics on stderr"
+  exit 1
+}
+
+display_version() {
+  cat $datadir/thapi_version
+  exit 1
+}
+
+while true; do
+  case "$1" in
+    --help)
+      display_help
+      exit
+      ;;
+    --version)
+      display_version
+      exit
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) break ;;
+  esac
+done
+
+if [ "$#" -eq 0 ]; then
+  display_help
+fi
+
+lttng-sessiond --daemonize --quiet
+lttng create thapi-fi-session
+lttng enable-channel --userspace --blocking-timeout=inf blocking-channel
+lttng add-context --userspace --channel=blocking-channel -t vpid -t vtid
+lttng enable-event --channel=blocking-channel --userspace lttng_ust_fi:*
+
+# No LD_LIBRARY_PATH manipulation and no soname shadowing: the tracer is
+# preloaded alongside the real libfabric.so and reaches it with
+# dlvsym(RTLD_NEXT, "fi_fabric", ...).  Everything below fi_fabric is reached
+# through vtable pointers the provider itself handed us.
+export LD_PRELOAD=$libdir/libTracerLibfabric.so
+export LTTNG_UST_ALLOW_BLOCKING=1
+
+lttng start
+
+ctrl_c() {
+  lttng stop
+  lttng destroy
+  exit
+}
+
+trap ctrl_c INT
+
+"$@"
+lttng stop
+lttng destroy

@@ -659,6 +659,13 @@ def enable_events_pytorch(channel_name, tracing_mode: 'default', profiling: fals
   LOGGER.debug("Tracing mode #{tracing_mode} similar to default for pytorch") unless tracing_mode == 'default'
 end
 
+def enable_events_fi(channel_name, tracing_mode: 'default', profiling: false)
+  lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
+  exec("#{lttng_enable} lttng_ust_fi:*")
+  LOGGER.debug('Profiling is ignored for fi') if profiling
+  LOGGER.debug("Tracing mode #{tracing_mode} similar to default for fi") unless tracing_mode == 'default'
+end
+
 def enable_events_metadata(channel_name, tracing_mode: 'default', profiling: true)
   lttng_enable = "lttng enable-event --userspace --session=#{lttng_session_uuid} --channel=#{channel_name}"
   LOGGER.debug('Profiling is ignored for metadata') if profiling
@@ -741,7 +748,12 @@ module LocalMaster
     #   if LTTNG_HOME doesn't exist
     FileUtils.mkdir_p(lttng_home_dir)
     FileUtils.mkdir_p(lttng_trace_dir_tmp)
-    exec('lttng-sessiond --daemonize')
+    # if ENV['THAPI_SESSIOND_FOREGROUND'] == '1'
+    #   lttng_start_foreground
+    # else
+    #   exec('lttng-sessiond --daemonize')
+    # end
+    lttng_start_foreground
     exec("lttng create #{lttng_session_uuid} -o #{lttng_trace_dir_tmp}")
 
     File.write(File.join(lttng_trace_dir_tmp, 'thapi_metadata.yaml'), { type: 'lttng' }.to_yaml)
@@ -785,7 +797,66 @@ module LocalMaster
     exec("lttng destroy #{lttng_session_uuid}")
   end
 
+  # Optional workaround for installations where daemonized startup hangs.
+  # Keep daemon output out of Open3 pipes and wait for a working client socket.
+  def lttng_start_foreground
+    log_path = File.join(lttng_home_dir, 'sessiond.log')
+    pid = Process.spawn('lttng-sessiond', '--no-kernel',
+                        in: File::NULL, out: log_path, err: [:child, :out])
+    @sessiond_waiter = Process.detach(pid)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 20
+    ready = false
+    begin
+      loop do
+        if @sessiond_waiter.join(0)
+          raise "lttng-sessiond exited: #{@sessiond_waiter.value}; see #{log_path}"
+        end
+
+        # Bound each client probe as well as the overall startup wait.
+        ready = system('timeout', '--kill-after=1s', '2s',
+                       'lttng', '--no-sessiond', 'list',
+                       out: File::NULL, err: File::NULL)
+        break if ready
+
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+          raise "lttng-sessiond readiness timed out; see #{log_path}"
+        end
+        sleep 0.1
+      end
+    ensure
+      lttng_stop_foreground unless ready
+    end
+  end
+
+  def lttng_stop_foreground
+    waiter = @sessiond_waiter
+    return unless waiter
+
+    unless waiter.join(0)
+      begin
+        Process.kill('TERM', waiter.pid)
+      rescue Errno::ESRCH
+        # The daemon exited between the check and the signal.
+      end
+      unless waiter.join(5)
+        begin
+          Process.kill('KILL', waiter.pid)
+        rescue Errno::ESRCH
+          # The daemon exited between the check and the signal.
+        end
+        waiter.join
+      end
+    end
+    @sessiond_waiter = nil
+  end
+
   def lttng_kill_sessiond
+    if @sessiond_waiter
+      lttng_stop_foreground
+      FileUtils.rm_rf(lttng_home_dir)
+      return
+    end
+
     # Need to kill the sessiond Daemon. It's safe because each job has their own
     #
     # In theory, opening the lttng-sessiond.pid file is racy.
@@ -992,6 +1063,14 @@ def all_env_tracers(usr_binary)
     end
   end
 
+  if OPTIONS[:'backend-names'].include?('fi')
+    backends << 'fi'
+    h[%w[LD_PRELOAD prepend]] << File.join(LIBDIR, 'libTracerLibfabric.so')
+    h['LTTNG_UST_FI_OPS']     = OPTIONS[:'fi-ops'] if OPTIONS[:'fi-ops']
+    h['LTTNG_UST_FI_SRX']     = 1 if OPTIONS[:'fi-srx']
+    h['LTTNG_UST_FI_VERBOSE'] = 1 if LOGGER.level <= Logger::DEBUG
+  end
+
   # Sample
   if SamplingDaemon.active?
     LOGGER.debug('Sampling Enabled')
@@ -1085,7 +1164,7 @@ if $thapi_launch || __FILE__ == $PROGRAM_NAME
   # General Options
   parser.on('-b', '--backends BACKENDS', Array, 'Select which backends to use and their grouping level.',
             'Format: backend_name[:backend_level],...',
-            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'pytorch:6'])
+            default: ['mpi:3', 'omp:2', 'cl:1', 'ze:1', 'cuda:1', 'hip:1', 'cxi:4', 'itt:5', 'pytorch:6', 'fi:7'])
   parser.on('--[no-]archive', 'Enable or disable archive support.', default: false)
 
   # Analysis

@@ -1,0 +1,199 @@
+:environment:
+  :entries:
+  - :name: hostname
+    :type: string
+:stream_classes:
+- :name: thapi_libfabric
+  :default_clock_class: {}
+  :packet_context_field_class:
+    :type: structure
+    :members:
+    - :name: cpu_id
+      :field_class:
+        :type: integer_unsigned
+        :cast_type: uint64_t
+        :field_value_range: 32
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: vpid
+      :field_class:
+        :type: integer_signed
+        :cast_type: int64_t
+        :field_value_range: 64
+    - :name: vtid
+      :field_class:
+        :type: integer_unsigned
+        :cast_type: uint64_t
+        :field_value_range: 64
+  :event_classes:
+  - :name: lttng_ust_fi:op_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: op
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: ep_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: op_context
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uintptr_t
+          :field_value_range: 64
+          :preferred_display_base: 16
+  - :name: lttng_ust_fi:op_exit
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: op
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: ep_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: src_addr
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: peer_addr
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: direction
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: iov_count
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint64_t
+          :field_value_range: 64
+      - :name: size_bytes
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint64_t
+          :field_value_range: 64
+      - :name: ret
+        :field_class:
+          :type: integer_signed
+          :cast_type: int64_t
+          :field_value_range: 64
+      - :name: op_context
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uintptr_t
+          :field_value_range: 64
+          :preferred_display_base: 16
+  - :name: lttng_ust_fi:cq_completion
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: op
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: obj_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: src_addr
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: peer_addr
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: size_bytes
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint64_t
+          :field_value_range: 64
+      - :name: ret
+        :field_class:
+          :type: integer_signed
+          :cast_type: int64_t
+          :field_value_range: 64
+      - :name: op_context
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uintptr_t
+          :field_value_range: 64
+          :preferred_display_base: 16
+  - :name: lttng_ust_fi:ctrl_entry
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: op
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: obj_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+  - :name: lttng_ust_fi:ctrl_exit
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: op
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: obj_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: ret
+        :field_class:
+          :type: integer_signed
+          :cast_type: int64_t
+          :field_value_range: 64
+  - :name: lttng_ust_fi:ep_info
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ep_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: src_addr
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: domain_name
+        :field_class:
+          :cast_type: char *
+          :type: string
+      - :name: topo_valid
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: group
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: switch_id
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
+      - :name: port
+        :field_class:
+          :type: integer_unsigned
+          :cast_type: uint32_t
+          :field_value_range: 32
