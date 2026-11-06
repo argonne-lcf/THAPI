@@ -1,6 +1,7 @@
 require_relative '../../utils/backend_model'
 
-api = ApiModel.load_file('libfabric_api.yaml')
+API = ApiModel.load_file('libfabric_api.yaml').register_ffi_types # to determine the size and signedness of typedefs such as fi_addr_t
+api = API
 
 # hooks = {
 #   'fi_send' => ['fi_ops_msg', 'send']
