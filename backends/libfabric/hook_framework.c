@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "ofi_hook.h"
+#include "libfabric_tracepoints.h"
 
 static struct hook_prov_ctx thapi_ctx;
 static struct fi_ops_msg thapi_msg_ops;
@@ -10,16 +11,21 @@ static pthread_once_t thapi_msg_once = PTHREAD_ONCE_INIT;
 static ssize_t thapi_send(struct fid_ep *ep, const void *buf, size_t len,
                          void *desc, fi_addr_t dest_addr, void *context){
     struct hook_ep *endpoint = container_of(ep, struct hook_ep, ep);
-    fprintf(stderr,
-            "[THAPI libfabric] fi_send entry ep=%p buf=%p len=%zu "
-            "desc=%p dest=%llu context=%p\n",
-            (void *)ep, (void *)buf, len, desc,
-            (unsigned long long)dest_addr, context);
+    // fprintf(stderr,
+    //         "[THAPI libfabric] fi_send entry ep=%p buf=%p len=%zu "
+    //         "desc=%p dest=%llu context=%p\n",
+    //         (void *)ep, (void *)buf, len, desc,
+    //         (unsigned long long)dest_addr, context);
+
+    tracepoint(lttng_ust_libfabric, fi_send_entry,
+           ep, buf, len, desc, dest_addr, context);
 
     ssize_t ret = fi_send(endpoint->hep, buf, len, desc, dest_addr, context);
 
-    fprintf(stderr, "[THAPI libfabric] fi_send exit ep=%p ret=%zd\n",
-            (void *)ep, ret);
+    // fprintf(stderr, "[THAPI libfabric] fi_send exit ep=%p ret=%zd\n",
+    //         (void *)ep, ret);
+    tracepoint(lttng_ust_libfabric, fi_send_exit,
+           ep, buf, len, desc, dest_addr, context, ret);
     return ret;
 }
 
