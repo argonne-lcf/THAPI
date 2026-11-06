@@ -1,0 +1,9866 @@
+declarations:
+- name: __tzname
+  storage: extern
+  type:
+    kind: array
+    length: '2'
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+- name: __daylight
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: __timezone
+  storage: extern
+  type:
+    kind: int
+    name: long int
+- name: tzname
+  storage: extern
+  type:
+    kind: array
+    length: '2'
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+- name: daylight
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timezone
+  storage: extern
+  type:
+    kind: int
+    name: long int
+enums:
+- members:
+  - name: FI_EOTHER
+    val: FI_ERRNO_OFFSET
+  - name: FI_ETOOSMALL
+    val: '257'
+  - name: FI_EOPBADSTATE
+    val: '258'
+  - name: FI_EAVAIL
+    val: '259'
+  - name: FI_EBADFLAGS
+    val: '260'
+  - name: FI_ENOEQ
+    val: '261'
+  - name: FI_EDOMAIN
+    val: '262'
+  - name: FI_ENOCQ
+    val: '263'
+  - name: FI_ECRC
+    val: '264'
+  - name: FI_ETRUNC
+    val: '265'
+  - name: FI_ENOKEY
+    val: '266'
+  - name: FI_ENOAV
+    val: '267'
+  - name: FI_EOVERRUN
+    val: '268'
+  - name: FI_ENORX
+    val: '269'
+  - name: FI_ENOMR
+    val: '270'
+  - name: FI_EFIREWALLADDR
+    val: '271'
+  - name: FI_ERRNO_MAX
+- members:
+  - name: FI_NAME_MAX
+    val: '64'
+  - name: FI_ATOMIC_OP_LAST
+    val: '19'
+  - name: FI_DATATYPE_LAST
+    val: '14'
+- members:
+  - name: FI_FORMAT_UNSPEC
+  - name: FI_SOCKADDR
+  - name: FI_SOCKADDR_IN
+  - name: FI_SOCKADDR_IN6
+  - name: FI_SOCKADDR_IB
+  - name: FI_ADDR_PSMX
+  - name: FI_ADDR_GNI
+  - name: FI_ADDR_BGQ
+  - name: FI_ADDR_MLX
+  - name: FI_ADDR_STR
+  - name: FI_ADDR_PSMX2
+  - name: FI_ADDR_IB_UD
+  - name: FI_ADDR_EFA
+  - name: FI_ADDR_PSMX3
+  - name: FI_ADDR_OPX
+  - name: FI_ADDR_CXI
+  - name: FI_ADDR_UCX
+  - name: FI_SOCKADDR_IP
+- members:
+  - name: FI_AV_UNSPEC
+  - name: FI_AV_MAP
+  - name: FI_AV_TABLE
+  name: fi_av_type
+- members:
+  - name: FI_PROGRESS_UNSPEC
+  - name: FI_PROGRESS_AUTO
+  - name: FI_PROGRESS_MANUAL
+  - name: FI_PROGRESS_CONTROL_UNIFIED
+  name: fi_progress
+- members:
+  - name: FI_THREAD_UNSPEC
+  - name: FI_THREAD_SAFE
+  - name: FI_THREAD_FID
+  - name: FI_THREAD_DOMAIN
+  - name: FI_THREAD_COMPLETION
+  - name: FI_THREAD_ENDPOINT
+  name: fi_threading
+- members:
+  - name: FI_RM_UNSPEC
+  - name: FI_RM_DISABLED
+  - name: FI_RM_ENABLED
+  name: fi_resource_mgmt
+- members:
+  - name: FI_EP_UNSPEC
+  - name: FI_EP_MSG
+  - name: FI_EP_DGRAM
+  - name: FI_EP_RDM
+  name: fi_ep_type
+- members:
+  - name: FI_PROTO_UNSPEC
+  - name: FI_PROTO_RDMA_CM_IB_RC
+  - name: FI_PROTO_IWARP
+  - name: FI_PROTO_IB_UD
+  - name: FI_PROTO_PSMX
+  - name: FI_PROTO_UDP
+  - name: FI_PROTO_SOCK_TCP
+  - name: FI_PROTO_MXM
+  - name: FI_PROTO_IWARP_RDM
+  - name: FI_PROTO_IB_RDM
+  - name: FI_PROTO_GNI
+  - name: FI_PROTO_RXM
+  - name: FI_PROTO_RXD
+  - name: FI_PROTO_MLX
+  - name: FI_PROTO_NETWORKDIRECT
+  - name: FI_PROTO_PSMX2
+  - name: FI_PROTO_SHM
+  - name: FI_PROTO_MRAIL
+  - name: FI_PROTO_RSTREAM
+  - name: FI_PROTO_RDMA_CM_IB_XRC
+  - name: FI_PROTO_EFA
+  - name: FI_PROTO_PSMX3
+  - name: FI_PROTO_RXM_TCP
+  - name: FI_PROTO_OPX
+  - name: FI_PROTO_CXI
+  - name: FI_PROTO_XNET
+  - name: FI_PROTO_COLL
+  - name: FI_PROTO_UCX
+  - name: FI_PROTO_SM2
+  - name: FI_PROTO_CXI_RNR
+  - name: FI_PROTO_LPP
+  - name: FI_PROTO_LNX
+- members:
+  - name: FI_TAG_BITS
+  - name: FI_TAG_MPI
+  - name: FI_TAG_CCL
+  - name: FI_TAG_MAX_FORMAT
+    val: 1ULL << 16
+- members:
+  - name: FI_TC_UNSPEC
+    val: '0'
+  - name: FI_TC_DSCP
+    val: '0x100'
+  - name: FI_TC_LABEL
+    val: '0x200'
+  - name: FI_TC_BEST_EFFORT
+    val: FI_TC_LABEL
+  - name: FI_TC_LOW_LATENCY
+  - name: FI_TC_DEDICATED_ACCESS
+  - name: FI_TC_BULK_DATA
+  - name: FI_TC_SCAVENGER
+  - name: FI_TC_NETWORK_CTRL
+- members:
+  - name: FI_CQ_FORMAT_UNSPEC
+  - name: FI_CQ_FORMAT_CONTEXT
+  - name: FI_CQ_FORMAT_MSG
+  - name: FI_CQ_FORMAT_DATA
+  - name: FI_CQ_FORMAT_TAGGED
+  name: fi_cq_format
+- members:
+  - name: FI_WAIT_NONE
+  - name: FI_WAIT_UNSPEC
+  - name: FI_WAIT_SET
+  - name: FI_WAIT_FD
+  - name: FI_WAIT_MUTEX_COND
+  - name: FI_WAIT_YIELD
+  - name: FI_WAIT_POLLFD
+  name: fi_wait_obj
+- members:
+  - name: FI_CQ_COND_NONE
+  - name: FI_CQ_COND_THRESHOLD
+  name: fi_cq_wait_cond
+- members:
+  - name: FI_BUS_UNSPEC
+  - name: FI_BUS_UNKNOWN
+    val: FI_BUS_UNSPEC
+  - name: FI_BUS_PCI
+  name: fi_bus_type
+- members:
+  - name: FI_LINK_UNKNOWN
+  - name: FI_LINK_DOWN
+  - name: FI_LINK_UP
+  name: fi_link_state
+- members:
+  - name: FI_CNTR_EVENTS_COMP
+  - name: FI_CNTR_EVENTS_BYTES
+  name: fi_cntr_events
+- members:
+  - name: FI_INT8
+  - name: FI_UINT8
+  - name: FI_INT16
+  - name: FI_UINT16
+  - name: FI_INT32
+  - name: FI_UINT32
+  - name: FI_INT64
+  - name: FI_UINT64
+  - name: FI_FLOAT
+  - name: FI_DOUBLE
+  - name: FI_FLOAT_COMPLEX
+  - name: FI_DOUBLE_COMPLEX
+  - name: FI_LONG_DOUBLE
+  - name: FI_LONG_DOUBLE_COMPLEX
+  - name: FI_INT128
+  - name: FI_UINT128
+  - name: FI_FLOAT16
+  - name: FI_BFLOAT16
+  - name: FI_FLOAT8_E4M3
+  - name: FI_FLOAT8_E5M2
+  - name: FI_VOID
+    val: FI_COLLECTIVE_OFFSET
+  name: fi_datatype
+- members:
+  - name: FI_MIN
+  - name: FI_MAX
+  - name: FI_SUM
+  - name: FI_PROD
+  - name: FI_LOR
+  - name: FI_LAND
+  - name: FI_BOR
+  - name: FI_BAND
+  - name: FI_LXOR
+  - name: FI_BXOR
+  - name: FI_ATOMIC_READ
+  - name: FI_ATOMIC_WRITE
+  - name: FI_CSWAP
+  - name: FI_CSWAP_NE
+  - name: FI_CSWAP_LE
+  - name: FI_CSWAP_LT
+  - name: FI_CSWAP_GE
+  - name: FI_CSWAP_GT
+  - name: FI_MSWAP
+  - name: FI_DIFF
+  - name: FI_NOOP
+    val: FI_COLLECTIVE_OFFSET
+  name: fi_op
+- members:
+  - name: FI_BARRIER
+  - name: FI_BROADCAST
+  - name: FI_ALLTOALL
+  - name: FI_ALLREDUCE
+  - name: FI_ALLGATHER
+  - name: FI_REDUCE_SCATTER
+  - name: FI_REDUCE
+  - name: FI_SCATTER
+  - name: FI_GATHER
+  name: fi_collective_op
+- members:
+  - name: FI_HMEM_SYSTEM
+    val: '0'
+  - name: FI_HMEM_CUDA
+  - name: FI_HMEM_ROCR
+  - name: FI_HMEM_ZE
+  - name: FI_HMEM_NEURON
+  - name: FI_HMEM_SYNAPSEAI
+  name: fi_hmem_iface
+- members:
+  - name: FI_CLASS_UNSPEC
+  - name: FI_CLASS_FABRIC
+  - name: FI_CLASS_DOMAIN
+  - name: FI_CLASS_EP
+  - name: FI_CLASS_SEP
+  - name: FI_CLASS_RX_CTX
+  - name: FI_CLASS_SRX_CTX
+  - name: FI_CLASS_TX_CTX
+  - name: FI_CLASS_STX_CTX
+  - name: FI_CLASS_PEP
+  - name: FI_CLASS_INTERFACE
+  - name: FI_CLASS_AV
+  - name: FI_CLASS_MR
+  - name: FI_CLASS_EQ
+  - name: FI_CLASS_CQ
+  - name: FI_CLASS_CNTR
+  - name: FI_CLASS_WAIT
+  - name: FI_CLASS_POLL
+  - name: FI_CLASS_CONNREQ
+  - name: FI_CLASS_MC
+  - name: FI_CLASS_NIC
+  - name: FI_CLASS_AV_SET
+  - name: FI_CLASS_MR_CACHE
+  - name: FI_CLASS_MEM_MONITOR
+  - name: FI_CLASS_PEER_CQ
+  - name: FI_CLASS_PEER_SRX
+  - name: FI_CLASS_LOG
+  - name: FI_CLASS_PEER_AV
+  - name: FI_CLASS_PEER_AV_SET
+  - name: FI_CLASS_PEER_CNTR
+  - name: FI_CLASS_PROFILE
+- members:
+  - name: FI_GETFIDFLAG
+  - name: FI_SETFIDFLAG
+  - name: FI_GETOPSFLAG
+  - name: FI_SETOPSFLAG
+  - name: FI_ALIAS
+  - name: FI_GETWAIT
+  - name: FI_ENABLE
+  - name: FI_BACKLOG
+  - name: FI_GET_RAW_MR
+  - name: FI_MAP_RAW_MR
+  - name: FI_UNMAP_KEY
+  - name: FI_QUEUE_WORK
+  - name: FI_CANCEL_WORK
+  - name: FI_FLUSH_WORK
+  - name: FI_REFRESH
+  - name: FI_DUP
+  - name: FI_GETWAITOBJ
+  - name: FI_GET_VAL
+  - name: FI_SET_VAL
+  - name: FI_EXPORT_FID
+  - name: FI_GET_FD
+- members:
+  - name: FI_TYPE_INFO
+  - name: FI_TYPE_EP_TYPE
+  - name: FI_TYPE_CAPS
+  - name: FI_TYPE_OP_FLAGS
+  - name: FI_TYPE_ADDR_FORMAT
+  - name: FI_TYPE_TX_ATTR
+  - name: FI_TYPE_RX_ATTR
+  - name: FI_TYPE_EP_ATTR
+  - name: FI_TYPE_DOMAIN_ATTR
+  - name: FI_TYPE_FABRIC_ATTR
+  - name: FI_TYPE_THREADING
+  - name: FI_TYPE_PROGRESS
+  - name: FI_TYPE_PROTOCOL
+  - name: FI_TYPE_MSG_ORDER
+  - name: FI_TYPE_MODE
+  - name: FI_TYPE_AV_TYPE
+  - name: FI_TYPE_ATOMIC_TYPE
+  - name: FI_TYPE_ATOMIC_OP
+  - name: FI_TYPE_VERSION
+  - name: FI_TYPE_EQ_EVENT
+  - name: FI_TYPE_CQ_EVENT_FLAGS
+  - name: FI_TYPE_MR_MODE
+  - name: FI_TYPE_OP_TYPE
+  - name: FI_TYPE_FID
+  - name: FI_TYPE_COLLECTIVE_OP
+  - name: FI_TYPE_HMEM_IFACE
+  - name: FI_TYPE_CQ_FORMAT
+  - name: FI_TYPE_LOG_LEVEL
+  - name: FI_TYPE_LOG_SUBSYS
+  - name: FI_TYPE_AV_ATTR
+  - name: FI_TYPE_CQ_ATTR
+  - name: FI_TYPE_MR_ATTR
+  - name: FI_TYPE_CNTR_ATTR
+  - name: FI_TYPE_CQ_ERR_ENTRY
+  name: fi_type
+- members:
+  - name: FI_PARAM_STRING
+  - name: FI_PARAM_INT
+  - name: FI_PARAM_BOOL
+  - name: FI_PARAM_SIZE_T
+  name: fi_param_type
+- members:
+  - name: PTHREAD_CREATE_JOINABLE
+  - name: PTHREAD_CREATE_DETACHED
+- members:
+  - name: PTHREAD_MUTEX_TIMED_NP
+  - name: PTHREAD_MUTEX_RECURSIVE_NP
+  - name: PTHREAD_MUTEX_ERRORCHECK_NP
+  - name: PTHREAD_MUTEX_ADAPTIVE_NP
+  - name: PTHREAD_MUTEX_NORMAL
+    val: PTHREAD_MUTEX_TIMED_NP
+  - name: PTHREAD_MUTEX_RECURSIVE
+    val: PTHREAD_MUTEX_RECURSIVE_NP
+  - name: PTHREAD_MUTEX_ERRORCHECK
+    val: PTHREAD_MUTEX_ERRORCHECK_NP
+  - name: PTHREAD_MUTEX_DEFAULT
+    val: PTHREAD_MUTEX_NORMAL
+- members:
+  - name: PTHREAD_MUTEX_STALLED
+  - name: PTHREAD_MUTEX_STALLED_NP
+    val: PTHREAD_MUTEX_STALLED
+  - name: PTHREAD_MUTEX_ROBUST
+  - name: PTHREAD_MUTEX_ROBUST_NP
+    val: PTHREAD_MUTEX_ROBUST
+- members:
+  - name: PTHREAD_PRIO_NONE
+  - name: PTHREAD_PRIO_INHERIT
+  - name: PTHREAD_PRIO_PROTECT
+- members:
+  - name: PTHREAD_RWLOCK_PREFER_READER_NP
+  - name: PTHREAD_RWLOCK_PREFER_WRITER_NP
+  - name: PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP
+  - name: PTHREAD_RWLOCK_DEFAULT_NP
+    val: PTHREAD_RWLOCK_PREFER_READER_NP
+- members:
+  - name: PTHREAD_INHERIT_SCHED
+  - name: PTHREAD_EXPLICIT_SCHED
+- members:
+  - name: PTHREAD_SCOPE_SYSTEM
+  - name: PTHREAD_SCOPE_PROCESS
+- members:
+  - name: PTHREAD_PROCESS_PRIVATE
+  - name: PTHREAD_PROCESS_SHARED
+- members:
+  - name: PTHREAD_CANCEL_ENABLE
+  - name: PTHREAD_CANCEL_DISABLE
+- members:
+  - name: PTHREAD_CANCEL_DEFERRED
+  - name: PTHREAD_CANCEL_ASYNCHRONOUS
+- members:
+  - name: FI_NOTIFY
+  - name: FI_CONNREQ
+  - name: FI_CONNECTED
+  - name: FI_SHUTDOWN
+  - name: FI_MR_COMPLETE
+  - name: FI_AV_COMPLETE
+  - name: FI_JOIN_COMPLETE
+- members:
+  - name: FI_OPT_ENDPOINT
+- members:
+  - name: FI_OPT_MIN_MULTI_RECV
+  - name: FI_OPT_CM_DATA_SIZE
+  - name: FI_OPT_BUFFERED_MIN
+  - name: FI_OPT_BUFFERED_LIMIT
+  - name: FI_OPT_SEND_BUF_SIZE
+  - name: FI_OPT_RECV_BUF_SIZE
+  - name: FI_OPT_TX_SIZE
+  - name: FI_OPT_RX_SIZE
+  - name: FI_OPT_FI_HMEM_P2P
+  - name: FI_OPT_XPU_TRIGGER
+  - name: FI_OPT_CUDA_API_PERMITTED
+  - name: FI_OPT_SHARED_MEMORY_PERMITTED
+  - name: FI_OPT_MAX_MSG_SIZE
+  - name: FI_OPT_MAX_TAGGED_SIZE
+  - name: FI_OPT_MAX_RMA_SIZE
+  - name: FI_OPT_MAX_ATOMIC_SIZE
+  - name: FI_OPT_INJECT_MSG_SIZE
+  - name: FI_OPT_INJECT_TAGGED_SIZE
+  - name: FI_OPT_INJECT_RMA_SIZE
+  - name: FI_OPT_INJECT_ATOMIC_SIZE
+  - name: FI_OPT_FIREWALL_ADDR
+- members:
+  - name: FI_HMEM_P2P_ENABLED
+  - name: FI_HMEM_P2P_REQUIRED
+  - name: FI_HMEM_P2P_PREFERRED
+  - name: FI_HMEM_P2P_DISABLED
+functions:
+- name: select
+  params:
+  - name: __nfds
+    type:
+      kind: int
+      name: int
+  - name: __readfds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __writefds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __exceptfds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __timeout
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: timeval
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pselect
+  params:
+  - name: __nfds
+    type:
+      kind: int
+      name: int
+  - name: __readfds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __writefds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __exceptfds
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: fd_set
+  - name: __timeout
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  - name: __sigmask
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: __sigset_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: readv
+  params:
+  - name: __fd
+    type:
+      kind: int
+      name: int
+  - name: __iovec
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: iovec
+  - name: __count
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: custom_type
+    name: ssize_t
+- name: writev
+  params:
+  - name: __fd
+    type:
+      kind: int
+      name: int
+  - name: __iovec
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: iovec
+  - name: __count
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: custom_type
+    name: ssize_t
+- name: preadv
+  params:
+  - name: __fd
+    type:
+      kind: int
+      name: int
+  - name: __iovec
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: iovec
+  - name: __count
+    type:
+      kind: int
+      name: int
+  - name: __offset
+    type:
+      kind: custom_type
+      name: __off_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: ssize_t
+- name: pwritev
+  params:
+  - name: __fd
+    type:
+      kind: int
+      name: int
+  - name: __iovec
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: iovec
+  - name: __count
+    type:
+      kind: int
+      name: int
+  - name: __offset
+    type:
+      kind: custom_type
+      name: __off_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: ssize_t
+- name: __errno_location
+  params: []
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: int
+      name: int
+- name: fi_strerror
+  params:
+  - name: errnum
+    type:
+      kind: int
+      name: int
+  type:
+    kind: pointer
+    type:
+      const: true
+      kind: char
+      name: char
+- name: fi_version
+  params: []
+  type:
+    kind: custom_type
+    name: uint32_t
+- name: fi_getinfo
+  params:
+  - name: version
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: node
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: service
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: hints
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: fi_info
+  - name: info
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fi_info
+  type:
+    kind: int
+    name: int
+- name: fi_freeinfo
+  params:
+  - name: info
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_info
+  type:
+    kind: void
+    name: void
+- name: fi_dupinfo
+  params:
+  - name: info
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: fi_info
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: fi_info
+- name: fi_fabric2
+  params:
+  - name: info
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_info
+  - name: fabric
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fid_fabric
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  type:
+    kind: int
+    name: int
+- name: fi_fabric
+  params:
+  - name: attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_fabric_attr
+  - name: fabric
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fid_fabric
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  type:
+    kind: int
+    name: int
+- name: fi_open
+  params:
+  - name: version
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: name
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: attr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: attr_len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: fid
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fid
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  type:
+    kind: int
+    name: int
+- name: fi_tostr
+  params:
+  - name: data
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: datatype
+    type:
+      kind: enum
+      name: fi_type
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: fi_tostr_r
+  params:
+  - name: buf
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: data
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: datatype
+    type:
+      kind: enum
+      name: fi_type
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: fi_getparams
+  params:
+  - name: params
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fi_param
+  - name: count
+    type:
+      kind: pointer
+      type:
+        kind: int
+        name: int
+  type:
+    kind: int
+    name: int
+- name: fi_freeparams
+  params:
+  - name: params
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_param
+  type:
+    kind: void
+    name: void
+- name: memcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: memmove
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: memccpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __c
+    type:
+      kind: int
+      name: int
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: memset
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __c
+    type:
+      kind: int
+      name: int
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: memcmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: __memcmpeq
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: memchr
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __c
+    type:
+      kind: int
+      name: int
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: strcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strncpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strcat
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strncat
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strcmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strncmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strcoll
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strxfrm
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: strcoll_l
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __l
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strxfrm_l
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __l
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: size_t
+- name: strdup
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strndup
+  params:
+  - name: __string
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strchr
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __c
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strrchr
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __c
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strchrnul
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __c
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strcspn
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __reject
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: strspn
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __accept
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: strpbrk
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __accept
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strstr
+  params:
+  - name: __haystack
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __needle
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strtok
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __delim
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: __strtok_r
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __delim
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __save_ptr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: pointer
+        type:
+          kind: char
+          name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strtok_r
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __delim
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __save_ptr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: pointer
+        type:
+          kind: char
+          name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strcasestr
+  params:
+  - name: __haystack
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __needle
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: memmem
+  params:
+  - name: __haystack
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __haystacklen
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __needle
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __needlelen
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: __mempcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: void
+        name: void
+  - name: __src
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: mempcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: strlen
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: strnlen
+  params:
+  - name: __string
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __maxlen
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: size_t
+- name: strerror
+  params:
+  - name: __errnum
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strerror_r
+  params:
+  - name: __errnum
+    type:
+      kind: int
+      name: int
+  - name: __buf
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __buflen
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strerror_l
+  params:
+  - name: __errnum
+    type:
+      kind: int
+      name: int
+  - name: __l
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: bcmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: bcopy
+  params:
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: bzero
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: index
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __c
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: rindex
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __c
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: ffs
+  params:
+  - name: __i
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: ffsl
+  params:
+  - name: __l
+    type:
+      kind: int
+      name: long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: ffsll
+  params:
+  - name: __ll
+    type:
+      kind: int
+      name: long long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strcasecmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strncasecmp
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strcasecmp_l
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __loc
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: strncasecmp_l
+  params:
+  - name: __s1
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __s2
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __loc
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: explicit_bzero
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: strsep
+  params:
+  - name: __stringp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: pointer
+        type:
+          kind: char
+          name: char
+  - name: __delim
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strsignal
+  params:
+  - name: __sig
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: __stpcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: stpcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: __stpncpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: stpncpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: strlcpy
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: strlcat
+  params:
+  - name: __dest
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: __src
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __n
+    type:
+      kind: int
+      name: unsigned long int
+  storage: extern
+  type:
+    kind: int
+    name: unsigned long int
+- name: poll
+  params:
+  - name: __fds
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: pollfd
+  - name: __nfds
+    type:
+      kind: custom_type
+      name: nfds_t
+  - name: __timeout
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: __sched_cpucount
+  params:
+  - name: __setsize
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __setp
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: cpu_set_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: __sched_cpualloc
+  params:
+  - name: __count
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: custom_type
+      name: cpu_set_t
+- name: __sched_cpufree
+  params:
+  - name: __set
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: cpu_set_t
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: sched_setparam
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: __pid_t
+  - name: __param
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_getparam
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: __pid_t
+  - name: __param
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_setscheduler
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: __pid_t
+  - name: __policy
+    type:
+      kind: int
+      name: int
+  - name: __param
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_getscheduler
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: __pid_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_yield
+  params: []
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_get_priority_max
+  params:
+  - name: __algorithm
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_get_priority_min
+  params:
+  - name: __algorithm
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: sched_rr_get_interval
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: __pid_t
+  - name: __t
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock
+  params: []
+  storage: extern
+  type:
+    kind: custom_type
+    name: clock_t
+- name: time
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: time_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: time_t
+- name: difftime
+  params:
+  - name: __time1
+    type:
+      kind: custom_type
+      name: time_t
+  - name: __time0
+    type:
+      kind: custom_type
+      name: time_t
+  storage: extern
+  type:
+    kind: float
+    name: double
+- name: mktime
+  params:
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: custom_type
+    name: time_t
+- name: strftime
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __maxsize
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __format
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __tp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: custom_type
+    name: size_t
+- name: strftime_l
+  params:
+  - name: __s
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  - name: __maxsize
+    type:
+      kind: custom_type
+      name: size_t
+  - name: __format
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: __tp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: tm
+  - name: __loc
+    type:
+      kind: custom_type
+      name: locale_t
+  storage: extern
+  type:
+    kind: custom_type
+    name: size_t
+- name: gmtime
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: tm
+- name: localtime
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: tm
+- name: gmtime_r
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  - name: __tp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: tm
+- name: localtime_r
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  - name: __tp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: tm
+- name: asctime
+  params:
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: ctime
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: asctime_r
+  params:
+  - name: __tp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: tm
+  - name: __buf
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: ctime_r
+  params:
+  - name: __timer
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: time_t
+  - name: __buf
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: char
+        name: char
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: tzset
+  params: []
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: timegm
+  params:
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: custom_type
+    name: time_t
+- name: timelocal
+  params:
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: tm
+  storage: extern
+  type:
+    kind: custom_type
+    name: time_t
+- name: dysize
+  params:
+  - name: __year
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: nanosleep
+  params:
+  - name: __requested_time
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  - name: __remaining
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock_getres
+  params:
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: clockid_t
+  - name: __res
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock_gettime
+  params:
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: clockid_t
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock_settime
+  params:
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: clockid_t
+  - name: __tp
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock_nanosleep
+  params:
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: clockid_t
+  - name: __flags
+    type:
+      kind: int
+      name: int
+  - name: __req
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  - name: __rem
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: clock_getcpuclockid
+  params:
+  - name: __pid
+    type:
+      kind: custom_type
+      name: pid_t
+  - name: __clock_id
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: clockid_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timer_create
+  params:
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: clockid_t
+  - name: __evp
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: sigevent
+  - name: __timerid
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: timer_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timer_delete
+  params:
+  - name: __timerid
+    type:
+      kind: custom_type
+      name: timer_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timer_settime
+  params:
+  - name: __timerid
+    type:
+      kind: custom_type
+      name: timer_t
+  - name: __flags
+    type:
+      kind: int
+      name: int
+  - name: __value
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: itimerspec
+  - name: __ovalue
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: itimerspec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timer_gettime
+  params:
+  - name: __timerid
+    type:
+      kind: custom_type
+      name: timer_t
+  - name: __value
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: itimerspec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timer_getoverrun
+  params:
+  - name: __timerid
+    type:
+      kind: custom_type
+      name: timer_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: timespec_get
+  params:
+  - name: __ts
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: timespec
+  - name: __base
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_create
+  params:
+  - name: __newthread
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_t
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __start_routine
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: pointer
+          type:
+            kind: void
+            name: void
+  - name: __arg
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: void
+        name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_exit
+  params:
+  - name: __retval
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: pthread_join
+  params:
+  - name: __th
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __thread_return
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_detach
+  params:
+  - name: __th
+    type:
+      kind: custom_type
+      name: pthread_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_self
+  params: []
+  storage: extern
+  type:
+    kind: custom_type
+    name: pthread_t
+- name: pthread_equal
+  params:
+  - name: __thread1
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __thread2
+    type:
+      kind: custom_type
+      name: pthread_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_init
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_destroy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getdetachstate
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __detachstate
+    type:
+      kind: pointer
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setdetachstate
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __detachstate
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getguardsize
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __guardsize
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setguardsize
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __guardsize
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getschedparam
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __param
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setschedparam
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __param
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getschedpolicy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __policy
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setschedpolicy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __policy
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getinheritsched
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __inherit
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setinheritsched
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __inherit
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getscope
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __scope
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setscope
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __scope
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getstackaddr
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stackaddr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setstackaddr
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stackaddr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getstacksize
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stacksize
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setstacksize
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stacksize
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_getstack
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stackaddr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  - name: __stacksize
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_setstack
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_attr_t
+  - name: __stackaddr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __stacksize
+    type:
+      kind: custom_type
+      name: size_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_setschedparam
+  params:
+  - name: __target_thread
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __policy
+    type:
+      kind: int
+      name: int
+  - name: __param
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_getschedparam
+  params:
+  - name: __target_thread
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __policy
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  - name: __param
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: struct
+        name: sched_param
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_setschedprio
+  params:
+  - name: __target_thread
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __prio
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_once
+  params:
+  - name: __once_control
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_once_t
+  - name: __init_routine
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params: []
+        type:
+          kind: void
+          name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_setcancelstate
+  params:
+  - name: __state
+    type:
+      kind: int
+      name: int
+  - name: __oldstate
+    type:
+      kind: pointer
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_setcanceltype
+  params:
+  - name: __type
+    type:
+      kind: int
+      name: int
+  - name: __oldtype
+    type:
+      kind: pointer
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cancel
+  params:
+  - name: __th
+    type:
+      kind: custom_type
+      name: pthread_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_testcancel
+  params: []
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: __pthread_register_cancel
+  params:
+  - name: __buf
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: __pthread_unwind_buf_t
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: __pthread_unregister_cancel
+  params:
+  - name: __buf
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: __pthread_unwind_buf_t
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: __pthread_unwind_next
+  params:
+  - name: __buf
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: __pthread_unwind_buf_t
+  storage: extern
+  type:
+    kind: void
+    name: void
+- name: __sigsetjmp
+  params:
+  - name: __env
+    type:
+      kind: array
+      length: '1'
+      type:
+        kind: struct
+        name: __jmp_buf_tag
+  - name: __savemask
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_init
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: __mutexattr
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_destroy
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_trylock
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_lock
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_timedlock
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: __abstime
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_unlock
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_getprioceiling
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: __prioceiling
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_setprioceiling
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: __prioceiling
+    type:
+      kind: int
+      name: int
+  - name: __old_ceiling
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutex_consistent
+  params:
+  - name: __mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_init
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_destroy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_getpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __pshared
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_setpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __pshared
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_gettype
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __kind
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_settype
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __kind
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_getprotocol
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __protocol
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_setprotocol
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __protocol
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_getprioceiling
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __prioceiling
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_setprioceiling
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __prioceiling
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_getrobust
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __robustness
+    type:
+      kind: pointer
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_mutexattr_setrobust
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutexattr_t
+  - name: __robustness
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_init
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_destroy
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_rdlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_tryrdlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_timedrdlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  - name: __abstime
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_wrlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_trywrlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_timedwrlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  - name: __abstime
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlock_unlock
+  params:
+  - name: __rwlock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_init
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_destroy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_getpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  - name: __pshared
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_setpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  - name: __pshared
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_getkind_np
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  - name: __pref
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_rwlockattr_setkind_np
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_rwlockattr_t
+  - name: __pref
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_init
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  - name: __cond_attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_condattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_destroy
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_signal
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_broadcast
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_wait
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  - name: __mutex
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_cond_timedwait
+  params:
+  - name: __cond
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  - name: __mutex
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: __abstime
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: struct
+        name: timespec
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_init
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_condattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_destroy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_condattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_getpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_condattr_t
+  - name: __pshared
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_setpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_condattr_t
+  - name: __pshared
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_getclock
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_condattr_t
+  - name: __clock_id
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: __clockid_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_condattr_setclock
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_condattr_t
+  - name: __clock_id
+    type:
+      kind: custom_type
+      name: __clockid_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_spin_init
+  params:
+  - name: __lock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_spinlock_t
+  - name: __pshared
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_spin_destroy
+  params:
+  - name: __lock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_spinlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_spin_lock
+  params:
+  - name: __lock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_spinlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_spin_trylock
+  params:
+  - name: __lock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_spinlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_spin_unlock
+  params:
+  - name: __lock
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_spinlock_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrier_init
+  params:
+  - name: __barrier
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: custom_type
+        name: pthread_barrier_t
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_barrierattr_t
+  - name: __count
+    type:
+      kind: int
+      name: unsigned int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrier_destroy
+  params:
+  - name: __barrier
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_barrier_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrier_wait
+  params:
+  - name: __barrier
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_barrier_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrierattr_init
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_barrierattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrierattr_destroy
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_barrierattr_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrierattr_getpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        const: true
+        kind: custom_type
+        name: pthread_barrierattr_t
+  - name: __pshared
+    type:
+      kind: pointer
+      restrict: true
+      type:
+        kind: int
+        name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_barrierattr_setpshared
+  params:
+  - name: __attr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_barrierattr_t
+  - name: __pshared
+    type:
+      kind: int
+      name: int
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_key_create
+  params:
+  - name: __key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_key_t
+  - name: __destr_function
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: void
+          name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_key_delete
+  params:
+  - name: __key
+    type:
+      kind: custom_type
+      name: pthread_key_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_getspecific
+  params:
+  - name: __key
+    type:
+      kind: custom_type
+      name: pthread_key_t
+  storage: extern
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: pthread_setspecific
+  params:
+  - name: __key
+    type:
+      kind: custom_type
+      name: pthread_key_t
+  - name: __pointer
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: void
+        name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_getcpuclockid
+  params:
+  - name: __thread_id
+    type:
+      kind: custom_type
+      name: pthread_t
+  - name: __clock_id
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: __clockid_t
+  storage: extern
+  type:
+    kind: int
+    name: int
+- name: pthread_atfork
+  params:
+  - name: __prepare
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params: []
+        type:
+          kind: void
+          name: void
+  - name: __parent
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params: []
+        type:
+          kind: void
+          name: void
+  - name: __child
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params: []
+        type:
+          kind: void
+          name: void
+  storage: extern
+  type:
+    kind: int
+    name: int
+structs:
+- members:
+  - name: tv_sec
+    type:
+      kind: custom_type
+      name: __time_t
+  - name: tv_usec
+    type:
+      kind: custom_type
+      name: __suseconds_t
+  name: timeval
+- members:
+  - name: tv_sec
+    type:
+      kind: custom_type
+      name: __time_t
+  - name: tv_nsec
+    type:
+      kind: custom_type
+      name: __syscall_slong_t
+  name: timespec
+- members:
+  - name: __prev
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: __pthread_internal_list
+  - name: __next
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: __pthread_internal_list
+  name: __pthread_internal_list
+- members:
+  - name: __next
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: __pthread_internal_slist
+  name: __pthread_internal_slist
+- members:
+  - name: __lock
+    type:
+      kind: int
+      name: int
+  - name: __count
+    type:
+      kind: int
+      name: unsigned int
+  - name: __owner
+    type:
+      kind: int
+      name: int
+  - name: __nusers
+    type:
+      kind: int
+      name: unsigned int
+  - name: __kind
+    type:
+      kind: int
+      name: int
+  - name: __spins
+    type:
+      kind: int
+      name: short int
+  - name: __elision
+    type:
+      kind: int
+      name: short int
+  - name: __list
+    type:
+      kind: custom_type
+      name: __pthread_list_t
+  name: __pthread_mutex_s
+- members:
+  - name: __readers
+    type:
+      kind: int
+      name: unsigned int
+  - name: __writers
+    type:
+      kind: int
+      name: unsigned int
+  - name: __wrphase_futex
+    type:
+      kind: int
+      name: unsigned int
+  - name: __writers_futex
+    type:
+      kind: int
+      name: unsigned int
+  - name: __pad3
+    type:
+      kind: int
+      name: unsigned int
+  - name: __pad4
+    type:
+      kind: int
+      name: unsigned int
+  - name: __cur_writer
+    type:
+      kind: int
+      name: int
+  - name: __shared
+    type:
+      kind: int
+      name: int
+  - name: __rwelision
+    type:
+      kind: char
+      name: signed char
+  - name: __pad1
+    type:
+      kind: array
+      length: '7'
+      type:
+        kind: char
+        name: unsigned char
+  - name: __pad2
+    type:
+      kind: int
+      name: unsigned long int
+  - name: __flags
+    type:
+      kind: int
+      name: unsigned int
+  name: __pthread_rwlock_arch_t
+- members:
+  - name: __wseq
+    type:
+      kind: custom_type
+      name: __atomic_wide_counter
+  - name: __g1_start
+    type:
+      kind: custom_type
+      name: __atomic_wide_counter
+  - name: __g_size
+    type:
+      kind: array
+      length: '2'
+      type:
+        kind: int
+        name: unsigned int
+  - name: __g1_orig_size
+    type:
+      kind: int
+      name: unsigned int
+  - name: __wrefs
+    type:
+      kind: int
+      name: unsigned int
+  - name: __g_signals
+    type:
+      kind: array
+      length: '2'
+      type:
+        kind: int
+        name: unsigned int
+  - name: __unused_initialized_1
+    type:
+      kind: int
+      name: unsigned int
+  - name: __unused_initialized_2
+    type:
+      kind: int
+      name: unsigned int
+  name: __pthread_cond_s
+- members:
+  - name: iov_base
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: iov_len
+    type:
+      kind: custom_type
+      name: size_t
+  name: iovec
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: close
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        type:
+          kind: int
+          name: int
+  - name: bind
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: bfid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: control
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: command
+          type:
+            kind: int
+            name: int
+        - name: arg
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: ops_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: name
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: ops
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: void
+                name: void
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: tostr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: fid
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: char
+              name: char
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: int
+          name: int
+  - name: ops_set
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: name
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: ops
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  name: fi_ops
+- members:
+  - name: fclass
+    type:
+      kind: custom_type
+      name: size_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops
+  name: fid
+- members:
+  - name: addr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: count
+    type:
+      kind: custom_type
+      name: size_t
+  name: fi_ioc
+- members:
+  - name: caps
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: mode
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: op_flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: msg_order
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: comp_order
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: inject_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: iov_limit
+    type:
+      kind: custom_type
+      name: size_t
+  - name: rma_iov_limit
+    type:
+      kind: custom_type
+      name: size_t
+  - name: tclass
+    type:
+      kind: custom_type
+      name: uint32_t
+  name: fi_tx_attr
+- members:
+  - name: caps
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: mode
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: op_flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: msg_order
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: comp_order
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: total_buffered_recv
+    type:
+      kind: custom_type
+      name: size_t
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: iov_limit
+    type:
+      kind: custom_type
+      name: size_t
+  name: fi_rx_attr
+- members:
+  - name: type
+    type:
+      kind: enum
+      name: fi_ep_type
+  - name: protocol
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: protocol_version
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: max_msg_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: msg_prefix_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_order_raw_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_order_war_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_order_waw_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: mem_tag_format
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: tx_ctx_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: rx_ctx_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: auth_key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: auth_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  name: fi_ep_attr
+- members:
+  - name: type
+    type:
+      kind: enum
+      name: fi_av_type
+  - name: rx_ctx_bits
+    type:
+      kind: int
+      name: int
+  - name: count
+    type:
+      kind: custom_type
+      name: size_t
+  - name: ep_per_node
+    type:
+      kind: custom_type
+      name: size_t
+  - name: name
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: map_addr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_av_attr
+- members:
+  - name: count
+    type:
+      kind: custom_type
+      name: size_t
+  - name: start_addr
+    type:
+      kind: custom_type
+      name: fi_addr_t
+  - name: end_addr
+    type:
+      kind: custom_type
+      name: fi_addr_t
+  - name: stride
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: comm_key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: comm_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_av_set_attr
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: insert
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: addr
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: fi_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: insertsvc
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: node
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: service
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: fi_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: insertsym
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: node
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: nodecnt
+          type:
+            kind: custom_type
+            name: size_t
+        - name: service
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: char
+              name: char
+        - name: svccnt
+          type:
+            kind: custom_type
+            name: size_t
+        - name: fi_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: remove
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: fi_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: lookup
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: fi_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: addr
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: addrlen
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: size_t
+        type:
+          kind: int
+          name: int
+  - name: straddr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: addr
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: char
+              name: char
+        - name: len
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: size_t
+        type:
+          kind: pointer
+          type:
+            const: true
+            kind: char
+            name: char
+  - name: av_set
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_av_set_attr
+        - name: av_set
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_av_set
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: insert_auth_key
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: auth_key
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: auth_key_size
+          type:
+            kind: custom_type
+            name: size_t
+        - name: fi_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: lookup_auth_key
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: fi_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: auth_key
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: auth_key_size
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: size_t
+        type:
+          kind: int
+          name: int
+  - name: set_user_id
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_av
+        - name: fi_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: user_id
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  name: fi_ops_av
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_av
+  name: fid_av
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: wait
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: waitset
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_wait
+        - name: timeout
+          type:
+            kind: int
+            name: int
+        type:
+          kind: int
+          name: int
+  name: fi_ops_wait
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_wait
+  name: fid_wait
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: format
+    type:
+      kind: enum
+      name: fi_cq_format
+  - name: wait_obj
+    type:
+      kind: enum
+      name: fi_wait_obj
+  - name: signaling_vector
+    type:
+      kind: int
+      name: int
+  - name: wait_cond
+    type:
+      kind: enum
+      name: fi_cq_wait_cond
+  - name: wait_set
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_wait
+  name: fi_cq_attr
+- members:
+  - name: op_context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: buf
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: tag
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: olen
+    type:
+      kind: custom_type
+      name: size_t
+  - name: err
+    type:
+      kind: int
+      name: int
+  - name: prov_errno
+    type:
+      kind: int
+      name: int
+  - name: err_data
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: err_data_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: src_addr
+    type:
+      kind: custom_type
+      name: fi_addr_t
+  name: fi_cq_err_entry
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: read
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: readfrom
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: src_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: readerr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_cq_err_entry
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: sread
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: cond
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: timeout
+          type:
+            kind: int
+            name: int
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: sreadfrom
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: src_addr
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: fi_addr_t
+        - name: cond
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: timeout
+          type:
+            kind: int
+            name: int
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: signal
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        type:
+          kind: int
+          name: int
+  - name: strerror
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cq
+        - name: prov_errno
+          type:
+            kind: int
+            name: int
+        - name: err_data
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: char
+              name: char
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: pointer
+          type:
+            const: true
+            kind: char
+            name: char
+  name: fi_ops_cq
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_cq
+  name: fid_cq
+- members:
+  - name: msg_iov
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: iovec
+  - name: desc
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  - name: iov_count
+    type:
+      kind: custom_type
+      name: size_t
+  - name: addr
+    type:
+      kind: custom_type
+      name: fi_addr_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_msg
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: recv
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: desc
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: src_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: recvv
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: iov
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: iovec
+        - name: desc
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: void
+                name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: src_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: recvmsg
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: msg
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: fi_msg
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: send
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: desc
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: dest_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: sendv
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: iov
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: iovec
+        - name: desc
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: void
+                name: void
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: dest_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: sendmsg
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: msg
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: fi_msg
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: inject
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: dest_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: senddata
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: desc
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: data
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: dest_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: injectdata
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: data
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: dest_addr
+          type:
+            kind: custom_type
+            name: fi_addr_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  name: fi_ops_msg
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_ep
+  - name: cm
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_cm
+  - name: msg
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_msg
+  - name: rma
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_rma
+  - name: tagged
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_tagged
+  - name: atomic
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_atomic
+  - name: collective
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_collective
+  name: fid_ep
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: cancel
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: custom_type
+            name: fid_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: getopt
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: custom_type
+            name: fid_t
+        - name: level
+          type:
+            kind: int
+            name: int
+        - name: optname
+          type:
+            kind: int
+            name: int
+        - name: optval
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: optlen
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: size_t
+        type:
+          kind: int
+          name: int
+  - name: setopt
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: custom_type
+            name: fid_t
+        - name: level
+          type:
+            kind: int
+            name: int
+        - name: optname
+          type:
+            kind: int
+            name: int
+        - name: optval
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: optlen
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: int
+          name: int
+  - name: tx_ctx
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: sep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: index
+          type:
+            kind: int
+            name: int
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_tx_attr
+        - name: tx_ep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: rx_ctx
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: sep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        - name: index
+          type:
+            kind: int
+            name: int
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_rx_attr
+        - name: rx_ep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: rx_size_left
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: tx_size_left
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_ep
+        type:
+          kind: custom_type
+          name: ssize_t
+  name: fi_ops_ep
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_ep
+  - name: cm
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_cm
+  name: fid_pep
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: wait_obj
+    type:
+      kind: enum
+      name: fi_wait_obj
+  - name: signaling_vector
+    type:
+      kind: int
+      name: int
+  - name: wait_set
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_wait
+  name: fi_eq_attr
+- members:
+  - name: fid
+    type:
+      kind: custom_type
+      name: fid_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: err
+    type:
+      kind: int
+      name: int
+  - name: prov_errno
+    type:
+      kind: int
+      name: int
+  - name: err_data
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: err_data_size
+    type:
+      kind: custom_type
+      name: size_t
+  name: fi_eq_err_entry
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: read
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_eq
+        - name: event
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: uint32_t
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: readerr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_eq
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_eq_err_entry
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: write
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_eq
+        - name: event
+          type:
+            kind: custom_type
+            name: uint32_t
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: sread
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_eq
+        - name: event
+          type:
+            kind: pointer
+            type:
+              kind: custom_type
+              name: uint32_t
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: timeout
+          type:
+            kind: int
+            name: int
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: strerror
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_eq
+        - name: prov_errno
+          type:
+            kind: int
+            name: int
+        - name: err_data
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              kind: char
+              name: char
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: pointer
+          type:
+            const: true
+            kind: char
+            name: char
+  name: fi_ops_eq
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_eq
+  name: fid_eq
+- members:
+  - name: wait_obj
+    type:
+      kind: enum
+      name: fi_wait_obj
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_wait_attr
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: domain
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: dom
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_domain
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: passive_ep
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: pep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_pep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: eq_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_eq_attr
+        - name: eq
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_eq
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: wait_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_wait_attr
+        - name: waitset
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_wait
+        type:
+          kind: int
+          name: int
+  - name: trywait
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: fids
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid
+        - name: count
+          type:
+            kind: int
+            name: int
+        type:
+          kind: int
+          name: int
+  - name: domain2
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fabric
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_fabric
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: dom
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_domain
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  name: fi_ops_fabric
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_fabric
+  - name: api_version
+    type:
+      kind: custom_type
+      name: uint32_t
+  name: fid_fabric
+- members:
+  - name: fabric
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_fabric
+  - name: name
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: prov_name
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: prov_version
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: api_version
+    type:
+      kind: custom_type
+      name: uint32_t
+  name: fi_fabric_attr
+- members:
+  - name: name
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: device_id
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: device_version
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: vendor_id
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: driver
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: firmware
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  name: fi_device_attr
+- members:
+  - name: domain_id
+    type:
+      kind: custom_type
+      name: uint16_t
+  - name: bus_id
+    type:
+      kind: custom_type
+      name: uint8_t
+  - name: device_id
+    type:
+      kind: custom_type
+      name: uint8_t
+  - name: function_id
+    type:
+      kind: custom_type
+      name: uint8_t
+  name: fi_pci_attr
+- members:
+  - name: bus_type
+    type:
+      kind: enum
+      name: fi_bus_type
+  - name: attr
+    type:
+      kind: union
+      members:
+      - name: pci
+        type:
+          kind: struct
+          name: fi_pci_attr
+  name: fi_bus_attr
+- members:
+  - name: address
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: mtu
+    type:
+      kind: custom_type
+      name: size_t
+  - name: speed
+    type:
+      kind: custom_type
+      name: size_t
+  - name: state
+    type:
+      kind: enum
+      name: fi_link_state
+  - name: network_type
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  name: fi_link_attr
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: device_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_device_attr
+  - name: bus_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_bus_attr
+  - name: link_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_link_attr
+  - name: prov_attr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  name: fid_nic
+- members:
+  - name: next
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_info
+  - name: caps
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: mode
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: addr_format
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: src_addrlen
+    type:
+      kind: custom_type
+      name: size_t
+  - name: dest_addrlen
+    type:
+      kind: custom_type
+      name: size_t
+  - name: src_addr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: dest_addr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: handle
+    type:
+      kind: custom_type
+      name: fid_t
+  - name: tx_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_tx_attr
+  - name: rx_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_rx_attr
+  - name: ep_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ep_attr
+  - name: domain_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_domain_attr
+  - name: fabric_attr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_fabric_attr
+  - name: nic
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_nic
+  name: fi_info
+- members:
+  - name: events
+    type:
+      kind: enum
+      name: fi_cntr_events
+  - name: wait_obj
+    type:
+      kind: enum
+      name: fi_wait_obj
+  - name: wait_set
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_wait
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_cntr_attr
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: read
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        type:
+          kind: custom_type
+          name: uint64_t
+  - name: readerr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        type:
+          kind: custom_type
+          name: uint64_t
+  - name: add
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        - name: value
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: set
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        - name: value
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: wait
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        - name: threshold
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: timeout
+          type:
+            kind: int
+            name: int
+        type:
+          kind: int
+          name: int
+  - name: adderr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        - name: value
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: seterr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_cntr
+        - name: value
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  name: fi_ops_cntr
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_cntr
+  name: fid_cntr
+- members:
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_poll_attr
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: poll
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: pollset
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_poll
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: void
+                name: void
+        - name: count
+          type:
+            kind: int
+            name: int
+        type:
+          kind: int
+          name: int
+  - name: poll_add
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: pollset
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_poll
+        - name: event_fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: poll_del
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: pollset
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_poll
+        - name: event_fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  name: fi_ops_poll
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_poll
+  name: fid_poll
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_ep
+  name: fid_stx
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: av_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_av_attr
+        - name: av
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_av
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: cq_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_cq_attr
+        - name: cq
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_cq
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: endpoint
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: scalable_ep
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: sep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: cntr_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_cntr_attr
+        - name: cntr
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_cntr
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: poll_open
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_poll_attr
+        - name: pollset
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_poll
+        type:
+          kind: int
+          name: int
+  - name: stx_ctx
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_tx_attr
+        - name: stx
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_stx
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: srx_ctx
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_rx_attr
+        - name: rx_ep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: query_atomic
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: datatype
+          type:
+            kind: enum
+            name: fi_datatype
+        - name: op
+          type:
+            kind: enum
+            name: fi_op
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_atomic_attr
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: query_collective
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: coll
+          type:
+            kind: enum
+            name: fi_collective_op
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_collective_attr
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: int
+          name: int
+  - name: endpoint2
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: domain
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid_domain
+        - name: info
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fi_info
+        - name: ep
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_ep
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  name: fi_ops_domain
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: mem_desc
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: key
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fid_mr
+- members:
+  - name: fd
+    type:
+      kind: int
+      name: int
+  - name: offset
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: base_addr
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  name: fi_mr_dmabuf
+- members:
+  - type:
+      kind: union
+      members:
+      - name: mr_iov
+        type:
+          kind: pointer
+          type:
+            const: true
+            kind: struct
+            name: iovec
+      - name: dmabuf
+        type:
+          kind: pointer
+          type:
+            const: true
+            kind: struct
+            name: fi_mr_dmabuf
+  - name: iov_count
+    type:
+      kind: custom_type
+      name: size_t
+  - name: access
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: offset
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: requested_key
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: auth_key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: auth_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  - name: iface
+    type:
+      kind: enum
+      name: fi_hmem_iface
+  - name: device
+    type:
+      kind: union
+      members:
+      - name: reserved
+        type:
+          kind: custom_type
+          name: uint64_t
+      - name: cuda
+        type:
+          kind: int
+          name: int
+      - name: ze
+        type:
+          kind: int
+          name: int
+      - name: neuron
+        type:
+          kind: int
+          name: int
+      - name: synapseai
+        type:
+          kind: int
+          name: int
+  - name: hmem_data
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: page_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: base_mr
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: struct
+        name: fid_mr
+  - name: sub_mr_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  name: fi_mr_attr
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: reg
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: buf
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: len
+          type:
+            kind: custom_type
+            name: size_t
+        - name: access
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: offset
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: requested_key
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: mr
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_mr
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: regv
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: iov
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: iovec
+        - name: count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: access
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: offset
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: requested_key
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: mr
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_mr
+        - name: context
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: int
+          name: int
+  - name: regattr
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: fid
+          type:
+            kind: pointer
+            type:
+              kind: struct
+              name: fid
+        - name: attr
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: fi_mr_attr
+        - name: flags
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: mr
+          type:
+            kind: pointer
+            type:
+              kind: pointer
+              type:
+                kind: struct
+                name: fid_mr
+        type:
+          kind: int
+          name: int
+  name: fi_ops_mr
+- members:
+  - name: fid
+    type:
+      kind: struct
+      name: fid
+  - name: ops
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_domain
+  - name: mr
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_ops_mr
+  name: fid_domain
+- members:
+  - name: domain
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_domain
+  - name: name
+    type:
+      kind: pointer
+      type:
+        kind: char
+        name: char
+  - name: threading
+    type:
+      kind: enum
+      name: fi_threading
+  - name: control_progress
+    type:
+      kind: enum
+      name: fi_progress
+  - type:
+      kind: union
+      members:
+      - name: data_progress
+        type:
+          kind: enum
+          name: fi_progress
+      - name: progress
+        type:
+          kind: enum
+          name: fi_progress
+  - name: resource_mgmt
+    type:
+      kind: enum
+      name: fi_resource_mgmt
+  - name: av_type
+    type:
+      kind: enum
+      name: fi_av_type
+  - name: mr_mode
+    type:
+      kind: int
+      name: int
+  - name: mr_key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: cq_data_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: cq_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: ep_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: tx_ctx_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: rx_ctx_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_ep_tx_ctx
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_ep_rx_ctx
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_ep_stx_ctx
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_ep_srx_ctx
+    type:
+      kind: custom_type
+      name: size_t
+  - name: cntr_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: mr_iov_limit
+    type:
+      kind: custom_type
+      name: size_t
+  - name: caps
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: mode
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: auth_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  - name: auth_key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_err_data
+    type:
+      kind: custom_type
+      name: size_t
+  - name: mr_cnt
+    type:
+      kind: custom_type
+      name: size_t
+  - name: tclass
+    type:
+      kind: custom_type
+      name: uint32_t
+  - name: max_ep_auth_key
+    type:
+      kind: custom_type
+      name: size_t
+  - name: max_group_id
+    type:
+      kind: custom_type
+      name: uint32_t
+  name: fi_domain_attr
+- members:
+  - name: fid
+    type:
+      kind: pointer
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: fid
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_alias
+- members:
+  - name: name
+    type:
+      kind: int
+      name: int
+  - name: val
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  name: fi_fid_var
+- members:
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: base_addr
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint64_t
+  - name: raw_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  - name: key_size
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: size_t
+  name: fi_mr_raw_attr
+- members:
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: base_addr
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: raw_key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint8_t
+  - name: key_size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: key
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: uint64_t
+  name: fi_mr_map_raw
+- members:
+  - name: name
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: type
+    type:
+      kind: enum
+      name: fi_param_type
+  - name: help_string
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  - name: value
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  name: fi_param
+- members:
+  - name: internal
+    type:
+      kind: array
+      length: '4'
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  name: fi_context
+- members:
+  - name: internal
+    type:
+      kind: array
+      length: '8'
+      type:
+        kind: pointer
+        type:
+          kind: void
+          name: void
+  name: fi_context2
+- members:
+  - name: ep
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_ep
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  name: fi_recv_context
+- members:
+  - name: __locales
+    type:
+      kind: array
+      length: '13'
+      type:
+        kind: pointer
+        type:
+          kind: struct
+          name: __locale_data
+  - name: __ctype_b
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: int
+        name: unsigned short int
+  - name: __ctype_tolower
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: int
+        name: int
+  - name: __ctype_toupper
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: int
+        name: int
+  - name: __names
+    type:
+      kind: array
+      length: '13'
+      type:
+        kind: pointer
+        type:
+          const: true
+          kind: char
+          name: char
+  name: __locale_struct
+- members:
+  - name: fd
+    type:
+      kind: int
+      name: int
+  - name: events
+    type:
+      kind: int
+      name: short int
+  - name: revents
+    type:
+      kind: int
+      name: short int
+  name: pollfd
+- members:
+  - name: sched_priority
+    type:
+      kind: int
+      name: int
+  name: sched_param
+- members:
+  - name: tm_sec
+    type:
+      kind: int
+      name: int
+  - name: tm_min
+    type:
+      kind: int
+      name: int
+  - name: tm_hour
+    type:
+      kind: int
+      name: int
+  - name: tm_mday
+    type:
+      kind: int
+      name: int
+  - name: tm_mon
+    type:
+      kind: int
+      name: int
+  - name: tm_year
+    type:
+      kind: int
+      name: int
+  - name: tm_wday
+    type:
+      kind: int
+      name: int
+  - name: tm_yday
+    type:
+      kind: int
+      name: int
+  - name: tm_isdst
+    type:
+      kind: int
+      name: int
+  - name: tm_gmtoff
+    type:
+      kind: int
+      name: long int
+  - name: tm_zone
+    type:
+      kind: pointer
+      type:
+        const: true
+        kind: char
+        name: char
+  name: tm
+- members:
+  - name: it_interval
+    type:
+      kind: struct
+      name: timespec
+  - name: it_value
+    type:
+      kind: struct
+      name: timespec
+  name: itimerspec
+- members:
+  - name: __jmpbuf
+    type:
+      kind: custom_type
+      name: __jmp_buf
+  - name: __mask_was_saved
+    type:
+      kind: int
+      name: int
+  - name: __saved_mask
+    type:
+      kind: custom_type
+      name: __sigset_t
+  name: __jmp_buf_tag
+- members:
+  - name: __routine
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: void
+          name: void
+  - name: __arg
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __canceltype
+    type:
+      kind: int
+      name: int
+  - name: __prev
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: _pthread_cleanup_buffer
+  name: _pthread_cleanup_buffer
+- members:
+  - name: __cancel_jmp_buf
+    type:
+      kind: custom_type
+      name: __jmp_buf
+  - name: __mask_was_saved
+    type:
+      kind: int
+      name: int
+  name: __cancel_jmp_buf_tag
+- members:
+  - name: __cancel_routine
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        type:
+          kind: void
+          name: void
+  - name: __cancel_arg
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: __do_it
+    type:
+      kind: int
+      name: int
+  - name: __cancel_type
+    type:
+      kind: int
+      name: int
+  name: __pthread_cleanup_frame
+- members:
+  - name: mutex
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_mutex_t
+  - name: cond
+    type:
+      kind: pointer
+      type:
+        kind: custom_type
+        name: pthread_cond_t
+  name: fi_mutex_cond
+- members:
+  - name: change_index
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: nfds
+    type:
+      kind: custom_type
+      name: size_t
+  - name: fd
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: pollfd
+  name: fi_wait_pollfd
+- members:
+  - name: fid
+    type:
+      kind: custom_type
+      name: fid_t
+  - name: context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_eq_entry
+- members:
+  - name: fid
+    type:
+      kind: custom_type
+      name: fid_t
+  - name: info
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fi_info
+  - name: data
+    type:
+      kind: array
+      type:
+        kind: custom_type
+        name: uint8_t
+  name: fi_eq_cm_entry
+- members:
+  - name: op_context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  name: fi_cq_entry
+- members:
+  - name: op_context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  name: fi_cq_msg_entry
+- members:
+  - name: op_context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: buf
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_cq_data_entry
+- members:
+  - name: op_context
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: len
+    type:
+      kind: custom_type
+      name: size_t
+  - name: buf
+    type:
+      kind: pointer
+      type:
+        kind: void
+        name: void
+  - name: data
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: tag
+    type:
+      kind: custom_type
+      name: uint64_t
+  name: fi_cq_tagged_entry
+- members:
+  - name: av
+    type:
+      kind: pointer
+      type:
+        kind: struct
+        name: fid_av
+  - name: src_addr
+    type:
+      kind: custom_type
+      name: fi_addr_t
+  name: fi_mr_auth_key
+- members:
+  - name: flags
+    type:
+      kind: custom_type
+      name: uint64_t
+  - name: attr
+    type:
+      kind: struct
+      name: fi_mr_attr
+  name: fi_mr_modify
+- members:
+  - name: size
+    type:
+      kind: custom_type
+      name: size_t
+  - name: copy_from_hmem_iov
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: dest
+          type:
+            kind: pointer
+            type:
+              kind: void
+              name: void
+        - name: size
+          type:
+            kind: custom_type
+            name: size_t
+        - name: iface
+          type:
+            kind: enum
+            name: fi_hmem_iface
+        - name: device
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: hmem_iov
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: iovec
+        - name: hmem_iov_count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: hmem_iov_offset
+          type:
+            kind: custom_type
+            name: uint64_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  - name: copy_to_hmem_iov
+    type:
+      kind: pointer
+      type:
+        kind: function
+        params:
+        - name: iface
+          type:
+            kind: enum
+            name: fi_hmem_iface
+        - name: device
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: hmem_iov
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: struct
+              name: iovec
+        - name: hmem_iov_count
+          type:
+            kind: custom_type
+            name: size_t
+        - name: hmem_iov_offset
+          type:
+            kind: custom_type
+            name: uint64_t
+        - name: src
+          type:
+            kind: pointer
+            type:
+              const: true
+              kind: void
+              name: void
+        - name: size
+          type:
+            kind: custom_type
+            name: size_t
+        type:
+          kind: custom_type
+          name: ssize_t
+  name: fi_hmem_override_ops
+typedefs:
+- name: __u_char
+  type:
+    kind: char
+    name: unsigned char
+- name: __u_short
+  type:
+    kind: int
+    name: unsigned short int
+- name: __u_int
+  type:
+    kind: int
+    name: unsigned int
+- name: __u_long
+  type:
+    kind: int
+    name: unsigned long int
+- name: __int8_t
+  type:
+    kind: char
+    name: signed char
+- name: __uint8_t
+  type:
+    kind: char
+    name: unsigned char
+- name: __int16_t
+  type:
+    kind: int
+    name: short int
+- name: __uint16_t
+  type:
+    kind: int
+    name: unsigned short int
+- name: __int32_t
+  type:
+    kind: int
+    name: int
+- name: __uint32_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __int64_t
+  type:
+    kind: int
+    name: long int
+- name: __uint64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __int_least8_t
+  type:
+    kind: custom_type
+    name: __int8_t
+- name: __uint_least8_t
+  type:
+    kind: custom_type
+    name: __uint8_t
+- name: __int_least16_t
+  type:
+    kind: custom_type
+    name: __int16_t
+- name: __uint_least16_t
+  type:
+    kind: custom_type
+    name: __uint16_t
+- name: __int_least32_t
+  type:
+    kind: custom_type
+    name: __int32_t
+- name: __uint_least32_t
+  type:
+    kind: custom_type
+    name: __uint32_t
+- name: __int_least64_t
+  type:
+    kind: custom_type
+    name: __int64_t
+- name: __uint_least64_t
+  type:
+    kind: custom_type
+    name: __uint64_t
+- name: __quad_t
+  type:
+    kind: int
+    name: long int
+- name: __u_quad_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __intmax_t
+  type:
+    kind: int
+    name: long int
+- name: __uintmax_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __dev_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __uid_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __gid_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __ino_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __ino64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __mode_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __nlink_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __off_t
+  type:
+    kind: int
+    name: long int
+- name: __off64_t
+  type:
+    kind: int
+    name: long int
+- name: __pid_t
+  type:
+    kind: int
+    name: int
+- name: __fsid_t
+  type:
+    kind: struct
+    members:
+    - name: __val
+      type:
+        kind: array
+        length: __FSID_T_TYPE
+        type:
+          kind: int
+          name: int
+- name: __clock_t
+  type:
+    kind: int
+    name: long int
+- name: __rlim_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __rlim64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __id_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __time_t
+  type:
+    kind: int
+    name: long int
+- name: __useconds_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __suseconds_t
+  type:
+    kind: int
+    name: long int
+- name: __suseconds64_t
+  type:
+    kind: int
+    name: long int
+- name: __daddr_t
+  type:
+    kind: int
+    name: int
+- name: __key_t
+  type:
+    kind: int
+    name: int
+- name: __clockid_t
+  type:
+    kind: int
+    name: int
+- name: __timer_t
+  type:
+    kind: pointer
+    type:
+      kind: void
+      name: void
+- name: __blksize_t
+  type:
+    kind: int
+    name: long int
+- name: __blkcnt_t
+  type:
+    kind: int
+    name: long int
+- name: __blkcnt64_t
+  type:
+    kind: int
+    name: long int
+- name: __fsblkcnt_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __fsblkcnt64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __fsfilcnt_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __fsfilcnt64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __fsword_t
+  type:
+    kind: int
+    name: long int
+- name: __ssize_t
+  type:
+    kind: int
+    name: long int
+- name: __syscall_slong_t
+  type:
+    kind: int
+    name: long int
+- name: __syscall_ulong_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __loff_t
+  type:
+    kind: custom_type
+    name: __off64_t
+- name: __caddr_t
+  type:
+    kind: pointer
+    type:
+      kind: char
+      name: char
+- name: __intptr_t
+  type:
+    kind: int
+    name: long int
+- name: __socklen_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __sig_atomic_t
+  type:
+    kind: int
+    name: int
+- name: int8_t
+  type:
+    kind: custom_type
+    name: __int8_t
+- name: int16_t
+  type:
+    kind: custom_type
+    name: __int16_t
+- name: int32_t
+  type:
+    kind: custom_type
+    name: __int32_t
+- name: int64_t
+  type:
+    kind: custom_type
+    name: __int64_t
+- name: uint8_t
+  type:
+    kind: custom_type
+    name: __uint8_t
+- name: uint16_t
+  type:
+    kind: custom_type
+    name: __uint16_t
+- name: uint32_t
+  type:
+    kind: custom_type
+    name: __uint32_t
+- name: uint64_t
+  type:
+    kind: custom_type
+    name: __uint64_t
+- name: int_least8_t
+  type:
+    kind: custom_type
+    name: __int_least8_t
+- name: int_least16_t
+  type:
+    kind: custom_type
+    name: __int_least16_t
+- name: int_least32_t
+  type:
+    kind: custom_type
+    name: __int_least32_t
+- name: int_least64_t
+  type:
+    kind: custom_type
+    name: __int_least64_t
+- name: uint_least8_t
+  type:
+    kind: custom_type
+    name: __uint_least8_t
+- name: uint_least16_t
+  type:
+    kind: custom_type
+    name: __uint_least16_t
+- name: uint_least32_t
+  type:
+    kind: custom_type
+    name: __uint_least32_t
+- name: uint_least64_t
+  type:
+    kind: custom_type
+    name: __uint_least64_t
+- name: int_fast8_t
+  type:
+    kind: char
+    name: signed char
+- name: int_fast16_t
+  type:
+    kind: int
+    name: long int
+- name: int_fast32_t
+  type:
+    kind: int
+    name: long int
+- name: int_fast64_t
+  type:
+    kind: int
+    name: long int
+- name: uint_fast8_t
+  type:
+    kind: char
+    name: unsigned char
+- name: uint_fast16_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: uint_fast32_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: uint_fast64_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: intptr_t
+  type:
+    kind: int
+    name: long int
+- name: uintptr_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: intmax_t
+  type:
+    kind: custom_type
+    name: __intmax_t
+- name: uintmax_t
+  type:
+    kind: custom_type
+    name: __uintmax_t
+- name: ptrdiff_t
+  type:
+    kind: int
+    name: long int
+- name: size_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: wchar_t
+  type:
+    kind: int
+    name: int
+- name: max_align_t
+  type:
+    kind: struct
+    members:
+    - name: __clang_max_align_nonce1
+      type:
+        kind: int
+        name: long long int
+    - name: __clang_max_align_nonce2
+      type:
+        kind: float
+        name: long double
+- name: u_char
+  type:
+    kind: custom_type
+    name: __u_char
+- name: u_short
+  type:
+    kind: custom_type
+    name: __u_short
+- name: u_int
+  type:
+    kind: custom_type
+    name: __u_int
+- name: u_long
+  type:
+    kind: custom_type
+    name: __u_long
+- name: quad_t
+  type:
+    kind: custom_type
+    name: __quad_t
+- name: u_quad_t
+  type:
+    kind: custom_type
+    name: __u_quad_t
+- name: fsid_t
+  type:
+    kind: custom_type
+    name: __fsid_t
+- name: loff_t
+  type:
+    kind: custom_type
+    name: __loff_t
+- name: ino_t
+  type:
+    kind: custom_type
+    name: __ino_t
+- name: dev_t
+  type:
+    kind: custom_type
+    name: __dev_t
+- name: gid_t
+  type:
+    kind: custom_type
+    name: __gid_t
+- name: mode_t
+  type:
+    kind: custom_type
+    name: __mode_t
+- name: nlink_t
+  type:
+    kind: custom_type
+    name: __nlink_t
+- name: uid_t
+  type:
+    kind: custom_type
+    name: __uid_t
+- name: off_t
+  type:
+    kind: custom_type
+    name: __off_t
+- name: pid_t
+  type:
+    kind: custom_type
+    name: __pid_t
+- name: id_t
+  type:
+    kind: custom_type
+    name: __id_t
+- name: ssize_t
+  type:
+    kind: custom_type
+    name: __ssize_t
+- name: daddr_t
+  type:
+    kind: custom_type
+    name: __daddr_t
+- name: caddr_t
+  type:
+    kind: custom_type
+    name: __caddr_t
+- name: key_t
+  type:
+    kind: custom_type
+    name: __key_t
+- name: clock_t
+  type:
+    kind: custom_type
+    name: __clock_t
+- name: clockid_t
+  type:
+    kind: custom_type
+    name: __clockid_t
+- name: time_t
+  type:
+    kind: custom_type
+    name: __time_t
+- name: timer_t
+  type:
+    kind: custom_type
+    name: __timer_t
+- name: ulong
+  type:
+    kind: int
+    name: unsigned long int
+- name: ushort
+  type:
+    kind: int
+    name: unsigned short int
+- name: uint
+  type:
+    kind: int
+    name: unsigned int
+- name: u_int8_t
+  type:
+    kind: custom_type
+    name: __uint8_t
+- name: u_int16_t
+  type:
+    kind: custom_type
+    name: __uint16_t
+- name: u_int32_t
+  type:
+    kind: custom_type
+    name: __uint32_t
+- name: u_int64_t
+  type:
+    kind: custom_type
+    name: __uint64_t
+- name: register_t
+  type:
+    kind: int
+    name: long int
+- name: __sigset_t
+  type:
+    kind: struct
+    members:
+    - name: __val
+      type:
+        kind: array
+        length: _SIGSET_NWORDS
+        type:
+          kind: int
+          name: unsigned long int
+- name: sigset_t
+  type:
+    kind: custom_type
+    name: __sigset_t
+- name: suseconds_t
+  type:
+    kind: custom_type
+    name: __suseconds_t
+- name: __fd_mask
+  type:
+    kind: int
+    name: long int
+- name: fd_set
+  type:
+    kind: struct
+    members:
+    - name: __fds_bits
+      type:
+        kind: array
+        length: __FD_SETSIZE/__NFDBITS
+        type:
+          kind: custom_type
+          name: __fd_mask
+- name: fd_mask
+  type:
+    kind: custom_type
+    name: __fd_mask
+- name: blksize_t
+  type:
+    kind: custom_type
+    name: __blksize_t
+- name: blkcnt_t
+  type:
+    kind: custom_type
+    name: __blkcnt_t
+- name: fsblkcnt_t
+  type:
+    kind: custom_type
+    name: __fsblkcnt_t
+- name: fsfilcnt_t
+  type:
+    kind: custom_type
+    name: __fsfilcnt_t
+- name: __atomic_wide_counter
+  type:
+    kind: union
+    name: __atomic_wide_counter
+- name: __pthread_list_t
+  type:
+    kind: struct
+    name: __pthread_internal_list
+- name: __pthread_slist_t
+  type:
+    kind: struct
+    name: __pthread_internal_slist
+- name: __tss_t
+  type:
+    kind: int
+    name: unsigned int
+- name: __thrd_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __once_flag
+  type:
+    kind: struct
+    members:
+    - name: __data
+      type:
+        kind: int
+        name: int
+- name: pthread_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: pthread_mutexattr_t
+  type:
+    kind: union
+    name: pthread_mutexattr_t
+- name: pthread_condattr_t
+  type:
+    kind: union
+    name: pthread_condattr_t
+- name: pthread_key_t
+  type:
+    kind: int
+    name: unsigned int
+- name: pthread_once_t
+  type:
+    kind: int
+    name: int
+- name: pthread_attr_t
+  type:
+    kind: union
+    name: pthread_attr_t
+- name: pthread_mutex_t
+  type:
+    kind: union
+    name: pthread_mutex_t
+- name: pthread_cond_t
+  type:
+    kind: union
+    name: pthread_cond_t
+- name: pthread_rwlock_t
+  type:
+    kind: union
+    name: pthread_rwlock_t
+- name: pthread_rwlockattr_t
+  type:
+    kind: union
+    name: pthread_rwlockattr_t
+- name: pthread_spinlock_t
+  type:
+    kind: int
+    name: int
+    volatile: true
+- name: pthread_barrier_t
+  type:
+    kind: union
+    name: pthread_barrier_t
+- name: pthread_barrierattr_t
+  type:
+    kind: union
+    name: pthread_barrierattr_t
+- name: fid_t
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: fid
+- name: fi_addr_t
+  type:
+    kind: custom_type
+    name: uint64_t
+- name: __locale_t
+  type:
+    kind: pointer
+    type:
+      kind: struct
+      name: __locale_struct
+- name: locale_t
+  type:
+    kind: custom_type
+    name: __locale_t
+- name: nfds_t
+  type:
+    kind: int
+    name: unsigned long int
+- name: __cpu_mask
+  type:
+    kind: int
+    name: unsigned long int
+- name: cpu_set_t
+  type:
+    kind: struct
+    members:
+    - name: __bits
+      type:
+        kind: array
+        length: __CPU_SETSIZE/__NCPUBITS
+        type:
+          kind: custom_type
+          name: __cpu_mask
+- name: __jmp_buf
+  type:
+    kind: array
+    length: '8'
+    type:
+      kind: int
+      name: long int
+- name: __pthread_unwind_buf_t
+  type:
+    kind: struct
+    members:
+    - name: __cancel_jmp_buf
+      type:
+        kind: array
+        length: '1'
+        type:
+          kind: struct
+          name: __cancel_jmp_buf_tag
+    - name: __pad
+      type:
+        kind: array
+        length: '4'
+        type:
+          kind: pointer
+          type:
+            kind: void
+            name: void
+unions:
+- members:
+  - name: __value64
+    type:
+      kind: int
+      name: unsigned long long int
+  - name: __value32
+    type:
+      kind: struct
+      members:
+      - name: __low
+        type:
+          kind: int
+          name: unsigned int
+      - name: __high
+        type:
+          kind: int
+          name: unsigned int
+  name: __atomic_wide_counter
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_MUTEXATTR_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: int
+  name: pthread_mutexattr_t
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_CONDATTR_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: int
+  name: pthread_condattr_t
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_ATTR_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long int
+  name: pthread_attr_t
+- members:
+  - name: __data
+    type:
+      kind: struct
+      name: __pthread_mutex_s
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_MUTEX_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long int
+  name: pthread_mutex_t
+- members:
+  - name: __data
+    type:
+      kind: struct
+      name: __pthread_cond_s
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_COND_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long long int
+  name: pthread_cond_t
+- members:
+  - name: __data
+    type:
+      kind: struct
+      name: __pthread_rwlock_arch_t
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_RWLOCK_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long int
+  name: pthread_rwlock_t
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_RWLOCKATTR_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long int
+  name: pthread_rwlockattr_t
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_BARRIER_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: long int
+  name: pthread_barrier_t
+- members:
+  - name: __size
+    type:
+      kind: array
+      length: __SIZEOF_PTHREAD_BARRIERATTR_T
+      type:
+        kind: char
+        name: char
+  - name: __align
+    type:
+      kind: int
+      name: int
+  name: pthread_barrierattr_t
