@@ -18,6 +18,14 @@ tags
 # Persistent undo
 [._]*.un~
 
+# Trace output
+*.trace
+
+# Shared libraries, including versioned files
+*.so
+*.so.*
+
+
 build
 autom4te.cache
 m4
