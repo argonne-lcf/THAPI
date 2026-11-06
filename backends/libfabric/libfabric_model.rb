@@ -2,8 +2,13 @@ require_relative '../../utils/backend_model'
 
 api = ApiModel.load_file('libfabric_api.yaml')
 
+# hooks = {
+#   'fi_send' => ['fi_ops_msg', 'send']
+# }
 hooks = {
-  'fi_send' => ['fi_ops_msg', 'send']
+  'fi_send'    => ['fi_ops_msg', 'send'],
+  'fi_recv'    => ['fi_ops_msg', 'recv'],
+  'fi_cq_read' => ['fi_ops_cq', 'read']
 }
 
 functions = hooks.map do |name, (table_name, member_name)|
