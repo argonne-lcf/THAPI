@@ -1,9 +1,11 @@
 // Formatting primitives that reproduce the Ruby pretty printer
-// (babeltrace_thapi `trace`) byte for byte.
+// (babeltrace_thapi `trace`) byte for byte, and the fmt::formatter pieces the
+// generated per-backend formatters use.
 #pragma once
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <cstdint>
@@ -18,8 +20,14 @@
 namespace thapi_pretty {
 
 using out_t = fmt::memory_buffer;
+using it_t = fmt::appender;
 
-inline void put(out_t &o, std::string_view s) { o.append(s.data(), s.data() + s.size()); }
+inline it_t put(it_t o, std::string_view s) { return std::copy(s.begin(), s.end(), o); }
+
+template <class T> inline it_t dec(it_t o, T v) { return fmt::format_to(o, "{}", v); }
+inline it_t dec(it_t o, int8_t v) { return dec(o, (int)v); }
+inline it_t dec(it_t o, uint8_t v) { return dec(o, (unsigned)v); }
+inline it_t dec(it_t o, char v) { return dec(o, (int)(signed char)v); }
 
 // Ruby `Float#to_s`: shortest round-trip digits; always at least one fractional
 // digit. Fixed notation when the decimal point position `decpt` is in (-4, 16),
@@ -27,7 +35,7 @@ inline void put(out_t &o, std::string_view s) { o.append(s.data(), s.data() + s.
 // Zero, sign, NaN and infinity are tested on the bits, and DAZ/FTZ are cleared
 // while a denormal is formatted: a process that runs with DAZ set (the babeltrace2
 // CLI built by icx does) would otherwise see a denormal as 0, and so does to_chars.
-inline void ruby_float(out_t &o, double v) {
+inline it_t ruby_float(it_t o, double v) {
   uint64_t bits;
   std::memcpy(&bits, &v, sizeof bits);
   bool neg = bits >> 63;
@@ -49,7 +57,7 @@ inline void ruby_float(out_t &o, double v) {
   if (denormal) _mm_setcsr(csr);
 #endif
   const char *p = buf;
-  if (*p == '-') o.push_back(*p++);
+  if (*p == '-') *o++ = *p++;
   char digits[32] = {};
   int n = 0;
   for (; *p != 'e'; p++)
@@ -58,67 +66,86 @@ inline void ruby_float(out_t &o, double v) {
 
   if (-4 < decpt && (decpt < 16 || (decpt == 16 && n > decpt))) {
     if (decpt <= 0) {
-      put(o, "0.");
-      for (int i = 0; i < -decpt; i++) o.push_back('0');
-      o.append(digits, digits + n);
-    } else if (n <= decpt) {
-      o.append(digits, digits + n);
-      for (int i = n; i < decpt; i++) o.push_back('0');
-      put(o, ".0");
-    } else {
-      o.append(digits, digits + decpt);
-      o.push_back('.');
-      o.append(digits + decpt, digits + n);
+      o = put(o, "0.");
+      for (int i = 0; i < -decpt; i++) *o++ = '0';
+      return put(o, std::string_view(digits, n));
     }
-  } else {
-    o.push_back(digits[0]);
-    o.push_back('.');
-    if (n == 1) o.push_back('0');
-    else o.append(digits + 1, digits + n);
-    fmt::format_to(std::back_inserter(o), "e{:+03d}", decpt - 1);
+    if (n <= decpt) {
+      o = put(o, std::string_view(digits, n));
+      for (int i = n; i < decpt; i++) *o++ = '0';
+      return put(o, ".0");
+    }
+    o = put(o, std::string_view(digits, decpt));
+    *o++ = '.';
+    return put(o, std::string_view(digits + decpt, n - decpt));
   }
+  *o++ = digits[0];
+  *o++ = '.';
+  o = n == 1 ? put(o, "0") : put(o, std::string_view(digits + 1, n - 1));
+  return fmt::format_to(o, "e{:+03d}", decpt - 1);
 }
 
 // Ruby `String#inspect` of a binary (ASCII-8BIT) string.
-inline void ruby_inspect(out_t &o, const char *s, size_t len) {
-  o.push_back('"');
+inline it_t ruby_inspect(it_t o, const char *s, size_t len) {
+  *o++ = '"';
   for (size_t i = 0; i < len; i++) {
     unsigned char c = s[i];
     switch (c) {
-    case '"': put(o, "\\\""); break;
-    case '\\': put(o, "\\\\"); break;
-    case '\n': put(o, "\\n"); break;
-    case '\r': put(o, "\\r"); break;
-    case '\t': put(o, "\\t"); break;
-    case '\f': put(o, "\\f"); break;
-    case '\v': put(o, "\\v"); break;
-    case '\b': put(o, "\\b"); break;
-    case '\a': put(o, "\\a"); break;
-    case 0x1b: put(o, "\\e"); break;
+    case '"': o = put(o, "\\\""); break;
+    case '\\': o = put(o, "\\\\"); break;
+    case '\n': o = put(o, "\\n"); break;
+    case '\r': o = put(o, "\\r"); break;
+    case '\t': o = put(o, "\\t"); break;
+    case '\f': o = put(o, "\\f"); break;
+    case '\v': o = put(o, "\\v"); break;
+    case '\b': o = put(o, "\\b"); break;
+    case '\a': o = put(o, "\\a"); break;
+    case 0x1b: o = put(o, "\\e"); break;
     case '#':
-      if (i + 1 < len && (s[i + 1] == '{' || s[i + 1] == '$' || s[i + 1] == '@')) put(o, "\\#");
-      else o.push_back('#');
+      o = (i + 1 < len && (s[i + 1] == '{' || s[i + 1] == '$' || s[i + 1] == '@')) ? put(o, "\\#") : put(o, "#");
       break;
     default:
-      if (c >= 0x20 && c < 0x7f) o.push_back(c);
-      else fmt::format_to(std::back_inserter(o), "\\x{:02X}", c);
+      if (c >= 0x20 && c < 0x7f) *o++ = c;
+      else o = fmt::format_to(o, "\\x{:02X}", c);
     }
   }
-  o.push_back('"');
+  *o++ = '"';
+  return o;
 }
-inline void ruby_inspect(out_t &o, const char *s) { ruby_inspect(o, s, std::strlen(s)); }
 
 // Ruby `"0x%016x" % v`.
-inline void ruby_hex(out_t &o, uint64_t v) { fmt::format_to(std::back_inserter(o), "0x{:016x}", v); }
+inline it_t ruby_hex(it_t o, uint64_t v) { return fmt::format_to(o, "0x{:016x}", v); }
 
 // Ruby `Time.at(0, ns, :nsec).strftime('%H:%M:%S.%9L')` (local time).
-inline void ruby_time(out_t &o, int64_t ns) {
+inline it_t ruby_time(it_t o, int64_t ns) {
   int64_t s = ns / 1000000000, f = ns % 1000000000;
   if (f < 0) { f += 1000000000; s -= 1; }
   time_t t = s;
   struct tm tm;
   localtime_r(&t, &tm);
-  fmt::format_to(std::back_inserter(o), "{:02}:{:02}:{:02}.{:09}", tm.tm_hour, tm.tm_min, tm.tm_sec, f);
+  return fmt::format_to(o, "{:02}:{:02}:{:02}.{:09}", tm.tm_hour, tm.tm_min, tm.tm_sec, f);
 }
+
+// FFI `CharArray#to_s`: the bytes up to the first NUL.
+inline it_t char_array(it_t o, const char *s, size_t max) { return put(o, std::string_view(s, strnlen(s, max))); }
+
+// A 16-byte UUID, bytes printed back to front, dashes after 4-2-2-2.
+inline it_t uuid(it_t o, const uint8_t *a) {
+  return fmt::format_to(o, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                        a[15], a[14], a[13], a[12], a[11], a[10], a[9], a[8], a[7], a[6], a[5], a[4], a[3], a[2], a[1], a[0]);
+}
+
+// Base of the generated formatters: no format spec.
+struct no_spec {
+  constexpr auto parse(fmt::format_parse_context &ctx) { return ctx.begin(); }
+};
+
+// The same primitives on a buffer.
+inline void put(out_t &o, std::string_view s) { o.append(s.data(), s.data() + s.size()); }
+inline void ruby_float(out_t &o, double v) { ruby_float(it_t(o), v); }
+inline void ruby_inspect(out_t &o, const char *s, size_t len) { ruby_inspect(it_t(o), s, len); }
+inline void ruby_inspect(out_t &o, const char *s) { ruby_inspect(it_t(o), s, std::strlen(s)); }
+inline void ruby_hex(out_t &o, uint64_t v) { ruby_hex(it_t(o), v); }
+inline void ruby_time(out_t &o, int64_t ns) { ruby_time(it_t(o), ns); }
 
 } // namespace thapi_pretty

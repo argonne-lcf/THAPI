@@ -64,8 +64,8 @@ BTX_ZE_PRETTY_GENERATED = \
 $(BTX_ZE_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_ze_model.yaml
 	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_zepretty -p zepretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i ze.h.include
 
-btx_zepretty_callbacks.cpp: $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb
-	$(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb > $@
+btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb
+	$(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
 
 EXTRA_DIST = \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
@@ -274,6 +274,7 @@ CLEANFILES += \
 	$(BTX_ZE_GENERATED) \
 	$(BTX_ZE_PRETTY_GENERATED) \
 	btx_zepretty_callbacks.cpp \
+	btx_zepretty_formatters.hpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
@@ -282,7 +283,8 @@ BUILT_SOURCES += \
 
 nodist_libZEPretty_la_SOURCES = \
 	$(BTX_ZE_PRETTY_GENERATED) \
-	btx_zepretty_callbacks.cpp
+	btx_zepretty_callbacks.cpp \
+	btx_zepretty_formatters.hpp
 
 libZEPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_zepretty $(FMT_CPPFLAGS)
 libZEPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
