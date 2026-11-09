@@ -54,7 +54,7 @@ opencl_model['enums'].collect do |k, v|
   v['values'].each do |n, str|
     int =
       begin
-        eval(str)
+        eval(str) # rubocop:disable Security/Eval -- values from our own opencl_model.yaml
       rescue StandardError
         nil
       end
@@ -76,7 +76,7 @@ opencl_model['bitfields'].collect do |k, v|
   v['values'].each do |n, str|
     int =
       begin
-        eval(str)
+        eval(str) # rubocop:disable Security/Eval -- values from our own opencl_model.yaml
       rescue StandardError
         nil
       end
@@ -355,5 +355,5 @@ opencl_model['events'].each do |n, v|
       }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
     }
   EOF
-  $event_lambdas[n] = eval(src)
+  $event_lambdas[n] = eval(src) # rubocop:disable Security/Eval -- code generated above
 end
