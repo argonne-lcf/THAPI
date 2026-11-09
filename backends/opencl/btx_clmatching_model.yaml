@@ -68,6 +68,17 @@
       - :name: ^errcode_ret_val$
       - :name: ^num_devices_ret_val$
       - :name: ^out_devices_vals$
+  # clCreateSubDevicesEXT: the entry matches create_sub_devices_entry, the exit
+  # names its count num_devices_val.
+  - :set_id: create_sub_devices_ext_exit
+    :domain: exits
+    :name: "clCreateSubDevicesEXT"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^errcode_ret_val$
+      - :name: ^num_devices_val$
+      - :name: ^out_devices_vals$
   - :set_id: create_command_queue_entry
     :domain: entries
     :name: "clCreateCommandQueue"

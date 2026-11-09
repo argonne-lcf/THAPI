@@ -1,0 +1,12 @@
+12:00:00.000000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clGetDeviceIDs_entry: { platform: 0, device_type: 0, num_entries: 1, devices: 0, num_devices: 0 }
+12:00:00.001000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clGetDeviceIDs_exit: { errcode_ret_val: 0, num_devices_val: 1, devices_vals: [ 10 ] }
+12:00:00.002000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateSubDevicesEXT_entry: { in_device: 10, properties: 0, num_entries: 0, out_devices: 0, num_devices: 0, properties_vals: [ ] }
+12:00:00.003000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateSubDevicesEXT_exit: { errcode_ret_val: -59, num_devices_val: 0, out_devices_vals: [ ] }
+12:00:00.004000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateSubDevicesEXT_entry: { in_device: 10, properties: 0, num_entries: 1, out_devices: 0, num_devices: 0, properties_vals: [ ] }
+12:00:00.005000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateSubDevicesEXT_exit: { errcode_ret_val: 0, num_devices_val: 1, out_devices_vals: [ 11 ] }
+12:00:00.006000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateCommandQueue_entry: { context: 0, device: 11, properties: 0, errcode_ret: 0 }
+12:00:00.007000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clCreateCommandQueue_exit: { command_queue: 23, errcode_ret_val: 0 }
+12:00:00.008000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clEnqueueReadBuffer_entry: { command_queue: 23, buffer: 0, blocking_read: 0, offset: 0, size: 1024, ptr: 0, num_events_in_wait_list: 0, event_wait_list: 0, event: 17, _event_wait_list_vals_length: 0, event_wait_list_vals: 0 }
+12:00:00.009000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl_profiling:event_profiling: { status: 0, event: 17 }
+12:00:00.010000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl:clEnqueueReadBuffer_exit: { errcode_ret_val: 0, event_val: 17 }
+12:00:00.011000000 - testhost - vpid: 10, vtid: 1 - lttng_ust_opencl_profiling:event_profiling_results: { event: 17, event_command_exec_status: 0, queued_status: 0, queued: 0, submit_status: 0, submit: 0, start_status: 0, start: 0, end_status: 0, end: 65 }
