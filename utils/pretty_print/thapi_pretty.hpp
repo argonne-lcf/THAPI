@@ -6,16 +6,11 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <charconv>
-#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <string_view>
-#if defined(__x86_64__) || defined(__i386__)
-#include <xmmintrin.h>
-#endif
 
 namespace thapi_pretty {
 
@@ -32,9 +27,9 @@ inline it_t dec(it_t o, char v) { return dec(o, (int)(signed char)v); }
 // Ruby `Float#to_s`: shortest round-trip digits; always at least one fractional
 // digit. Fixed notation when the decimal point position `decpt` is in (-4, 16),
 // or is 16 and there are fractional digits; else `d.ddde+XX`.
-// Zero, sign, NaN and infinity are tested on the bits, and DAZ/FTZ are cleared
-// while a denormal is formatted: a process that runs with DAZ set (the babeltrace2
-// CLI built by icx does) would otherwise see a denormal as 0, and so does to_chars.
+// The shortest digits come from fmt (`{}`, Dragonbox: integer arithmetic on the
+// bits); zero, sign, NaN and infinity are tested on the bits too, so a process
+// running with DAZ/FTZ (the babeltrace2 CLI built by icx does) prints the same.
 inline it_t ruby_float(it_t o, double v) {
   uint64_t bits;
   std::memcpy(&bits, &v, sizeof bits);
@@ -44,25 +39,23 @@ inline it_t ruby_float(it_t o, double v) {
   if (mag == 0x7ff0000000000000ULL) return put(o, neg ? "-Infinity" : "Infinity");
   if (mag == 0) return put(o, neg ? "-0.0" : "0.0");
 
-  // to_chars scientific without precision: shortest round-trip digits, "-1.2345e+15".
-  // (fmt `{:e}` without precision uses 6 digits, like printf.)
+  // fmt writes the shortest digits in fixed or exponent form ("123.45", "1e-05",
+  // "1.5e+16"): read them back as `digits` and the decimal point position.
   char buf[64];
-#if defined(__x86_64__) || defined(__i386__)
-  bool denormal = (mag >> 52) == 0;
-  unsigned csr = denormal ? _mm_getcsr() : 0;
-  if (denormal) _mm_setcsr(csr & ~0x8040u);
-#endif
-  *std::to_chars(buf, buf + sizeof buf - 1, v, std::chars_format::scientific).ptr = '\0';
-#if defined(__x86_64__) || defined(__i386__)
-  if (denormal) _mm_setcsr(csr);
-#endif
+  *fmt::format_to(buf, "{}", v) = '\0';
   const char *p = buf;
   if (*p == '-') *o++ = *p++;
-  char digits[32] = {};
-  int n = 0;
-  for (; *p != 'e'; p++)
-    if (*p != '.') digits[n++] = *p;
-  int decpt = static_cast<int>(std::strtol(p + 1, nullptr, 10)) + 1;
+  char digits[32];
+  int n = 0, decpt = 0;
+  bool point = false;
+  for (; *p && *p != 'e'; p++) {
+    if (*p == '.') { point = true; continue; }
+    if (n == 0 && *p == '0') { if (point) decpt--; continue; } // leading zeros
+    digits[n++] = *p;
+    if (!point) decpt++;
+  }
+  if (*p == 'e') decpt += static_cast<int>(std::strtol(p + 1, nullptr, 10));
+  while (n > 1 && digits[n - 1] == '0') n--; // trailing zeros of an integer
 
   if (-4 < decpt && (decpt < 16 || (decpt == 16 && n > decpt))) {
     if (decpt <= 0) {
@@ -147,12 +140,6 @@ inline it_t ruby_hex_signed(it_t o, int64_t v) {
   return put(o, digits);
 }
 
-// A 16-byte UUID, bytes in order, dashes after 4-2-2-2 (cuda, hip, mpi).
-inline it_t uuid_forward(it_t o, const uint8_t *a) {
-  return fmt::format_to(o, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                        a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]);
-}
-
 // Ruby `Time.at(0, ns, :nsec).strftime('%H:%M:%S.%9L')` (local time).
 inline it_t ruby_time(it_t o, int64_t ns) {
   int64_t s = ns / 1000000000, f = ns % 1000000000;
@@ -166,10 +153,14 @@ inline it_t ruby_time(it_t o, int64_t ns) {
 // FFI `CharArray#to_s`: the bytes up to the first NUL.
 inline it_t char_array(it_t o, const char *s, size_t max) { return put(o, std::string_view(s, strnlen(s, max))); }
 
-// A 16-byte UUID, bytes printed back to front, dashes after 4-2-2-2.
-inline it_t uuid(it_t o, const uint8_t *a) {
-  return fmt::format_to(o, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                        a[15], a[14], a[13], a[12], a[11], a[10], a[9], a[8], a[7], a[6], a[5], a[4], a[3], a[2], a[1], a[0]);
+// A 16-byte UUID, dashes after 4-2-2-2: ze prints the bytes back to front,
+// cuda, hip and mpi in order.
+inline it_t uuid(it_t o, const uint8_t *a, bool reverse) {
+  for (int i = 0; i < 16; i++) {
+    if (i == 4 || i == 6 || i == 8 || i == 10) *o++ = '-';
+    o = fmt::format_to(o, "{:02x}", a[reverse ? 15 - i : i]);
+  }
+  return o;
 }
 
 // Base of the generated formatters: no format spec.

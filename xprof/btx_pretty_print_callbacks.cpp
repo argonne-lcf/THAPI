@@ -10,6 +10,7 @@
 
 #include "thapi_pretty.hpp"
 
+#include <cctype>
 #include <cstdio>
 
 using namespace thapi_pretty;
@@ -20,11 +21,21 @@ struct printer_t {
   bool context = false;
   bool restrict_ = false;
   out_t out;
-  char buf[1 << 20];
 };
 
-void dec(out_t &o, int64_t v) { fmt::format_to(std::back_inserter(o), "{}", v); }
-void dec(out_t &o, uint64_t v) { fmt::format_to(std::back_inserter(o), "{}", v); }
+template <class T> void dec(out_t &o, T v) { thapi_pretty::dec(it_t(o), v); }
+
+// A name as the gem prints it: one starting with ':' is a Ruby symbol, printed
+// with Symbol#inspect (`:name`, or `:"..."` when it is not an identifier).
+void name(out_t &o, const char *n) {
+  if (n[0] != ':') return put(o, n);
+  const char *s = n + 1;
+  bool ident = std::isalpha((unsigned char)s[0]) || s[0] == '_';
+  for (const char *c = s; *c && ident; c++) ident = std::isalnum((unsigned char)*c) || *c == '_';
+  put(o, ":");
+  if (ident) put(o, s);
+  else ruby_inspect(o, s);
+}
 
 // Ruby `"#{v}"` of a field value (used for the context fields).
 void value(out_t &o, const bt_field *f) {
@@ -40,6 +51,25 @@ void value(out_t &o, const bt_field *f) {
 void field(out_t &o, const bt_field *f) {
   const bt_field_class *fc = bt_field_borrow_class_const(f);
   bt_field_class_type t = bt_field_get_class_type(f);
+  if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_ENUMERATION)) { // "(value) [labels]"
+    bt_field_class_enumeration_mapping_label_array labels;
+    uint64_t count = 0;
+    put(o, "(");
+    if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_SIGNED_ENUMERATION)) {
+      bt_field_enumeration_signed_get_mapping_labels(f, &labels, &count);
+      dec(o, bt_field_integer_signed_get_value(f));
+    } else {
+      bt_field_enumeration_unsigned_get_mapping_labels(f, &labels, &count);
+      dec(o, bt_field_integer_unsigned_get_value(f));
+    }
+    put(o, ") [");
+    for (uint64_t i = 0; i < count; i++) {
+      if (i) put(o, ", ");
+      name(o, labels[i]);
+    }
+    put(o, "]");
+    return;
+  }
   if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_INTEGER)) {
     bool is_signed = bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_SIGNED_INTEGER);
     uint64_t u = is_signed ? (uint64_t)bt_field_integer_signed_get_value(f) : bt_field_integer_unsigned_get_value(f);
@@ -52,7 +82,6 @@ void field(out_t &o, const bt_field *f) {
     case BT_FIELD_CLASS_INTEGER_PREFERRED_DISPLAY_BASE_HEXADECIMAL: fmt::format_to(std::back_inserter(o), "0x{:x}", twos); break;
     default: is_signed ? dec(o, s) : dec(o, u);
     }
-    // TODO enumeration fields: "(v) [labels]" -- none in the backends handled so far.
     return;
   }
   switch (t) {
@@ -65,7 +94,7 @@ void field(out_t &o, const bt_field *f) {
     uint64_t n = bt_field_class_structure_get_member_count(fc);
     for (uint64_t i = 0; i < n; i++) {
       if (i) put(o, ", ");
-      put(o, bt_field_class_structure_member_get_name(bt_field_class_structure_borrow_member_by_index_const(fc, i)));
+      name(o, bt_field_class_structure_member_get_name(bt_field_class_structure_borrow_member_by_index_const(fc, i)));
       put(o, ": ");
       field(o, bt_field_structure_borrow_member_field_by_index_const(f, i));
     }
@@ -86,6 +115,17 @@ void field(out_t &o, const bt_field *f) {
     if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_BLOB)) {
       const char *d = (const char *)bt_field_blob_get_data_const(f);
       put(o, std::string_view(d, bt_field_blob_get_length(f)));
+      return;
+    }
+    if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_VARIANT)) { // "{option: value}"
+      put(o, "{");
+      const bt_field *x = bt_field_variant_borrow_selected_option_field_const(f);
+      if (x) {
+        name(o, bt_field_class_variant_option_get_name(bt_field_variant_borrow_selected_option_class_const(f)));
+        put(o, ": ");
+        field(o, x);
+      }
+      put(o, "}");
       return;
     }
     if (bt_field_class_type_is(t, BT_FIELD_CLASS_TYPE_OPTION)) {
@@ -130,15 +170,10 @@ void fallback(printer_t *p, const bt_message *m, const bt_event *e) {
   std::fwrite(o.data(), 1, o.size(), stdout);
 }
 
-void initialize(void **usr_data) {
-  auto *p = new printer_t;
-  std::setvbuf(stdout, p->buf, _IOFBF, sizeof p->buf);
-  *usr_data = p;
-}
+void initialize(void **usr_data) { *usr_data = new printer_t; }
 
 void finalize(void *usr_data) {
   std::fflush(stdout);
-  std::setvbuf(stdout, nullptr, _IOLBF, 0);
   delete static_cast<printer_t *>(usr_data);
 }
 
@@ -149,15 +184,12 @@ void read_params(void *usr_data, btx_params_t *params) {
 }
 
 void line(void *btx_handle, void *usr_data, int64_t ts, const char *text) {
-  (void)btx_handle;
-  (void)ts;
   std::fputs(text, stdout);
   std::fputc('\n', stdout);
 }
 
 // The events no pretty filter formatted (and the other messages, ignored).
 void on_upstream_message(void *btx_handle, void *usr_data, const bt_message *m) {
-  (void)btx_handle;
   auto *p = static_cast<printer_t *>(usr_data);
   if (!p->restrict_ && bt_message_get_type(m) == BT_MESSAGE_TYPE_EVENT)
     fallback(p, m, bt_message_event_borrow_event_const(m));

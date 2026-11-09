@@ -5,7 +5,8 @@
 # model, printed as THAPI's Ruby pretty printer prints them.
 #
 #   gen_pretty.rb --model btx_ze_model.yaml --rules pretty_rules.yaml \
-#                 --callbacks btx_zepretty_callbacks.cpp --formatters btx_zepretty_formatters.hpp \
+#                 --callbacks btx_zepretty_callbacks.cpp --printers btx_zepretty.hpp \
+#                 [--formatters btx_zepretty_fmt.hpp] \
 #                 ze_api.yaml zet_api.yaml ...
 #
 # Inputs, all YAML:
@@ -14,10 +15,11 @@
 #   the members of each struct, the enumerators of each enum, the typedefs;
 # - the rules (optional): what neither file says (see pretty_rules.yaml).
 # Outputs:
-# - the formatters header: a printer (`pv`) and an fmt::formatter for each C
-#   struct and enum the events carry;
-# - the callbacks of a metababel FILTER that formats each event that way and
-#   pushes the text as a `thapi_pretty:line` event.
+# - the printers header: a printer (`pv`) for each C struct and enum the events carry;
+# - the formatters header (optional): an fmt::formatter for each of them, built
+#   on the printers, for code that wants `fmt::format("{}", value)`;
+# - the callbacks of a metababel FILTER that formats each event with the printers
+#   and pushes the text as a `thapi_pretty:line` event.
 #
 # The C++ code prints most values by their C type; the API model gives only what
 # the C type does not: the order of the struct members, the enumerator names,
@@ -29,18 +31,19 @@ require 'yaml'
 
 opts = {}
 OptionParser.new do |o|
-  o.banner = 'Usage: gen_pretty.rb --model M.yaml [--rules R.yaml] --callbacks C.cpp --formatters F.hpp [API.yaml...]'
+  o.banner = 'Usage: gen_pretty.rb --model M.yaml [--rules R.yaml] --callbacks C.cpp --printers P.hpp [--formatters F.hpp] [API.yaml...]'
   o.on('--model PATH', 'babeltrace (metababel) event model') { |v| opts[:model] = v }
   o.on('--rules PATH', 'printing rules') { |v| opts[:rules] = v }
   o.on('--callbacks PATH', 'output: the filter callbacks') { |v| opts[:callbacks] = v }
-  o.on('--formatters PATH', 'output: the formatters header') { |v| opts[:formatters] = v }
+  o.on('--printers PATH', 'output: the printers header') { |v| opts[:printers] = v }
+  o.on('--formatters PATH', 'output: the fmt::formatter header') { |v| opts[:formatters] = v }
   o.on('--all-types', 'also a formatter for every struct and union of the API') { opts[:all_types] = true }
 end.parse!
-%i[model callbacks formatters].each { |k| raise OptionParser::MissingArgument, "--#{k}" unless opts[k] }
+%i[model callbacks printers].each { |k| raise OptionParser::MissingArgument, "--#{k}" unless opts[k] }
 opts[:api] = ARGV # the h2yaml API models
 model_path = opts[:model]
 out_cpp = opts[:callbacks]
-out_hpp = opts[:formatters]
+out_hpp = opts[:printers]
 
 def c_str(s) = '"' + s.gsub('\\', '\\\\\\\\').gsub('"', '\"') + '"'
 
@@ -249,7 +252,7 @@ class Emitter
   def fn(t)
     return @fn[t.cname] if @fn.key?(t.cname)
 
-    name = "p#{@fn.size}"
+    name = t.is_a?(StructY) ? 'pv' : "p#{@fn.size}"
     @fn[t.cname] = name
     case t
     when EnumY then enum(name, t)
@@ -314,7 +317,8 @@ class Emitter
                          "alignof(#{k.ctype}) - 1) / alignof(#{k.ctype}) * alignof(#{k.ctype}))"
                      else '0'
                      end
-               "{ #{k.ctype} w; std::memcpy(&w, (const char *)&#{s} + #{off}, sizeof w); pv(o, w); }"
+               "{ static_assert(#{off} + sizeof(#{k.ctype}) <= sizeof(#{s}), \"bit-field storage outside the struct\"); " \
+                 "#{k.ctype} w; std::memcpy(&w, (const char *)&#{s} + #{off}, sizeof w); pv(o, w); }"
              else "pv(o, #{v});"
              end
       "put(o, #{c_str("#{m}: ")}); #{code}"
@@ -329,10 +333,10 @@ class Emitter
     body =
       case t.special
       when :handle then 'put(o, "{ data: \""); for (unsigned char x : s.data) fmt::format_to(o, "\\\\x{:02x}", x); put(o, "\" }");'
-      when :uuid_reversed then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id); put(o, " }");'
-      when :uuid then 'put(o, "{ id: "); uuid_forward(o, (const uint8_t *)s.bytes); put(o, " }");'
+      when :uuid_reversed then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id, true); put(o, " }");'
+      when :uuid then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.bytes, false); put(o, " }");'
       when :kernel_uuid
-        'put(o, "{ kid: "); uuid(o, (const uint8_t *)s.kid); put(o, ", mid: "); uuid(o, (const uint8_t *)s.mid); put(o, " }");'
+        'put(o, "{ kid: "); uuid(o, (const uint8_t *)s.kid, true); put(o, ", mid: "); uuid(o, (const uint8_t *)s.mid, true); put(o, " }");'
       when :typed_value
         raise "#{c}: unexpected members" unless ms.key?('type') && ms.key?('value')
 
@@ -341,8 +345,8 @@ class Emitter
           'case ZET_VALUE_TYPE_BOOL8: pv(o, s.value.b8); break; default: pv(o, s.value.ui64); }'
       else members(t.members, 's')
       end
-    @protos << "inline void #{n}(it_t o, const #{c} &s);" << "inline void pv(it_t o, const #{c} &s);"
-    @defs << "inline void #{n}(it_t o, const #{c} &s) { #{body} }\ninline void pv(it_t o, const #{c} &s) { #{n}(o, s); }\n"
+    @protos << "inline void pv(it_t o, const #{c} &s);"
+    @defs << "inline void pv(it_t o, const #{c} &s) { #{body} }\n"
     formatter(c, "const #{c} &s", "#{@ns}::pv(o, s)")
   end
 end
@@ -354,9 +358,9 @@ def length_field?(name) = name.start_with?('_') && name.end_with?('_length')
 # field's width and signedness, as the Ruby printer read it.
 def int_expr(fc, a)
   w = fc[:field_value_range] || 64
-  return "sext(u64(#{a}), #{w})" if fc[:type] == 'integer_signed'
-
-  "(u64(#{a}) & #{w == 64 ? '~0ULL' : "((1ULL << #{w}) - 1)"})"
+  if fc[:type] == 'integer_signed' then w == 64 ? "(int64_t)u64(#{a})" : "sext(u64(#{a}), #{w})"
+  else w == 64 ? "u64(#{a})" : "(u64(#{a}) & ((1ULL << #{w}) - 1))"
+  end
 end
 
 # Statements appending one payload member (Ruby `render_field`).
@@ -388,8 +392,8 @@ def render(em, fe, m, args)
       if t.nil? then "ruby_inspect(o, (const char *)#{ptr}, #{len});"
       elsif !t.is_a?(StructY) then raise "#{name}: a blob of #{t.class} is not supported"
       elsif name.end_with?('_vals') # an array of structs, split on the struct size
-        "struct_vals<#{t.cname}>(o, #{ptr}, #{len}, #{em.fn(t)});"
-      else "if (#{len} > 0) struct_one<#{t.cname}>(o, #{ptr}, #{len}, #{em.fn(t)});"
+        em.fn(t) && "struct_vals<#{t.cname}>(o, #{ptr}, #{len});"
+      else em.fn(t) && "if (#{len} > 0) struct_one<#{t.cname}>(o, #{ptr}, #{len});"
       end
     when 'array_dynamic', 'array_static'
       e = fc[:element_field_class]
@@ -415,29 +419,38 @@ ns = "thapi_pretty::#{backend}"
 em = Emitter.new(ns)
 callbacks = []
 registrations = []
-model[:stream_classes].each do |sc|
+heads = []
+model[:stream_classes].each_with_index do |sc, si|
   ctx = sc.dig(:event_common_context_field_class, :members) || []
-  sc[:event_classes].each_with_index do |e, ei|
+  # C `_Bool` (some cast_types) is C++ `bool`, with the same ABI.
+  ctype = ->(fc) { fc[:cast_type].gsub(/\b_Bool\b/, 'bool') }
+  cparams = ctx.each_with_index.map { |c, i| "#{ctype.call(c[:field_class])} c#{i}" }
+  cargs = ctx.each_index.map { |i| "c#{i}" }
+  ctx_code = ctx.each_with_index.map { |c, i| "put(o, #{c_str("#{i.zero? ? ' - ' : ', '}#{c[:name]}: ")}); dec(o, c#{i});" }
+  # The start of a line: time, [context], event name.
+  heads << <<~CPP
+    it_t head_#{si}(data_t *d, int64_t ts, const char *hostname#{cparams.map { |c| ", #{c}" }.join}, const char *name) {
+      d->out.clear();
+      it_t o(d->out);
+      ruby_time(o, ts);
+      if (d->context) { put(o, " - "); put(o, hostname ? hostname : ""); #{ctx_code.join(' ')} }
+      put(o, name);
+      return o;
+    }
+  CPP
+  sc[:event_classes].each do |e|
     members = e[:payload_field_class]&.[](:members).to_a
     args = members.each_with_index.to_h { |m, i| [m[:name], "a#{i}"] }
-    params = ['void *btx_handle', 'void *usr_data', 'int64_t ts', 'const char *hostname'] +
-             ctx.map { |c| "#{c[:field_class][:cast_type]} #{c[:name]}" } +
-             members.each_with_index.map { |m, i| "#{m[:field_class][:cast_type]} a#{i}" }
-    ctx_code = ctx.each_with_index.map { |c, i| "put(o, #{c_str("#{i.zero? ? ' - ' : ', '}#{c[:name]}: ")}); dec(o, #{c[:name]});" }
+    params = ['void *btx_handle', 'void *usr_data', 'int64_t ts', 'const char *hostname'] + cparams +
+             members.each_with_index.map { |m, i| "#{ctype.call(m[:field_class])} a#{i}" }
     fields = members.reject { |m| length_field?(m[:name]) }.map { |m| render(em, fe, m, args) }
-    cb = "cb_#{ei}"
+    cb = "cb_#{callbacks.size}"
     callbacks << <<~CPP
-      static void #{cb}(#{params.join(', ')}) {
+      void #{cb}(#{params.join(', ')}) {
         auto *d = static_cast<data_t *>(usr_data);
-        d->out.clear();
-        it_t o(d->out);
-        ruby_time(o, ts);
-        if (d->context) { put(o, " - "); put(o, hostname ? hostname : ""); #{ctx_code.join(' ')} }
-        put(o, #{c_str(" - #{e[:name]}: { ")});
+        it_t o = head_#{si}(d, ts, hostname#{cargs.map { |c| ", #{c}" }.join}, #{c_str(" - #{e[:name]}: { ")});
         #{fields.join("\n  put(o, \", \");\n  ")}
-        put(o, " }");
-        d->out.push_back('\\0');
-        btx_push_message_thapi_pretty_line(btx_handle, ts, d->out.data());
+        tail(btx_handle, d, ts);
       }
     CPP
     registrations << "  btx_register_callbacks_#{e[:name].gsub(/[^0-9A-Za-z-]/, '_')}(btx_handle, &#{cb});"
@@ -464,8 +477,8 @@ fe.memo.values.compact.uniq.each { |t| em.fn(t) }
 src = ([model_path] + opts[:api]).map { |p| File.basename(p) }.join(', ')
 File.write(out_hpp, <<~HPP)
   // Generated by #{File.basename(__FILE__)} from #{src}.
-  // fmt::formatter for the #{backend} structs and enums, printed as the Ruby
-  // pretty printer prints them. Include after the #{backend} headers.
+  // A printer (`pv`) for the #{backend} structs and enums, printing them as the
+  // Ruby pretty printer does. Include after the #{backend} headers.
   #pragma once
 
   #include "thapi_pretty.hpp"
@@ -480,10 +493,9 @@ File.write(out_hpp, <<~HPP)
   using thapi_pretty::dec;
   using thapi_pretty::ruby_float;
   using thapi_pretty::ruby_hex;
+  using thapi_pretty::ruby_hex_signed;
   using thapi_pretty::char_array;
   using thapi_pretty::uuid;
-  using thapi_pretty::uuid_forward;
-  using thapi_pretty::ruby_hex_signed;
   inline void sep(it_t o, bool &first) { if (!first) put(o, ", "); first = false; }
   // A positive power of two: a flag (gen_library_base.rb classify_bitfield_members).
   template <class E> constexpr bool flag(E e) { int64_t v = (int64_t)e; return v > 0 && (v & (v - 1)) == 0; }
@@ -493,8 +505,6 @@ File.write(out_hpp, <<~HPP)
   // A value printed by its C type, as FFI reads and prints it.
   template <class T> inline void pv(it_t o, const T &v) {
     if constexpr (std::is_same_v<T, bool>) put(o, v ? "true" : "false");
-    else if constexpr (std::is_same_v<T, char> || std::is_same_v<T, signed char>) dec(o, (int)v);
-    else if constexpr (std::is_same_v<T, unsigned char>) dec(o, (unsigned)v);
     else if constexpr (std::is_floating_point_v<T>) ruby_float(o, v);
     else if constexpr (std::is_pointer_v<T> || std::is_null_pointer_v<T>) ruby_hex(o, (uint64_t)(uintptr_t)v);
     else if constexpr (std::is_integral_v<T>) dec(o, v);
@@ -503,22 +513,33 @@ File.write(out_hpp, <<~HPP)
   // An inline array: FFI gives an int8 or uint8 array as a CharArray, whose to_s
   // is the string up to its first NUL.
   template <class E, size_t N> inline void pv(it_t o, const E (&a)[N]) {
-    if constexpr (std::is_same_v<E, char> || std::is_same_v<E, signed char> || std::is_same_v<E, unsigned char>)
-      char_array(o, (const char *)a, N);
+    if constexpr (sizeof(E) == 1 && std::is_integral_v<E> && !std::is_same_v<E, bool>) char_array(o, (const char *)a, N);
     else { put(o, "[ "); for (size_t i = 0; i < N; i++) { if (i) put(o, ", "); pv(o, a[i]); } put(o, " ]"); }
   }
 
   #{em.defs.join("\n")}
   } // namespace #{ns}
-
-  #{em.formatters.join("\n")}
 HPP
+
+if opts[:formatters]
+  File.write(opts[:formatters], <<~HPP)
+    // Generated by #{File.basename(__FILE__)} from #{src}.
+    // fmt::formatter for the #{backend} structs and enums: `fmt::format("{}", value)`
+    // prints them as the Ruby pretty printer does. Include after the #{backend} headers.
+    #pragma once
+
+    #include "#{File.basename(out_hpp)}"
+
+    #{em.formatters.join("\n")}
+  HPP
+end
 
 File.write(out_cpp, <<~CPP)
   // Generated by #{File.basename(__FILE__)} from #{src}.
   // C `_Bool` (some cast_types) is C++ `bool`, with the same ABI.
   #define _Bool bool
   #include <metababel/metababel.h>
+  #undef _Bool
 
   #include "#{File.basename(out_hpp)}"
 
@@ -526,48 +547,57 @@ File.write(out_cpp, <<~CPP)
   using thapi_pretty::ruby_time;
   using thapi_pretty::ruby_inspect;
 
+  namespace {
+
   struct data_t {
     thapi_pretty::out_t out;
     bool context = false;
   };
 
-  template <class T> static inline uint64_t u64(T v) {
+  template <class T> inline uint64_t u64(T v) {
     if constexpr (std::is_pointer_v<T>) return (uint64_t)(uintptr_t)v;
     else return (uint64_t)v;
   }
-  static inline int64_t sext(uint64_t v, int bits) {
-    return bits == 64 ? (int64_t)v : (int64_t)(v << (64 - bits)) >> (64 - bits);
-  }
+  inline int64_t sext(uint64_t v, int bits) { return (int64_t)(v << (64 - bits)) >> (64 - bits); }
+
   // Ruby reads a packed struct from `FFI::MemoryPointer.from_string(bytes)`: the
   // bytes plus a NUL; we zero-pad to the struct size.
-  template <class T> static void struct_one(it_t o, const unsigned char *p, size_t len, void (*f)(it_t, const T &)) {
+  template <class T> void struct_one(it_t o, const unsigned char *p, size_t len) {
     T s;
     std::memset((void *)&s, 0, sizeof s);
     std::memcpy((void *)&s, p, len < sizeof s ? len : sizeof s);
-    f(o, s);
+    pv(o, s);
   }
-  template <class T> static void struct_vals(it_t o, const unsigned char *p, size_t len, void (*f)(it_t, const T &)) {
+  template <class T> void struct_vals(it_t o, const unsigned char *p, size_t len) {
     size_t n = len > 0 ? (len + 1) / sizeof(T) : 0;
     put(o, "[ ");
     for (size_t i = 0; i < n; i++) {
       if (i) put(o, ", ");
       size_t off = i * sizeof(T);
-      struct_one<T>(o, p + off, off < len ? len - off : 0, f);
+      struct_one<T>(o, p + off, off < len ? len - off : 0);
     }
     put(o, " ]");
   }
 
-  #{callbacks.join("\n")}
-  static void btx_initialize_component(void **usr_data) { *usr_data = new data_t; }
-  static void btx_finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
-  static void btx_read_params(void *usr_data, btx_params_t *usr_params) {
-    static_cast<data_t *>(usr_data)->context = usr_params->context;
+  #{heads.join("\n")}
+  // The end of a line, pushed downstream.
+  void tail(void *btx_handle, data_t *d, int64_t ts) {
+    put(it_t(d->out), " }");
+    d->out.push_back('\\0');
+    btx_push_message_thapi_pretty_line(btx_handle, ts, d->out.data());
   }
 
+  #{callbacks.join("\n")}
+  void initialize_component(void **usr_data) { *usr_data = new data_t; }
+  void finalize_component(void *usr_data) { delete static_cast<data_t *>(usr_data); }
+  void read_params(void *usr_data, btx_params_t *usr_params) { static_cast<data_t *>(usr_data)->context = usr_params->context; }
+
+  } // namespace
+
   void btx_register_usr_callbacks(void *btx_handle) {
-    btx_register_callbacks_initialize_component(btx_handle, &btx_initialize_component);
-    btx_register_callbacks_finalize_component(btx_handle, &btx_finalize_component);
-    btx_register_callbacks_read_params(btx_handle, &btx_read_params);
+    btx_register_callbacks_initialize_component(btx_handle, &initialize_component);
+    btx_register_callbacks_finalize_component(btx_handle, &finalize_component);
+    btx_register_callbacks_read_params(btx_handle, &read_params);
   #{registrations.join("\n")}
   }
 CPP

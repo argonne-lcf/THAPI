@@ -23,9 +23,12 @@ PRETTY_FILTER = \
 	btx_filter_$(PRETTY_BE)pretty/metababel/btx_downstream.c \
 	btx_filter_$(PRETTY_BE)pretty/btx_main.c
 
+# btx_<be>pretty.hpp: the printers the callbacks use. btx_<be>pretty_fmt.hpp: an
+# fmt::formatter for each printed type, for other code (the plugin does not use it).
 PRETTY_CODE = \
 	btx_$(PRETTY_BE)pretty_callbacks.cpp \
-	btx_$(PRETTY_BE)pretty_formatters.hpp
+	btx_$(PRETTY_BE)pretty.hpp \
+	btx_$(PRETTY_BE)pretty_fmt.hpp
 
 PRETTY_GENERATED = $(PRETTY_FILTER) $(PRETTY_CODE)
 
@@ -36,11 +39,14 @@ $(PRETTY_FILTER) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xpro
 
 $(PRETTY_CODE) &: $(top_srcdir)/utils/pretty_print/gen_pretty.rb $(srcdir)/pretty_rules.yaml $(PRETTY_MODEL) $(PRETTY_API)
 	$(RUBY) $(top_srcdir)/utils/pretty_print/gen_pretty.rb --model $(PRETTY_MODEL) --rules $(srcdir)/pretty_rules.yaml \
-	  --callbacks btx_$(PRETTY_BE)pretty_callbacks.cpp --formatters btx_$(PRETTY_BE)pretty_formatters.hpp $(PRETTY_API)
+	  --callbacks btx_$(PRETTY_BE)pretty_callbacks.cpp --printers btx_$(PRETTY_BE)pretty.hpp \
+	  --formatters btx_$(PRETTY_BE)pretty_fmt.hpp $(PRETTY_API)
 
 PRETTY_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(top_srcdir)/utils/pretty_print $(FMT_CPPFLAGS)
-PRETTY_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-PRETTY_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+# -fvisibility=hidden: a plugin exports only what babeltrace looks up (the
+# metababel plugin descriptors), not its copy of fmt and its helpers.
+PRETTY_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math -fvisibility=hidden $(WERROR) $(BABELTRACE2_CFLAGS)
+PRETTY_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math -fvisibility=hidden $(WERROR) $(BABELTRACE2_CFLAGS)
 PRETTY_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 BUILT_SOURCES += $(PRETTY_FILTER)
