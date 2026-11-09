@@ -1,13 +1,8 @@
 # A backend's commands, indexed by name and kept in the groups they were built
-# in -- one per LTTng provider for most backends, core versus extension for
-# opencl -- because generators want both shapes.
+# in -- one per LTTng provider -- because generators want both shapes.
 #
 # Looking up a name that matches no command raises: it is always a typo or a
 # renamed function, which would otherwise attach its code to nothing at all.
-#
-# This lives apart from utils/command.rb because opencl builds its commands
-# from the Khronos XML with a Command class of its own, and so cannot require
-# that file, but indexes them just the same.
 class CommandIndex
   include Enumerable
 
@@ -40,12 +35,9 @@ class CommandIndex
   # API, stated where they hold: MPI already spells its functions in snake_case
   # so upcasing is enough, and the commands reached through libffi rather than
   # dlsym (ze's zex, opencl's extensions) keep the header's own spelling.
-  #
-  # `pointer_name_of` reads the name off a command, because opencl's Command
-  # class keeps it on a prototype rather than on the command itself.
-  def pointer_names(naming: method(:upper_snake_case), pointer_name_of: :pointer_name.to_proc, &exception)
+  def pointer_names(naming: method(:upper_snake_case), &exception)
     to_h do |c|
-      name = pointer_name_of.call(c)
+      name = c.pointer_name
       [c, exception&.call(c, name) || naming.call(name)]
     end
   end
@@ -61,15 +53,12 @@ end
 
 # The macro that lets hand-written tracer C call a traced function through the
 # same symbol the generated code uses.
-#
-# `pointer_name_of` reads the name off a command, because opencl's Command
-# class keeps it on a prototype rather than on the command itself.
-def pointer_define(c, pointer_names, pointer_name_of: :pointer_name.to_proc)
-  "#define #{pointer_names[c]} #{pointer_name_of.call(c)}"
+def pointer_define(c, pointer_names)
+  "#define #{pointer_names[c]} #{c.pointer_name}"
 end
 
 # Those macros for a list of commands. A backend defines these for the subset it
 # reaches by dlsym rather than always for the whole index.
-def print_pointer_defines(commands, pointer_names, pointer_name_of: :pointer_name.to_proc)
-  commands.each { |c| puts pointer_define(c, pointer_names, pointer_name_of: pointer_name_of) }
+def print_pointer_defines(commands, pointer_names)
+  commands.each { |c| puts pointer_define(c, pointer_names) }
 end

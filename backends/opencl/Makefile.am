@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -70,19 +71,25 @@ ML_FILES = \
 	$(srcdir)/supported_extensions.yaml \
 	$(srcdir)/supported_enums.yaml
 
+# What the registry says and the headers cannot: the functions traced, their
+# meta-parameters, their declarations as written, the enum groups.
+opencl_xml.yaml: $(srcdir)/gen_opencl_xml_yaml.rb cl.xml.patched opencl_api.yaml $(ML_FILES)
+	SRC_DIR=$(srcdir) $(RUBY) $< cl.xml.patched opencl_api.yaml > $@
+
+CLEANFILES += opencl_xml.yaml
+
+EXTRA_DIST += gen_opencl_xml_yaml.rb
+
 TRACEPOINT_GEN = \
 	$(srcdir)/opencl_model.rb \
-	$(srcdir)/opencl_tracepoints.rb \
 	$(srcdir)/opencl_wrapper_events.yaml \
 	$(srcdir)/opencl_events.yaml
 
 OPENCL_MODEL = \
 	$(TRACEPOINT_GEN) \
-	$(ML_FILES) \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
-	cl.xml.patched
+	opencl_api.yaml \
+	opencl_xml.yaml \
+	$(BACKEND_MODEL_DEPS)
 
 BTX_OPENCL_GENERATED = \
 	btx_filter_opencl/metababel/metababel.h \
