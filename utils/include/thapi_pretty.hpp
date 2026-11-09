@@ -85,6 +85,22 @@ inline it_t ruby_float(it_t o, double v) {
   return fmt::format_to(o, "e{:+03d}", decpt - 1);
 }
 
+// A float widened to double. A denormal float is widened with integer
+// arithmetic: under DAZ the FPU would read it as 0.
+inline double widen(float f) {
+  uint32_t b;
+  std::memcpy(&b, &f, sizeof b);
+  uint32_t m = b & 0x7fffffu;
+  if ((b & 0x7f800000u) != 0 || m == 0) return f; // normal, zero, inf, NaN: exact
+  int p = 31 - __builtin_clz(m);                  // highest set bit: value = 2^(p-149) * 1.f
+  uint64_t d = (uint64_t)(b >> 31) << 63 | (uint64_t)(p - 149 + 1023) << 52 | (uint64_t)(m - (1u << p)) << (52 - p);
+  double r;
+  std::memcpy(&r, &d, sizeof r);
+  return r;
+}
+// Ruby `Float#to_s` of a single-precision value (FFI and bt2 give it as a double).
+inline it_t ruby_float(it_t o, float f) { return ruby_float(o, widen(f)); }
+
 // Ruby `String#inspect` of a binary (ASCII-8BIT) string.
 inline it_t ruby_inspect(it_t o, const char *s, size_t len) {
   *o++ = '"';
@@ -143,6 +159,7 @@ struct no_spec {
 // The same primitives on a buffer.
 inline void put(out_t &o, std::string_view s) { o.append(s.data(), s.data() + s.size()); }
 inline void ruby_float(out_t &o, double v) { ruby_float(it_t(o), v); }
+inline void ruby_float(out_t &o, float v) { ruby_float(it_t(o), v); }
 inline void ruby_inspect(out_t &o, const char *s, size_t len) { ruby_inspect(it_t(o), s, len); }
 inline void ruby_inspect(out_t &o, const char *s) { ruby_inspect(it_t(o), s, std::strlen(s)); }
 inline void ruby_hex(out_t &o, uint64_t v) { ruby_hex(it_t(o), v); }

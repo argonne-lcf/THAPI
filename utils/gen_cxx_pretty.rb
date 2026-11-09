@@ -252,7 +252,7 @@ def render(em, fe, m, args)
         "ruby_hex(o, #{v});"
       else "dec(o, #{fc[:type] == 'integer_signed' ? '(int64_t)' : '(uint64_t)'}#{v});"
       end
-    when 'double', 'single' then "ruby_float(o, (double)#{a});"
+    when 'double', 'single' then "ruby_float(o, #{a});"
     when 'string'
       raise "#{name}: string with be_class is not supported" if t
 
@@ -354,14 +354,16 @@ File.write(out_hpp, <<~HPP)
     if constexpr (std::is_same_v<T, bool>) put(o, v ? "true" : "false");
     else if constexpr (std::is_same_v<T, char> || std::is_same_v<T, signed char>) dec(o, (int)v);
     else if constexpr (std::is_same_v<T, unsigned char>) dec(o, (unsigned)v);
-    else if constexpr (std::is_floating_point_v<T>) ruby_float(o, (double)v);
+    else if constexpr (std::is_floating_point_v<T>) ruby_float(o, v);
     else if constexpr (std::is_pointer_v<T> || std::is_null_pointer_v<T>) ruby_hex(o, (uint64_t)(uintptr_t)v);
     else if constexpr (std::is_integral_v<T>) dec(o, v);
     else static_assert(!sizeof(T), "no printer for this type");
   }
-  // An inline array: FFI prints a :char (int8) array as the string up to its first NUL.
+  // An inline array: FFI gives an int8 or uint8 array as a CharArray, whose to_s
+  // is the string up to its first NUL.
   template <class E, size_t N> inline void pv(it_t o, const E (&a)[N]) {
-    if constexpr (std::is_same_v<E, char> || std::is_same_v<E, signed char>) char_array(o, (const char *)a, N);
+    if constexpr (std::is_same_v<E, char> || std::is_same_v<E, signed char> || std::is_same_v<E, unsigned char>)
+      char_array(o, (const char *)a, N);
     else { put(o, "[ "); for (size_t i = 0; i < N; i++) { if (i) put(o, ", "); pv(o, a[i]); } put(o, " ]"); }
   }
 
