@@ -181,3 +181,16 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(BTX_PYTORCH_GENERATED_SOURCE_TEST) \
 	$(abs_builddir)/btx_pytorch_model.yaml
+
+# filter.pytorchpretty.pretty: the pytorch events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = pytorch
+PRETTY_MODEL = $(srcdir)/btx_pytorch_model.yaml
+PRETTY_API = 
+PRETTY_INC = 
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libPYTORCHPretty.la
+nodist_libPYTORCHPretty_la_SOURCES = $(PRETTY_GENERATED)
+libPYTORCHPretty_la_CPPFLAGS = -I./btx_filter_pytorchpretty $(PRETTY_CPPFLAGS)
+libPYTORCHPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libPYTORCHPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libPYTORCHPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

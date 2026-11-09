@@ -211,3 +211,16 @@ libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+# filter.mpipretty.pretty: the mpi events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = mpi
+PRETTY_MODEL = btx_mpi_model.yaml
+PRETTY_API = mpi_api.yaml
+PRETTY_INC = -i mpi.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libMPIPretty.la
+nodist_libMPIPretty_la_SOURCES = $(PRETTY_GENERATED)
+libMPIPretty_la_CPPFLAGS = -I./modified_include -I./btx_filter_mpipretty $(PRETTY_CPPFLAGS)
+libMPIPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libMPIPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libMPIPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

@@ -1,0 +1,81 @@
+---
+special:
+  handle:
+  - ze_ipc_event_pool_handle_t
+  - ze_ipc_mem_handle_t
+  - zex_ipc_counter_based_event_handle_t
+  kernel_uuid:
+  - ze_kernel_uuid_t
+  typed_value:
+  - zet_typed_value_t
+  uuid_reversed:
+  - ze_device_uuid_t
+  - ze_driver_uuid_t
+  - ze_native_kernel_uuid_t
+  - ze_uuid_t
+  - zes_uuid_t
+version:
+- ze_api_version_t
+- ze_bfloat16_conversions_ext_version_t
+- ze_bindless_image_exp_version_t
+- ze_cache_reservation_ext_version_t
+- ze_calculate_multiple_metrics_exp_version_t
+- ze_command_list_clone_exp_version_t
+- ze_device_cache_line_size_ext_version_t
+- ze_device_ip_version_version_t
+- ze_device_luid_ext_version_t
+- ze_device_memory_properties_ext_version_t
+- ze_device_vector_sizes_ext_version_t
+- ze_driver_ddi_handles_ext_version_t
+- ze_eu_count_ext_version_t
+- ze_event_pool_counter_based_exp_version_t
+- ze_event_query_kernel_timestamps_ext_version_t
+- ze_event_query_timestamps_exp_version_t
+- ze_external_semaphore_ext_version_t
+- ze_float_atomics_ext_version_t
+- ze_global_offset_exp_version_t
+- ze_image_copy_ext_version_t
+- ze_image_memory_properties_exp_version_t
+- ze_image_query_alloc_properties_ext_version_t
+- ze_image_view_exp_version_t
+- ze_image_view_ext_version_t
+- ze_image_view_planar_exp_version_t
+- ze_image_view_planar_ext_version_t
+- ze_immediate_command_list_append_exp_version_t
+- ze_kernel_get_binary_exp_version_t
+- ze_kernel_max_group_size_properties_ext_version_t
+- ze_linkage_inspection_ext_version_t
+- ze_linkonce_odr_ext_version_t
+- ze_memory_compression_hints_ext_version_t
+- ze_memory_free_policies_ext_version_t
+- ze_metric_global_timestamps_exp_version_t
+- ze_module_program_exp_version_t
+- ze_mutable_command_list_exp_version_t
+- ze_pci_properties_ext_version_t
+- ze_power_saving_hint_exp_version_t
+- ze_raytracing_ext_version_t
+- ze_relaxed_allocation_limits_exp_version_t
+- ze_rtas_builder_exp_version_t
+- ze_rtas_builder_ext_version_t
+- ze_scheduling_hints_exp_version_t
+- ze_srgb_ext_version_t
+- ze_sub_allocations_exp_version_t
+- ze_subgroup_ext_version_t
+- zel_api_tracing_version_t
+- zes_device_ecc_default_properties_ext_version_t
+- zes_engine_activity_ext_version_t
+- zes_firmware_security_exp_version_t
+- zes_mem_bandwidth_counter_bits_exp_version_t
+- zes_mem_page_offline_state_exp_version_t
+- zes_power_domain_properties_exp_version_t
+- zes_power_limits_ext_version_t
+- zes_ras_state_exp_version_t
+- zes_sysman_device_mapping_exp_version_t
+- zes_vf_management_exp_version_t
+- zet_api_tracing_exp_version_t
+- zet_concurrent_metric_groups_exp_version_t
+- zet_export_metric_data_exp_version_t
+- zet_metric_group_marker_exp_version_t
+- zet_metric_programmable_exp_version_t
+- zet_metric_tracer_exp_version_t
+- zet_metrics_runtime_enable_disable_exp_version_t

@@ -1,0 +1,12 @@
+:stream_classes:
+- :name: thapi_pretty
+  :default_clock_class: {}
+  :event_classes:
+  - :name: thapi_pretty:line
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: line
+        :field_class:
+          :type: string
+          :cast_type: const char*

@@ -397,3 +397,16 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_CUDA_GENERATED_SOURCE_TEST)
+
+# filter.cudapretty.pretty: the cuda events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = cuda
+PRETTY_MODEL = btx_cuda_model.yaml
+PRETTY_API = cuda_api.yaml cuda_exports_api.yaml
+PRETTY_INC = -i cuda.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libCUDAPretty.la
+nodist_libCUDAPretty_la_SOURCES = $(PRETTY_GENERATED)
+libCUDAPretty_la_CPPFLAGS = -I$(srcdir)/include -I./btx_filter_cudapretty $(PRETTY_CPPFLAGS)
+libCUDAPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libCUDAPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libCUDAPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)
