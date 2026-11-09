@@ -1,8 +1,12 @@
 // sink.thapipretty.text: print the `thapi_pretty:line` events made by the
 // per-backend pretty filters, one per line, in the order they arrive. Any other
 // event is printed the way the Ruby printer prints an event it has no printer
-// for (the bt2 Ruby gem `Field#to_s`), unless `restrict` is true.
+// for (the bt2 Ruby gem `Field#to_s`), unless `restricted` is true.
+//
+// A metababel SINK of btx_pretty_model.yaml: the lines come to a callback, every
+// other event to on_upstream_message_callback.
 #include <babeltrace2/babeltrace.h>
+#include <metababel/metababel.h>
 
 #include "thapi_pretty.hpp"
 
@@ -12,11 +16,11 @@ using namespace thapi_pretty;
 
 namespace {
 
-struct sink_t {
-  bt_message_iterator *it = nullptr;
+struct printer_t {
   bool context = false;
   bool restrict_ = false;
   out_t out;
+  char buf[1 << 20];
 };
 
 void dec(out_t &o, int64_t v) { fmt::format_to(std::back_inserter(o), "{}", v); }
@@ -53,12 +57,8 @@ void field(out_t &o, const bt_field *f) {
   }
   switch (t) {
   case BT_FIELD_CLASS_TYPE_BOOL: put(o, bt_field_bool_get_value(f) ? "true" : "false"); return;
-  case BT_FIELD_CLASS_TYPE_SINGLE_PRECISION_REAL:
-    ruby_float(o, bt_field_real_single_precision_get_value(f));
-    return;
-  case BT_FIELD_CLASS_TYPE_DOUBLE_PRECISION_REAL:
-    ruby_float(o, bt_field_real_double_precision_get_value(f));
-    return;
+  case BT_FIELD_CLASS_TYPE_SINGLE_PRECISION_REAL: ruby_float(o, bt_field_real_single_precision_get_value(f)); return;
+  case BT_FIELD_CLASS_TYPE_DOUBLE_PRECISION_REAL: ruby_float(o, bt_field_real_double_precision_get_value(f)); return;
   case BT_FIELD_CLASS_TYPE_STRING: put(o, bt_field_string_get_value(f)); return;
   case BT_FIELD_CLASS_TYPE_STRUCTURE: {
     put(o, "{");
@@ -97,13 +97,13 @@ void field(out_t &o, const bt_field *f) {
   }
 }
 
-void fallback(sink_t *s, const bt_message *m, const bt_event *e) {
-  out_t &o = s->out;
+void fallback(printer_t *p, const bt_message *m, const bt_event *e) {
+  out_t &o = p->out;
   o.clear();
   int64_t ns = 0;
   bt_clock_snapshot_get_ns_from_origin(bt_message_event_borrow_default_clock_snapshot_const(m), &ns);
   ruby_time(o, ns);
-  if (s->context) {
+  if (p->context) {
     put(o, " - ");
     const bt_trace *tr = bt_stream_borrow_trace_const(bt_event_borrow_stream_const(e));
     const bt_value *h = bt_trace_borrow_environment_entry_value_by_name_const(tr, "hostname");
@@ -124,84 +124,51 @@ void fallback(sink_t *s, const bt_message *m, const bt_event *e) {
   put(o, " - ");
   put(o, bt_event_class_get_name(bt_event_borrow_class_const(e)));
   put(o, ": ");
-  const bt_field *p = bt_event_borrow_payload_field_const(e);
-  if (p) field(o, p);
+  const bt_field *payload = bt_event_borrow_payload_field_const(e);
+  if (payload) field(o, payload);
   o.push_back('\n');
   std::fwrite(o.data(), 1, o.size(), stdout);
 }
 
-bt_component_class_initialize_method_status init(bt_self_component_sink *self, bt_self_component_sink_configuration *,
-                                                 const bt_value *params, void *) {
-  auto *s = new sink_t;
-  const bt_value *v;
-  if ((v = bt_value_map_borrow_entry_value_const(params, "context"))) s->context = bt_value_bool_get(v);
-  if ((v = bt_value_map_borrow_entry_value_const(params, "restrict"))) s->restrict_ = bt_value_bool_get(v);
-  bt_self_component_set_data(bt_self_component_sink_as_self_component(self), s);
-  bt_self_component_sink_add_input_port(self, "in", nullptr, nullptr);
-  static char buf[1 << 20];
-  std::setvbuf(stdout, buf, _IOFBF, sizeof buf);
-  return BT_COMPONENT_CLASS_INITIALIZE_METHOD_STATUS_OK;
+void initialize(void **usr_data) {
+  auto *p = new printer_t;
+  std::setvbuf(stdout, p->buf, _IOFBF, sizeof p->buf);
+  *usr_data = p;
 }
 
-void finalize(bt_self_component_sink *self) {
-  auto *s = static_cast<sink_t *>(bt_self_component_get_data(bt_self_component_sink_as_self_component(self)));
+void finalize(void *usr_data) {
   std::fflush(stdout);
-  delete s;
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
+  delete static_cast<printer_t *>(usr_data);
 }
 
-bt_component_class_sink_graph_is_configured_method_status configured(bt_self_component_sink *self) {
-  auto *s = static_cast<sink_t *>(bt_self_component_get_data(bt_self_component_sink_as_self_component(self)));
-  bt_self_component_port_input *port = bt_self_component_sink_borrow_input_port_by_index(self, 0);
-  bt_message_iterator_create_from_sink_component(self, port, &s->it);
-  return BT_COMPONENT_CLASS_SINK_GRAPH_IS_CONFIGURED_METHOD_STATUS_OK;
+void read_params(void *usr_data, btx_params_t *params) {
+  auto *p = static_cast<printer_t *>(usr_data);
+  p->context = params->context;
+  p->restrict_ = params->restricted;
 }
 
-bt_component_class_sink_consume_method_status consume(bt_self_component_sink *self) {
-  auto *s = static_cast<sink_t *>(bt_self_component_get_data(bt_self_component_sink_as_self_component(self)));
-  bt_message_array_const msgs;
-  uint64_t count;
-  switch (bt_message_iterator_next(s->it, &msgs, &count)) {
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_END:
-    bt_message_iterator_put_ref(s->it);
-    s->it = nullptr;
-    return BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_END;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_AGAIN: return BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_AGAIN;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_MEMORY_ERROR: return BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_MEMORY_ERROR;
-  case BT_MESSAGE_ITERATOR_NEXT_STATUS_ERROR: return BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_ERROR;
-  default: break;
-  }
-  for (uint64_t i = 0; i < count; i++) {
-    const bt_message *m = msgs[i];
-    if (bt_message_get_type(m) == BT_MESSAGE_TYPE_EVENT) {
-      const bt_event *e = bt_message_event_borrow_event_const(m);
-      const char *name = bt_event_class_get_name(bt_event_borrow_class_const(e));
-      if (std::strcmp(name, "thapi_pretty:line") == 0) {
-        const bt_field *f = bt_field_structure_borrow_member_field_by_index_const(bt_event_borrow_payload_field_const(e), 0);
-        std::fwrite(bt_field_string_get_value(f), 1, bt_field_string_get_length(f), stdout);
-        std::fputc('\n', stdout);
-      } else if (!s->restrict_) {
-        fallback(s, m, e);
-      }
-    }
-    bt_message_put_ref(m);
-  }
-  return BT_COMPONENT_CLASS_SINK_CONSUME_METHOD_STATUS_OK;
+void line(void *btx_handle, void *usr_data, int64_t ts, const char *text) {
+  (void)btx_handle;
+  (void)ts;
+  std::fputs(text, stdout);
+  std::fputc('\n', stdout);
 }
 
-// MIP 1 is needed for BLOB fields; nothing here depends on the version.
-bt_component_class_get_supported_mip_versions_method_status mips(bt_self_component_class_sink *, const bt_value *, void *,
-                                                                 bt_logging_level,
-                                                                 bt_integer_range_set_unsigned *versions) {
-  bt_integer_range_set_unsigned_add_range(versions, 0, 1);
-  return BT_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD_STATUS_OK;
+// The events no pretty filter formatted (and the other messages, ignored).
+void on_upstream_message(void *btx_handle, void *usr_data, const bt_message *m) {
+  (void)btx_handle;
+  auto *p = static_cast<printer_t *>(usr_data);
+  if (!p->restrict_ && bt_message_get_type(m) == BT_MESSAGE_TYPE_EVENT)
+    fallback(p, m, bt_message_event_borrow_event_const(m));
 }
 
 } // namespace
 
-BT_PLUGIN_MODULE();
-BT_PLUGIN(thapipretty);
-BT_PLUGIN_SINK_COMPONENT_CLASS(text, consume);
-BT_PLUGIN_SINK_COMPONENT_CLASS_INITIALIZE_METHOD(text, init);
-BT_PLUGIN_SINK_COMPONENT_CLASS_FINALIZE_METHOD(text, finalize);
-BT_PLUGIN_SINK_COMPONENT_CLASS_GRAPH_IS_CONFIGURED_METHOD(text, configured);
-BT_PLUGIN_SINK_COMPONENT_CLASS_GET_SUPPORTED_MIP_VERSIONS_METHOD(text, mips);
+void btx_register_usr_callbacks(void *btx_handle) {
+  btx_register_callbacks_initialize_component(btx_handle, &initialize);
+  btx_register_callbacks_finalize_component(btx_handle, &finalize);
+  btx_register_callbacks_read_params(btx_handle, &read_params);
+  btx_register_callbacks_thapi_pretty_line(btx_handle, &line);
+  btx_register_on_upstream_message_callback(btx_handle, &on_upstream_message);
+}

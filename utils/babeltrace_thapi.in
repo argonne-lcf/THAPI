@@ -242,7 +242,7 @@ def get_and_add_components(graph, names, l_inputs)
       graph.add(comp, name.gsub('.', '_'), params: { 'context' => $options[:context] ? true : false })
     when 'sink.thapipretty.text'
       graph.add(comp, 'pretty', params: { 'context' => $options[:context] ? true : false,
-                                          'restrict' => $options[:restrict] ? true : false })
+                                          'restricted' => $options[:restrict] ? true : false })
     when 'source.ctf.lttng_live'
       graph.add(comp, 'source_live',
                 params: { 'inputs' => $options[:inputs],
