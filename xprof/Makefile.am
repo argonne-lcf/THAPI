@@ -151,7 +151,13 @@ libXAggreg_la_SOURCES = \
 
 # Library to be packaged
 bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
+bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la libThapiPretty.la
+
+# sink.thapipretty.text: prints the lines of the per-backend pretty filters.
+libThapiPretty_la_SOURCES = btx_pretty_sink.cpp
+libThapiPretty_la_CPPFLAGS = -I$(top_srcdir)/utils/include $(FMT_CPPFLAGS)
+libThapiPretty_la_CXXFLAGS = $(AM_CXXFLAGS) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libThapiPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
@@ -240,6 +246,8 @@ check_DATA = \
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
+	btx_pretty_model.yaml \
+	btx_pretty_params.yaml \
 	btx_aggreg_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \

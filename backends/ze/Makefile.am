@@ -51,6 +51,22 @@ BTX_ZE_GENERATED = \
 	btx_filter_ze/metababel/btx_downstream.c \
 	btx_filter_ze/btx_main.c
 
+BTX_ZE_PRETTY_GENERATED = \
+	btx_filter_zepretty/metababel/metababel.h \
+	btx_filter_zepretty/metababel/btx_component.h \
+	btx_filter_zepretty/metababel/btx_component.c \
+	btx_filter_zepretty/metababel/btx_upstream.h \
+	btx_filter_zepretty/metababel/btx_upstream.c \
+	btx_filter_zepretty/metababel/btx_downstream.h \
+	btx_filter_zepretty/metababel/btx_downstream.c \
+	btx_filter_zepretty/btx_main.c
+
+$(BTX_ZE_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_ze_model.yaml
+	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_zepretty -p zepretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i ze.h.include
+
+btx_zepretty_callbacks.cpp: $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb
+	$(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb > $@
+
 EXTRA_DIST = \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_zematching_model.yaml \
@@ -189,7 +205,7 @@ zedir = $(pkglibdir)/ze
 ze_LTLIBRARIES = libze_loader.la libZESampling.la
 
 bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libZEInterval.la
+bt2_LTLIBRARIES = libZEInterval.la libZEPretty.la
 
 nodist_libze_loader_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
@@ -256,10 +272,22 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 
 CLEANFILES += \
 	$(BTX_ZE_GENERATED) \
+	$(BTX_ZE_PRETTY_GENERATED) \
+	btx_zepretty_callbacks.cpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	$(BTX_ZE_GENERATED)
+	$(BTX_ZE_GENERATED) \
+	$(BTX_ZE_PRETTY_GENERATED)
+
+nodist_libZEPretty_la_SOURCES = \
+	$(BTX_ZE_PRETTY_GENERATED) \
+	btx_zepretty_callbacks.cpp
+
+libZEPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_zepretty $(FMT_CPPFLAGS)
+libZEPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+libZEPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+libZEPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 nodist_libZEInterval_la_SOURCES = \
 	$(BTX_ZE_GENERATED) \
