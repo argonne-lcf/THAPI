@@ -1,0 +1,29 @@
+:environment:
+  :entries:
+  - :name: hostname
+    :type: string
+:stream_classes:
+- :name: thapi_toggle
+  :default_clock_class: {}
+  :packet_context_field_class:
+    :type: structure
+    :members:
+    - :name: cpu_id
+      :field_class:
+        :type: integer_signed
+        :cast_type: int64_t
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: vpid
+      :field_class:
+        :type: integer_signed
+        :cast_type: int64_t
+    - :name: vtid
+      :field_class:
+        :type: integer_signed
+        :cast_type: int64_t
+  :event_classes:
+  - :name: lttng_ust_toggle:auto_stop
+  - :name: lttng_ust_toggle:start
+  - :name: lttng_ust_toggle:stop

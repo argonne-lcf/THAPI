@@ -1,0 +1,251 @@
+#!/usr/bin/env bats
+
+setup_file() {
+  export THAPI_INCFLAGS="-I$(pkg-config --variable=includedir thapi)"
+  export THAPI_LDFLAGS="-Wl,-rpath,$(pkg-config --variable=libdir thapi) $(pkg-config --libs thapi)"
+}
+
+get_unique_jobid() {
+  echo ${BATS_TEST_NAME}.${RANDOM}
+}
+
+@test "toggle_api" {
+  rm -rf toggle_traces 2>/dev/null
+
+  cc ${THAPI_INCFLAGS} ./integration_tests/toggle_api.c -o toggle_api ${THAPI_LDFLAGS}
+  iprof --trace-output toggle_traces --no-analysis -- ./toggle_api
+
+  # Make sure auto_stop comes before stop.
+  babeltrace_thapi ./toggle_traces | awk 'BEGIN { seen_auto = 0 }
+  $0 ~ /lttng_ust_toggle:auto_stop/ { seen_auto = 1 }
+  $0 ~ /lttng_ust_toggle:stop/ { if (seen_auto == 1) { exit 0 } else { exit 1 } }
+  '
+
+  # Check expected trace counts.
+  dir=$(ls -d -1 ./toggle_traces/*/)
+  start_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:start | wc -l)
+  [ "$start_count" -eq 1 ]
+
+  stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:stop | wc -l)
+  [ "$stop_count" -eq 1 ]
+
+  auto_stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:auto_stop | wc -l)
+  [ "$auto_stop_count" -eq 1 ]
+}
+
+@test "toggle_dlopen" {
+  rm -rf toggle_traces 2>/dev/null
+
+  cc ./integration_tests/toggle_dlopen.c -o toggle_dlopen -ldl
+  LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$(pkg-config --variable=libdir thapi) \
+    iprof --trace-output toggle_traces --no-analysis -- ./toggle_dlopen
+
+  # Check expected trace counts.
+  dir=$(ls -d -1 ./toggle_traces/*/)
+  start_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:start | wc -l)
+  [ "$start_count" -eq 2 ]
+
+  stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:stop | wc -l)
+  [ "$stop_count" -eq 2 ]
+
+  auto_stop_count=$(babeltrace_thapi -c $dir | grep lttng_ust_toggle:auto_stop | wc -l)
+  [ "$auto_stop_count" -eq 2 ]
+}
+
+# Run toggle_mpi variant $2 on $1 ranks with `iprof --toggle-on`. iprof prints
+# the tally to stdout.
+iprof_toggle_mpi() {
+  rm -rf toggle_traces 2>/dev/null
+
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi \
+    ${THAPI_LDFLAGS}
+
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s \
+    ${MPIRUN} -n $1 iprof --toggle-on --trace-output toggle_traces -- ./toggle_mpi $2
+}
+
+# Count the tally of calls of API function $1, or of all functions with `Total`:
+# the 4th `|`-separated column of that row (see general.bats `default_summary`).
+count_calls() {
+  awk -F'|' -v name="$1" '{n = $1; gsub(/ /, "", n)} n == name {c = int($4)} END {print c + 0}'
+}
+
+# Count the processes that emitted traced API calls: the `Processes` field of
+# the header of the tally.
+count_processes() {
+  grep -oP '\d+(?= Processes)' || echo 0
+}
+
+@test "toggle_mpi_np_1" {
+  [ "$(iprof_toggle_mpi 1 0 | count_calls Total)" -eq 2 ]
+  [ "$(iprof_toggle_mpi 1 1 | count_calls Total)" -eq 1 ]
+  [ "$(iprof_toggle_mpi 1 2 | count_calls Total)" -eq 0 ]
+}
+
+@test "toggle_mpi_np_2" {
+  [ "$(iprof_toggle_mpi 2 0 | count_processes)" -eq 2 ]
+  [ "$(iprof_toggle_mpi 2 1 | count_processes)" -eq 1 ]
+  [ "$(iprof_toggle_mpi 2 2 | count_processes)" -eq 0 ]
+}
+
+# The toggle filter consumes the lttng_ust_toggle events (start, stop and
+# auto_stop alike) in their callbacks: none of them is forwarded downstream,
+# while the MPI calls between thapi_start() and thapi_stop() are.
+@test "toggle_events_consumed" {
+  rm -rf toggle_traces 2>/dev/null
+
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_mpi.c -o toggle_mpi \
+    ${THAPI_LDFLAGS}
+  THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) timeout 40s \
+    ${MPIRUN} -n 1 iprof --no-analysis --trace-output toggle_traces -- ./toggle_mpi 0
+
+  # Without the toggle filter, the trace has the start and stop events.
+  run babeltrace_thapi trace ./toggle_traces
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_toggle:start* ]]
+  [[ "$output" == *lttng_ust_toggle:stop* ]]
+
+  # With it, the MPI calls are kept, but none of the toggle events.
+  run babeltrace_thapi trace --toggle-on ./toggle_traces
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_mpi:MPI_Comm_rank_entry* ]]
+  [[ "$output" != *lttng_ust_toggle:* ]]
+}
+
+# The tests below trace with hand-made LTTng sessions instead of iprof, to
+# control what iprof always sets up. Session name ($1, MPI rank id in these
+# tests) gets its own session daemon, with LTTNG_HOME set to
+# ${BATS_TEST_TMPDIR}/lttng_home/$1, and writes its trace to
+# ${BATS_TEST_TMPDIR}/lttng_home/$1/trace. $2 is context or no-context: whether
+# events carry the vpid/vtid context. Prints the session's LTTNG_HOME, which
+# the traced application and lttng_stop need to reach its session daemon, and
+# babeltrace_thapi to find its trace.
+#
+# The body is a subshell with `set -e`: callers capture the output with $(...),
+# where bats would otherwise not stop on a failing command.
+lttng_start() (
+  set -e
+  local home=${BATS_TEST_TMPDIR}/lttng_home/$1
+  local out=${home}/trace
+  local context=$2
+
+  # Store pipe's write end (fd 1) to fd 3 and point fd 1 (stdout) to
+  # fd 2 (stderr).
+  exec 3>&1 1>&2
+
+  local hostname_so=${BATS_TEST_TMPDIR}/toggle_multi_host_gethostname.so
+  if [ ! -f "${hostname_so}" ]; then
+    cc -shared -fPIC ./integration_tests/toggle_multi_host_gethostname.c -o \
+      "${hostname_so}"
+  fi
+
+  mkdir -p "${home}"
+  # The session daemon takes the trace's hostname from gethostname() when
+  # the session is created, and LTTng has no option to set it. Preloading
+  # toggle_multi_host_gethostname.c overrides gethostname() in this daemon
+  # to return the value of THAPI_FAKE_HOSTNAME when it is set.
+  LTTNG_HOME="${home}" LD_PRELOAD="${hostname_so}" \
+    THAPI_FAKE_HOSTNAME="host$1" lttng-sessiond --daemonize --quiet
+  LTTNG_HOME="${home}" lttng create toggle_test -o "${out}"
+  LTTNG_HOME="${home}" lttng enable-channel --userspace --blocking-timeout=inf \
+    chan
+  if [ "${context}" = context ]; then
+    LTTNG_HOME="${home}" lttng add-context --userspace --channel=chan \
+      -t vpid -t vtid
+  fi
+  LTTNG_HOME="${home}" lttng enable-event --userspace --channel=chan \
+    'lttng_ust_mpi:*,lttng_ust_toggle:*'
+  LTTNG_HOME="${home}" lttng start
+
+  # echo lttng_home to pipe's write end.
+  echo "${home}" >&3
+)
+
+# Stop and destroy the session of the LTTNG_HOME $1 printed by lttng_start.
+lttng_stop() {
+  LTTNG_HOME="$1" lttng stop
+  LTTNG_HOME="$1" lttng destroy
+}
+
+# Kill the session daemons started by lttng_start, even if the test failed.
+teardown() {
+  for pid_file in "${BATS_TEST_TMPDIR}"/lttng_home/*/.lttng/lttng-sessiond.pid; do
+    if [ -f "${pid_file}" ]; then
+      kill "$(cat "${pid_file}")" || true
+    fi
+  done
+}
+
+# Environment preloading THAPI's MPI tracer into binary $1 (as tracer_mpi.sh
+# does).
+mpi_tracer_env() {
+  local pkglibdir
+  pkglibdir=$(pkg-config --variable=libdir thapi)/thapi
+  echo LTTNG_UST_ALLOW_BLOCKING=1 \
+    LTTNG_UST_MPI_LIBMPI="$(ldd "$1" | awk '/libmpi\.so/ {print $3; exit}')" \
+    LD_LIBRARY_PATH="${pkglibdir}/mpi:${LD_LIBRARY_PATH}" \
+    LD_PRELOAD="${pkglibdir}/mpi/libmpi.so"
+}
+
+# Each rank must be matched against its own hostname, not the hostname of the
+# last thapi_start() seen. Fake a two-host run: each rank registers with its own
+# session daemon, which records its own hostname (see lttng_start).
+@test "toggle_multi_host" {
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_multi_host.c -o \
+    toggle_multi_host ${THAPI_LDFLAGS}
+
+  home0=$(lttng_start 0 context)
+  home1=$(lttng_start 1 context)
+
+  # We launch two programs below and each registers with the session daemon based
+  # on its own LTTNG_HOME (set using -env).
+  local prog=(env $(mpi_tracer_env ./toggle_multi_host) ./toggle_multi_host)
+  timeout 40s ${MPIRUN} -n 1 -env LTTNG_HOME "${home0}" "${prog[@]}" : \
+    -n 1 -env LTTNG_HOME "${home1}" "${prog[@]}"
+
+  lttng_stop "${home0}"
+  lttng_stop "${home1}"
+
+  run babeltrace_thapi tally --toggle-on --backends mpi "${home0}" "${home1}"
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ "2 Hostnames | 2 Processes" ]]
+  # Both ranks called thapi_start() before MPI_Comm_rank.
+  [ "$(count_calls MPI_Comm_rank <<<"$output")" -eq 2 ]
+}
+
+# Events without a vpid in their common context cannot be attributed to a
+# process or thread: the toggle filter must let them through, not crash.
+@test "toggle_events_without_vpid" {
+  mpicc ./integration_tests/mpi_helloworld.c -o mpi_helloworld
+
+  home=$(lttng_start 0 no-context)
+  env LTTNG_HOME="${home}" $(mpi_tracer_env ./mpi_helloworld) ./mpi_helloworld
+  lttng_stop "${home}"
+
+  # We use `trace` here instead of `tally` as `tally` won't show any counted MPI
+  # API calls due to the lack of context (vpid and vtid). Without context, the MPI
+  # interval filter can't match entry/exit events.
+  run babeltrace_thapi trace --toggle-on "${home}"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *lttng_ust_mpi:MPI_Init_entry* ]]
+}
+
+# Toggling is per thread: a thread's calls are traced only after its own
+# thapi_start(), and another thread's thapi_stop() does not affect it.
+@test "toggle_threads" {
+  rm -rf toggle_traces 2>/dev/null
+
+  mpicc ${THAPI_INCFLAGS} ./integration_tests/toggle_threads.c \
+    -o toggle_threads -pthread ${THAPI_LDFLAGS}
+
+  iprof_summary=$(THAPI_SYNC_DAEMON=fs THAPI_JOBID=$(get_unique_jobid) \
+    timeout 40s ${MPIRUN} -n 1 iprof --toggle-on --trace-output toggle_traces \
+    -- ./toggle_threads)
+
+  # Traced: the main thread called thapi_start(), and the worker's thapi_stop()
+  # did not stop it, so we should see one MPI_Comm_rank() (see toggle_threads.c).
+  [ "$(count_calls MPI_Comm_rank <<<"$iprof_summary")" -eq 1 ]
+  # Not traced: the worker thread never called thapi_start(), so we shouldn't
+  # see MPI_Comm_size() (see toggle_threads.c).
+  [ "$(count_calls MPI_Comm_size <<<"$iprof_summary")" -eq 0 ]
+}
