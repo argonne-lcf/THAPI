@@ -64,8 +64,8 @@ BTX_ZE_PRETTY_GENERATED = \
 $(BTX_ZE_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_ze_model.yaml
 	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_zepretty -p zepretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i ze.h.include
 
-btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb
-	$(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb btx_ze_model.yaml ze_library.rb btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
+btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(ZE_LIB_GEN) $(ZE_MODEL) btx_ze_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_ze_library_base.rb btx_ze_model.yaml btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
 
 EXTRA_DIST = \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \

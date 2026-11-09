@@ -1,126 +1,125 @@
 #!/usr/bin/env ruby
-# Usage: gen_cxx_pretty.rb BTX_MODEL.yaml FFI_LIBRARY.rb OUT_CALLBACKS.cpp OUT_FORMATTERS.hpp
+# Usage: SRC_DIR=... gen_cxx_pretty.rb LIBRARY_BASE.rb BTX_MODEL.yaml OUT_CALLBACKS.cpp OUT_FORMATTERS.hpp
+#   e.g. SRC_DIR=$(srcdir) gen_cxx_pretty.rb $(srcdir)/gen_ze_library_base.rb btx_ze_model.yaml \
+#          btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
 #
 # OUT_FORMATTERS.hpp: an fmt::formatter for each C struct and enum the events of
-# BTX_MODEL.yaml carry, printing them as the Ruby pretty printer does, plus
-# static_asserts that the C layout is the one the printer reads.
+# BTX_MODEL.yaml carry, printing them as the Ruby pretty printer does.
 # OUT_CALLBACKS.cpp: the callbacks of a metababel FILTER that formats each event
 # of BTX_MODEL.yaml that way and pushes the text as a `thapi_pretty:line` event.
 #
-# Two steps: a frontend describes the types (Num, Ptr, EnumT, MaskT, StructT,
-# ArrT below); the emitter writes C++ from that description. The frontend reads
-# the FFI library (e.g. ze_library.rb): enum names, bitmask flags, struct layouts.
+# LIBRARY_BASE.rb defines the backend's API model (API, NAMING). The C++ code
+# prints most values by their C type (overloads of `pv`); the API model says
+# only what the C type does not: the order of the struct members, which
+# integer members are flags, and which structs print in a special way. Enum
+# values are never evaluated here: the generated code uses the enumerator
+# names, so the compiler gives the values.
 require 'yaml'
-require 'ffi'
 
-model_path, lib_path, out_cpp, out_hpp = ARGV
+base_path, model_path, out_cpp, out_hpp = ARGV
+require File.expand_path(base_path)
 
-# ---- Type description ------------------------------------------------------
-Num = Struct.new(:ctype)                                # int8_t ... uint64_t, float, double, bool
-Ptr = Struct.new(:unused)                               # printed "0x%016x"
-EnumT = Struct.new(:cnames, :native, :pairs)            # pairs: [value, name], one per value
-MaskT = Struct.new(:native, :flags, :default)           # flags: [name, mask], in order
-StructT = Struct.new(:cname, :size, :members, :special) # members: [name, offset, type]
-ArrT = Struct.new(:elem, :length)                       # elem Num('char'): printed as a C string
-PTR = Ptr.new
+def c_str(s) = '"' + s.gsub('\\', '\\\\\\\\').gsub('"', '\"') + '"'
 
-def signed?(ctype) = !ctype.start_with?('u')
-def bits(ctype) = ctype[/\d+/].to_i
-
-# ---- Frontend: FFI library -------------------------------------------------
-class FFIFrontend
-  INT = {
-    FFI::Type::INT8 => 'int8_t', FFI::Type::UINT8 => 'uint8_t', FFI::Type::INT16 => 'int16_t',
-    FFI::Type::UINT16 => 'uint16_t', FFI::Type::INT32 => 'int32_t', FFI::Type::UINT32 => 'uint32_t',
-    FFI::Type::INT64 => 'int64_t', FFI::Type::UINT64 => 'uint64_t', FFI::Type::LONG => 'int64_t',
-    FFI::Type::ULONG => 'uint64_t', FFI::Type::LONG_LONG => 'int64_t', FFI::Type::ULONG_LONG => 'uint64_t'
-  }.freeze
-
-  def initialize(lib_path)
-    $LOAD_PATH.unshift(File.dirname(File.expand_path(lib_path)))
-    require File.expand_path(lib_path)
-    @struct_cname = {}
-    @enum_cnames = Hash.new { |h, k| h[k] = [] }
-    ObjectSpace.each_object(Module) do |m|
-      td = m.instance_variable_defined?(:@ffi_typedefs) && m.instance_variable_get(:@ffi_typedefs)
-      next unless td
-
-      td.each do |k, t|
-        if t.is_a?(FFI::StructByValue) then @struct_cname[t.struct_class] = k.to_s
-        elsif t.is_a?(FFI::Type::Mapped) then @enum_cnames[t.converter] |= [k.to_s]
-        end
+# How a backend's Ruby FFI library prints its types (gen_<backend>_library.rb).
+RULES = {
+  'ZE' => {
+    # A `_version_t` enum is a { minor, major } struct printed "major.minor".
+    version: ->(name) { name.end_with?('_version_t') },
+    # The modules gen_ze_library.rb prepends by class name. Handle#to_s on a
+    # struct without `data` raises in Ruby (THAPI #559): print it as a plain struct.
+    special: lambda { |name, members|
+      k = NAMING.class_name(name)
+      if k.match('UUID') then k.match('ZEKernelUUID') ? :kuuid : :uuid
+      elsif k.match(/Handle\z/) then members.any? { |m| m.name == 'data' } ? :handle : nil
+      elsif name == 'zet_typed_value_t' then :typed_value # the to_s gen_ze_library.rb meant (THAPI #561)
       end
-    end
+    }
+  }
+}.freeze
+RULE = RULES.fetch(NAMING.module_name)
+
+# ---- What the C++ code needs to know, from the API model --------------------
+EnumY = Struct.new(:cname, :names)                         # printed by name
+MaskY = Struct.new(:cname, :names)                         # cname: the `_flag_t` enum
+VersionY = Struct.new(:cname)                              # "major.minor"
+StructY = Struct.new(:cname, :members, :special, :union)   # members: [name, kind]
+AnonY = Struct.new(:members, :union)                       # a layout declared inline
+# kind: :auto (printed by C type), a MaskY (an integer holding flags), or an AnonY.
+
+class Frontend
+  attr_reader :memo
+
+  def initialize
     @memo = {}
+    @typedefs = API.types.to_h { |t| [t.name, t] }
   end
 
-  # The description of the be_class of a model member.
-  def be_class(name)
-    obj = Object.const_get(name)
-    case obj
-    when FFI::Bitmask then mask(obj, INT.fetch(obj.native_type))
-    when FFI::Enum then enum(obj, INT.fetch(obj.native_type))
-    when Class then struct(obj)
-    else raise "unsupported be_class #{name}"
+  # The description of the be_class of a model member, from its C type.
+  def be_type(cast_type)
+    type_named(cast_type.sub(/\s*\*\z/, '').strip)
+  end
+
+  def type_named(name)
+    return @memo[name] if @memo.key?(name)
+
+    if API.bitfield?(name) then mask(name)
+    elsif API.struct_names.include?(name) then struct(name)
+    elsif (t = @typedefs[name]) && t.type.is_a?(YAMLCAst::Enum)
+      @memo[name] = RULE[:version].call(name) ? VersionY.new(name) : EnumY.new(name, enum_names(t.type))
+    elsif (t = @typedefs[name]) && t.type.is_a?(YAMLCAst::Union) then struct(name, union: true)
     end
   end
 
-  def type(t)
-    case t
-    when FFI::Type::Mapped
-      c = t.converter
-      c.is_a?(FFI::Bitmask) ? mask(c, INT.fetch(t.native_type)) : enum(c, INT.fetch(t.native_type))
-    when FFI::StructByValue then struct(t.struct_class)
-    when FFI::Type::Array # FFI prints a :char (int8) array as a string, other arrays as [ a, b ]
-      ArrT.new(t.elem_type == FFI::Type::INT8 ? Num.new('char') : type(t.elem_type), t.length)
-    when FFI::Type::Builtin
-      if t == FFI::Type::POINTER then PTR
-      elsif t == FFI::Type::FLOAT32 then Num.new('float')
-      elsif t == FFI::Type::FLOAT64 then Num.new('double')
-      elsif t == FFI::Type::BOOL then Num.new('bool')
-      else Num.new(INT.fetch(t))
-      end
-    else raise "unsupported FFI type #{t.inspect}"
-    end
+  def enum_names(type) = API.enum(type).members.map(&:name)
+
+  # A flags type: `ze_x_flags_t` (an integer) or `ze_x_flag_t` (the enum).
+  def mask(name)
+    flag = name.sub(/_flags_t\z/, '_flag_t')
+    @memo[name] = @memo[flag] ||= MaskY.new(flag, enum_names(@typedefs.fetch(flag).type))
   end
 
-  # FFI `Enum#from_native`: `@vk_map[val] || val`; @vk_map is the inverted
-  # symbol map, so the last name of an aliased value wins.
-  def enum(e, native)
-    @memo[[e, native]] ||= EnumT.new(@enum_cnames[e], native, e.symbol_map.invert.map { |v, k| [v, k.to_s] })
-  end
-
-  # FFI `Bitmask#from_native`, with the ZEBitmask `@default` name for 0.
-  def mask(b, native)
-    @memo[[b, native]] ||= MaskT.new(native, b.symbol_map.map { |k, v| [k.to_s, v] },
-                                     b.instance_variable_get(:@default)&.to_s)
-  end
-
-  def struct(klass)
-    return @memo[klass] if @memo.key?(klass)
-    raise "#{klass}: own to_s is not supported" if klass.instance_methods(false).include?(:to_s)
-
-    mods = klass.ancestors.take_while { |a| a != klass }.map { |m| m.name.split('::').last }
-    # Handle#to_s on a struct without `data` raises in Ruby (THAPI #559): print it as a plain struct.
-    special = case mods
-              when [] then nil
-              when ['Handle'] then klass.layout.members.include?(:data) ? :handle : nil
-              when ['UUID'] then :uuid
-              when ['KUUID'] then :kuuid
-              when ['Version'] then :version
-              else raise "#{klass}: unsupported to_s modules #{mods}"
-              end
-    s = @memo[klass] = StructT.new(@struct_cname.fetch(klass), klass.size, [], special)
-    s.members = klass.layout.fields.map { |f| [f.name.to_s, f.offset, type(f.type)] }
+  def struct(name, union: false)
+    decl = @typedefs.fetch(name)
+    defn = union ? API.union(decl.type) : API.struct(decl.type)
+    s = @memo[name] = StructY.new(name, nil, RULE[:special].call(name, defn.members), union)
+    s.members = members(defn, name)
     s
+  end
+
+  def members(defn, where)
+    defn.members.map do |m|
+      raise "#{where}: bit-field member #{m.name} is not supported" if m.num_bits
+      raise "#{where}: unnamed member is not supported" unless m.name
+
+      [m.name, kind(m.type, "#{where}.#{m.name}")]
+    end
+  end
+
+  def kind(type, where)
+    case type
+    when YAMLCAst::CustomType
+      t = type_named(type.name)
+      t.is_a?(MaskY) ? t : :auto # structs and enums print by their C type
+    when YAMLCAst::Struct, YAMLCAst::Union
+      union = type.is_a?(YAMLCAst::Union)
+      return :auto if type.name && type_named(type.name)
+
+      AnonY.new(members(union ? API.union(type) : API.struct(type), where), union)
+    when YAMLCAst::Array
+      e = type.type
+      raise "#{where}: array of flags is not supported" if e.is_a?(YAMLCAst::CustomType) && API.bitfield?(e.name)
+
+      type_named(e.name) if e.is_a?(YAMLCAst::CustomType) # make the element printable
+      :auto
+    else :auto
+    end
   end
 end
 
-# ---- Emitter ---------------------------------------------------------------
-def c_str(s) = '"' + s.gsub('\\', '\\\\\\\\').gsub('"', '\"') + '"'
-
+# ---- Emitter ----------------------------------------------------------------
 class Emitter
-  attr_reader :protos, :defs, :formatters, :asserts
+  attr_reader :protos, :defs, :formatters
 
   def initialize(ns)
     @ns = ns
@@ -128,113 +127,102 @@ class Emitter
     @protos = []
     @defs = []
     @formatters = []
-    @asserts = []
+  end
+
+  def formatter(c, arg, call)
+    @formatters << "template <> struct fmt::formatter<#{c}> : thapi_pretty::no_spec {\n  " \
+                   "auto format(#{arg}, format_context &ctx) const { auto o = ctx.out(); #{call}; return o; }\n};"
   end
 
   # The name of the function that prints `t`; generated on first use.
   def fn(t)
-    return @fn[t.object_id] if @fn.key?(t.object_id)
+    return @fn[t.cname] if @fn.key?(t.cname)
 
     name = "p#{@fn.size}"
-    @fn[t.object_id] = name
+    @fn[t.cname] = name
     case t
-    when EnumT then enum(name, t)
-    when MaskT then mask(name, t)
-    when StructT then struct(name, t)
-    else raise "no function for #{t}"
+    when EnumY then enum(name, t)
+    when MaskY then mask(name, t)
+    when VersionY then version(name, t)
+    when StructY then struct(name, t)
     end
     name
   end
 
+  # FFI `Enum#from_native`: `@vk_map[val] || val`. @vk_map is the inverted
+  # symbol map, so the last name of an aliased value wins: test in reverse.
+  # A member holding the enum is read as an FFI :int (int32_t).
   def enum(n, t)
-    @protos << "inline void #{n}(it_t o, int64_t v);"
-    cases = t.pairs.map { |v, k| "  case #{v}LL: put(o, #{c_str(k)}); return;" }
-    @defs << "inline void #{n}(it_t o, int64_t v) {\n  switch (v) {\n#{cases.join("\n")}\n  default: dec(o, v);\n  }\n}\n"
-    t.cnames.each do |c|
-      @formatters << "template <> struct fmt::formatter<#{c}> : thapi_pretty::no_spec {\n  " \
-                     "auto format(#{c} v, format_context &ctx) const { auto o = ctx.out(); " \
-                     "#{@ns}::#{n}(o, (int64_t)(#{t.native})v); return o; }\n};"
-    end
+    tests = t.names.reverse.map { |k| "  if (v == (int64_t)#{k}) { put(o, #{c_str(k)}); return; }" }
+    @protos << "inline void #{n}(it_t o, int64_t v);" << "inline void pv(it_t o, #{t.cname} e);"
+    @defs << "inline void #{n}(it_t o, int64_t v) {\n#{tests.join("\n")}\n  dec(o, v);\n}\n" \
+             "inline void pv(it_t o, #{t.cname} e) { #{n}(o, (int64_t)(int32_t)e); }\n"
+    formatter(t.cname, "#{t.cname} e", "#{@ns}::pv(o, e)")
   end
 
+  # FFI `Bitmask#from_native` on gen_library_base.rb's classification: a
+  # positive power of two is a flag, 0 the default name (the last one), anything
+  # else a composite FFI does not keep. Every flag that overlaps the value is
+  # listed, then `val ^ flags` if not zero. FFI reads the bitmask as int32_t.
   def mask(n, t)
-    @protos << "inline void #{n}(it_t o, int64_t val);"
-    flags = t.flags.map { |k, v| "  if ((uint64_t)val & #{v}ULL) { sep(o, first); put(o, #{c_str(k)}); acc |= #{v}ULL; }" }
-    wrap = signed?(t.native) && bits(t.native) < 64 ? "  val = (int64_t)((uint64_t)val & ((1ULL << #{bits(t.native)}) - 1));\n" : ''
-    dflt = t.default ? "  if (val == 0) { put(o, #{c_str("[ #{t.default} ]")}); return; }\n" : ''
-    @defs << "inline void #{n}(it_t o, int64_t val) {\n#{dflt}  put(o, \"[ \");\n  bool first = true;\n  uint64_t acc = 0;\n" \
-             "#{flags.join("\n")}\n#{wrap}  int64_t rem = val ^ (int64_t)acc;\n  if (rem) { sep(o, first); dec(o, rem); }\n" \
-             "  put(o, \" ]\");\n}\n"
-  end
-
-  # Statements printing the value `e` (a C++ lvalue) of type `t`.
-  def value(t, e, depth = 0)
-    case t
-    when Num
-      case t.ctype
-      when 'float', 'double' then "ruby_float(o, (double)(#{e}));"
-      when 'bool' then "put(o, (#{e}) ? \"true\" : \"false\");"
-      else "dec(o, (#{t.ctype})(#{e}));"
-      end
-    when Ptr then "ruby_hex(o, (uint64_t)(uintptr_t)(#{e}));"
-    when EnumT, MaskT then "#{fn(t)}(o, (int64_t)(#{t.native})(#{e}));"
-    when StructT then "#{fn(t)}(o, #{e});"
-    when ArrT
-      if t.elem == Num.new('char') then "char_array(o, (const char *)(#{e}), #{t.length});"
-      else # Struct::InlineArray#to_s
-        i = "i#{depth}"
-        "put(o, \"[ \"); for (int #{i} = 0; #{i} < #{t.length}; #{i}++) { if (#{i}) put(o, \", \"); " \
-          "#{value(t.elem, "(#{e})[#{i}]", depth + 1)} } put(o, \" ]\");"
-      end
+    flags = t.names.map do |k|
+      "  if constexpr (flag(#{k})) if ((uint64_t)val & (uint64_t)#{k}) { sep(o, first); put(o, #{c_str(k)}); acc |= (uint64_t)#{k}; }"
     end
+    dflt = t.names.reverse.map { |k| "(int64_t)#{k} == 0 ? #{c_str("[ #{k} ]")} : " }.join
+    @protos << "inline void #{n}(it_t o, int64_t val);" << "inline void pv(it_t o, #{t.cname} e);"
+    @defs << "inline void #{n}(it_t o, int64_t val) {\n  constexpr const char *dflt = #{dflt}nullptr;\n" \
+             "  if (dflt && val == 0) { put(o, dflt); return; }\n  put(o, \"[ \");\n  bool first = true;\n  uint64_t acc = 0;\n" \
+             "#{flags.join("\n")}\n  val = (int64_t)((uint64_t)val & 0xffffffffULL);\n" \
+             "  int64_t rem = val ^ (int64_t)acc;\n  if (rem) { sep(o, first); dec(o, rem); }\n  put(o, \" ]\");\n}\n" \
+             "inline void pv(it_t o, #{t.cname} e) { #{n}(o, (int64_t)(int32_t)e); }\n"
   end
 
-  def member(t, name) = t.members.find { |m, _, _| m == name } || raise("#{t.cname}: no member #{name}")
+  def version(n, t)
+    @protos << "inline void #{n}(it_t o, int64_t v);" << "inline void pv(it_t o, #{t.cname} e);"
+    @defs << "inline void #{n}(it_t o, int64_t v) { dec(o, (uint16_t)(v >> 16)); put(o, \".\"); dec(o, (uint16_t)(v & 0xffff)); }\n" \
+             "inline void pv(it_t o, #{t.cname} e) { #{n}(o, (int64_t)(uint32_t)e); }\n"
+    formatter(t.cname, "#{t.cname} e", "#{@ns}::pv(o, e)")
+  end
+
+  # Statements printing the members of `s` (an lvalue): "{ a: 1, b: 2 }".
+  def members(ms, s)
+    parts = ms.map do |m, k|
+      v = "#{s}.#{m}"
+      code = case k
+             when MaskY then "#{fn(k)}(o, (int64_t)(int32_t)#{v});"
+             when AnonY then members(k.members, v)
+             else "pv(o, #{v});"
+             end
+      "put(o, #{c_str("#{m}: ")}); #{code}"
+    end
+    "put(o, \"{ \"); #{parts.join(' put(o, ", "); ')} put(o, \" }\");"
+  end
 
   def struct(n, t)
     c = t.cname
-    @protos << "inline void #{n}(it_t o, const #{c} &s);"
-    raw = 'const unsigned char *b = (const unsigned char *)&s;'
+    ms = t.members.to_h
+    t.members.each { |_, k| fn(k) if k.is_a?(MaskY) }
     body =
       case t.special
-      when :handle # "\x%02x" for every byte of `data`
-        _, off, a = member(t, 'data')
-        "#{raw} put(o, \"{ data: \\\"\"); for (int i = 0; i < #{a.length}; i++) " \
-          "fmt::format_to(o, \"\\\\x{:02x}\", b[#{off} + i]); put(o, \"\\\" }\");"
-      when :uuid
-        "#{raw} put(o, \"{ id: \"); uuid(o, b + #{member(t, 'id')[1]}); put(o, \" }\");"
+      when :handle then 'put(o, "{ data: \""); for (unsigned char x : s.data) fmt::format_to(o, "\\\\x{:02x}", x); put(o, "\" }");'
+      when :uuid then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id); put(o, " }");'
       when :kuuid
-        "#{raw} put(o, \"{ kid: \"); uuid(o, b + #{member(t, 'kid')[1]}); " \
-          "put(o, \", mid: \"); uuid(o, b + #{member(t, 'mid')[1]}); put(o, \" }\");"
-      when :version # a C enum in the headers, a { minor, major } struct in FFI
-        _, mo, mt = member(t, 'major')
-        _, no, nt = member(t, 'minor')
-        "#{raw} #{mt.ctype} major; #{nt.ctype} minor; std::memcpy(&major, b + #{mo}, sizeof major); " \
-          "std::memcpy(&minor, b + #{no}, sizeof minor); dec(o, major); put(o, \".\"); dec(o, minor);"
-      else
-        parts = t.members.map { |m, _, mt| "put(o, #{c_str("#{m}: ")}); #{value(mt, "s.#{m}")}" }
-        "put(o, \"{ \"); #{parts.join(' put(o, ", "); ')} put(o, \" }\");"
+        'put(o, "{ kid: "); uuid(o, (const uint8_t *)s.kid); put(o, ", mid: "); uuid(o, (const uint8_t *)s.mid); put(o, " }");'
+      when :typed_value
+        raise "#{c}: unexpected members" unless ms.key?('type') && ms.key?('value')
+
+        'switch (s.type) { case ZET_VALUE_TYPE_UINT32: pv(o, s.value.ui32); break; case ZET_VALUE_TYPE_UINT64: pv(o, s.value.ui64); break; ' \
+          'case ZET_VALUE_TYPE_FLOAT32: pv(o, s.value.fp32); break; case ZET_VALUE_TYPE_FLOAT64: pv(o, s.value.fp64); break; ' \
+          'case ZET_VALUE_TYPE_BOOL8: pv(o, s.value.b8); break; default: pv(o, s.value.ui64); }'
+      else members(t.members, 's')
       end
-    @defs << "inline void #{n}(it_t o, const #{c} &s) { #{body} }\n"
-    @formatters << "template <> struct fmt::formatter<#{c}> : thapi_pretty::no_spec {\n  " \
-                   "auto format(const #{c} &s, format_context &ctx) const { auto o = ctx.out(); #{@ns}::#{n}(o, s); return o; }\n};"
-    @asserts << "static_assert(sizeof(#{c}) == #{t.size}, \"#{c}: size differs from the FFI layout\");"
-    return if t.special == :version
-
-    t.members.each do |m, off, _|
-      @asserts << "static_assert(offsetof(#{c}, #{m}) == #{off}, \"#{c}.#{m}: offset differs from the FFI layout\");"
-    end
-  end
-
-  # A Version struct built from an integer: FFI `from_native(i)` then `to_s`.
-  def version_from_int(t)
-    mt = member(t, 'major')[2]
-    nt = member(t, 'minor')[2]
-    "dec(o, (#{mt.ctype})(v >> 16)); put(o, \".\"); dec(o, (#{nt.ctype})(v & 0xffff));"
+    @protos << "inline void #{n}(it_t o, const #{c} &s);" << "inline void pv(it_t o, const #{c} &s);"
+    @defs << "inline void #{n}(it_t o, const #{c} &s) { #{body} }\ninline void pv(it_t o, const #{c} &s) { #{n}(o, s); }\n"
+    formatter(c, "const #{c} &s", "#{@ns}::pv(o, s)")
   end
 end
 
-# ---- Callbacks -------------------------------------------------------------
+# ---- Callbacks ----------------------------------------------------------------
 def length_field?(name) = name.start_with?('_') && name.end_with?('_length')
 
 # An integer of the trace field `fc`, from the C argument `a`: truncated to the
@@ -251,15 +239,13 @@ def render(em, fe, m, args)
   name = m[:name]
   fc = m[:field_class]
   a = args[name]
-  be = m.dig(:metadata, :be_class)
-  t = be && fe.be_class(be)
+  t = m.dig(:metadata, :be_class) && (fe.be_type(fc[:cast_type]) || raise("#{name}: no C type for #{fc[:cast_type]}"))
   body =
     case fc[:type]
     when 'integer_signed', 'integer_unsigned'
       v = int_expr(fc, a)
-      if t.is_a?(EnumT) || t.is_a?(MaskT) then "#{em.fn(t)}(o, (int64_t)#{v});"
-      elsif t.is_a?(StructT) && t.special == :version then "{ int64_t v = (int64_t)#{v}; #{em.version_from_int(t)} }"
-      elsif t then raise "#{name}: unsupported be_class #{be}"
+      if [EnumY, MaskY, VersionY].include?(t.class) then "#{em.fn(t)}(o, (int64_t)#{v});"
+      elsif t then raise "#{name}: unsupported be_class for an integer"
       elsif fc[:preferred_display_base] == 16
         raise "#{name}: signed hexadecimal is not supported" if fc[:type] == 'integer_signed'
 
@@ -277,6 +263,7 @@ def render(em, fe, m, args)
         else ["(const unsigned char *)#{a}", args.fetch("_#{name}_length")]
         end
       if t.nil? then "ruby_inspect(o, (const char *)#{ptr}, #{len});"
+      elsif !t.is_a?(StructY) then raise "#{name}: a blob of #{t.class} is not supported"
       elsif name.end_with?('_vals') # an array of structs, split on the struct size
         "struct_vals<#{t.cname}>(o, #{ptr}, #{len}, #{em.fn(t)});"
       else "if (#{len} > 0) struct_one<#{t.cname}>(o, #{ptr}, #{len}, #{em.fn(t)});"
@@ -299,7 +286,7 @@ def render(em, fe, m, args)
 end
 
 model = YAML.load_file(model_path)
-fe = FFIFrontend.new(lib_path)
+fe = Frontend.new
 backend = model[:stream_classes].first[:name].sub(/\Athapi_/, '')
 ns = "thapi_pretty::#{backend}"
 em = Emitter.new(ns)
@@ -334,7 +321,10 @@ model[:stream_classes].each do |sc|
   end
 end
 
-src = "#{File.basename(model_path)} and #{File.basename(lib_path)}"
+# A printer for every type reached, so each member printed by its C type finds its `pv`.
+fe.memo.values.compact.uniq.each { |t| em.fn(t) }
+
+src = "#{File.basename(model_path)} and the #{NAMING.module_name} API model"
 File.write(out_hpp, <<~HPP)
   // Generated by #{File.basename(__FILE__)} from #{src}.
   // fmt::formatter for the #{backend} structs and enums, printed as the Ruby
@@ -343,7 +333,7 @@ File.write(out_hpp, <<~HPP)
 
   #include "thapi_pretty.hpp"
 
-  #include <cstddef>
+  #include <type_traits>
 
   namespace #{ns} {
   using thapi_pretty::it_t;
@@ -354,15 +344,31 @@ File.write(out_hpp, <<~HPP)
   using thapi_pretty::char_array;
   using thapi_pretty::uuid;
   inline void sep(it_t o, bool &first) { if (!first) put(o, ", "); first = false; }
+  // A positive power of two: a flag (gen_library_base.rb classify_bitfield_members).
+  template <class E> constexpr bool flag(E e) { int64_t v = (int64_t)e; return v > 0 && (v & (v - 1)) == 0; }
 
   #{em.protos.join("\n")}
+
+  // A value printed by its C type, as FFI reads and prints it.
+  template <class T> inline void pv(it_t o, const T &v) {
+    if constexpr (std::is_same_v<T, bool>) put(o, v ? "true" : "false");
+    else if constexpr (std::is_same_v<T, char> || std::is_same_v<T, signed char>) dec(o, (int)v);
+    else if constexpr (std::is_same_v<T, unsigned char>) dec(o, (unsigned)v);
+    else if constexpr (std::is_floating_point_v<T>) ruby_float(o, (double)v);
+    else if constexpr (std::is_pointer_v<T> || std::is_null_pointer_v<T>) ruby_hex(o, (uint64_t)(uintptr_t)v);
+    else if constexpr (std::is_integral_v<T>) dec(o, v);
+    else static_assert(!sizeof(T), "no printer for this type");
+  }
+  // An inline array: FFI prints a :char (int8) array as the string up to its first NUL.
+  template <class E, size_t N> inline void pv(it_t o, const E (&a)[N]) {
+    if constexpr (std::is_same_v<E, char> || std::is_same_v<E, signed char>) char_array(o, (const char *)a, N);
+    else { put(o, "[ "); for (size_t i = 0; i < N; i++) { if (i) put(o, ", "); pv(o, a[i]); } put(o, " ]"); }
+  }
 
   #{em.defs.join("\n")}
   } // namespace #{ns}
 
   #{em.formatters.join("\n")}
-
-  #{em.asserts.join("\n")}
 HPP
 
 File.write(out_cpp, <<~CPP)
@@ -372,8 +378,6 @@ File.write(out_cpp, <<~CPP)
   #include <metababel/metababel.h>
 
   #include "#{File.basename(out_hpp)}"
-
-  #include <type_traits>
 
   using namespace #{ns};
   using thapi_pretty::ruby_time;
@@ -395,8 +399,8 @@ File.write(out_cpp, <<~CPP)
   // bytes plus a NUL; we zero-pad to the struct size.
   template <class T> static void struct_one(it_t o, const unsigned char *p, size_t len, void (*f)(it_t, const T &)) {
     T s;
-    std::memset(&s, 0, sizeof s);
-    std::memcpy(&s, p, len < sizeof s ? len : sizeof s);
+    std::memset((void *)&s, 0, sizeof s);
+    std::memcpy((void *)&s, p, len < sizeof s ? len : sizeof s);
     f(o, s);
   }
   template <class T> static void struct_vals(it_t o, const unsigned char *p, size_t len, void (*f)(it_t, const T &)) {
