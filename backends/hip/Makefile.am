@@ -383,28 +383,15 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(BTX_HIP_GENERATED_SOURCE_TEST)
 
-# filter.hippretty.pretty: the hip events printed in C++ (utils/gen_cxx_pretty.rb).
-BTX_HIP_PRETTY_GENERATED = \
-	btx_filter_hippretty/metababel/metababel.h \
-	btx_filter_hippretty/metababel/btx_component.h \
-	btx_filter_hippretty/metababel/btx_component.c \
-	btx_filter_hippretty/metababel/btx_upstream.h \
-	btx_filter_hippretty/metababel/btx_upstream.c \
-	btx_filter_hippretty/metababel/btx_downstream.h \
-	btx_filter_hippretty/metababel/btx_downstream.c \
-	btx_filter_hippretty/btx_main.c
-
-$(BTX_HIP_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_hip_model.yaml
-	$(METABABEL) -u btx_hip_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_hippretty -p hippretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i hip.h.include
-
-btx_hippretty_callbacks.cpp btx_hippretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(HIP_LIB_GEN) $(HIP_MODEL) btx_hip_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_hip_library_base.rb btx_hip_model.yaml btx_hippretty_callbacks.cpp btx_hippretty_formatters.hpp
-
+# filter.hippretty.pretty: the hip events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = hip
+PRETTY_MODEL = btx_hip_model.yaml
+PRETTY_API = hip_api.yaml
+PRETTY_INC = -i hip.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
 bt2_LTLIBRARIES += libHIPPretty.la
-BUILT_SOURCES += $(BTX_HIP_PRETTY_GENERATED)
-CLEANFILES += $(BTX_HIP_PRETTY_GENERATED) btx_hippretty_callbacks.cpp btx_hippretty_formatters.hpp
-nodist_libHIPPretty_la_SOURCES = $(BTX_HIP_PRETTY_GENERATED) btx_hippretty_callbacks.cpp btx_hippretty_formatters.hpp
-libHIPPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./btx_filter_hippretty $(FMT_CPPFLAGS)
-libHIPPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libHIPPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libHIPPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+nodist_libHIPPretty_la_SOURCES = $(PRETTY_GENERATED)
+libHIPPretty_la_CPPFLAGS = -I$(srcdir)/include -I./btx_filter_hippretty $(PRETTY_CPPFLAGS)
+libHIPPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libHIPPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libHIPPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

@@ -1,0 +1,48 @@
+# The C++ pretty printer of one backend: filter.$(PRETTY_BE)pretty.pretty, a
+# metababel FILTER whose callbacks utils/pretty_print/gen_pretty.rb writes.
+# Included by backends/<backend>/Makefile.am, which sets before:
+#   PRETTY_BE     the backend name (ze)
+#   PRETTY_MODEL  its babeltrace event model (btx_ze_model.yaml)
+#   PRETTY_API    its h2yaml API models (ze_api.yaml zes_api.yaml ...), may be empty
+#   PRETTY_INC    the metababel -i option for its headers, may be empty
+# and, after, the libtool library (automake wants its name spelled out):
+#   bt2_LTLIBRARIES += libZEPretty.la
+#   nodist_libZEPretty_la_SOURCES = $(PRETTY_GENERATED)
+#   libZEPretty_la_CPPFLAGS = <the backend headers> -I./btx_filter_zepretty $(PRETTY_CPPFLAGS)
+#   libZEPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+#   libZEPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+#   libZEPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)
+
+PRETTY_FILTER = \
+	btx_filter_$(PRETTY_BE)pretty/metababel/metababel.h \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_component.h \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_component.c \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_upstream.h \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_upstream.c \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_downstream.h \
+	btx_filter_$(PRETTY_BE)pretty/metababel/btx_downstream.c \
+	btx_filter_$(PRETTY_BE)pretty/btx_main.c
+
+PRETTY_CODE = \
+	btx_$(PRETTY_BE)pretty_callbacks.cpp \
+	btx_$(PRETTY_BE)pretty_formatters.hpp
+
+PRETTY_GENERATED = $(PRETTY_FILTER) $(PRETTY_CODE)
+
+$(PRETTY_FILTER) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml $(PRETTY_MODEL)
+	$(METABABEL) -u $(PRETTY_MODEL) -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER \
+	  -o btx_filter_$(PRETTY_BE)pretty -p $(PRETTY_BE)pretty -c pretty \
+	  --params $(top_srcdir)/xprof/btx_pretty_params.yaml $(PRETTY_INC)
+
+$(PRETTY_CODE) &: $(top_srcdir)/utils/pretty_print/gen_pretty.rb $(srcdir)/pretty_rules.yaml $(PRETTY_MODEL) $(PRETTY_API)
+	$(RUBY) $(top_srcdir)/utils/pretty_print/gen_pretty.rb --model $(PRETTY_MODEL) --rules $(srcdir)/pretty_rules.yaml \
+	  --callbacks btx_$(PRETTY_BE)pretty_callbacks.cpp --formatters btx_$(PRETTY_BE)pretty_formatters.hpp $(PRETTY_API)
+
+PRETTY_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(top_srcdir)/utils/pretty_print $(FMT_CPPFLAGS)
+PRETTY_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+PRETTY_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+PRETTY_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+BUILT_SOURCES += $(PRETTY_FILTER)
+CLEANFILES += $(PRETTY_GENERATED)
+EXTRA_DIST += pretty_rules.yaml

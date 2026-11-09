@@ -398,28 +398,15 @@ CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_CUDA_GENERATED_SOURCE_TEST)
 
-# filter.cudapretty.pretty: the cuda events printed in C++ (utils/gen_cxx_pretty.rb).
-BTX_CUDA_PRETTY_GENERATED = \
-	btx_filter_cudapretty/metababel/metababel.h \
-	btx_filter_cudapretty/metababel/btx_component.h \
-	btx_filter_cudapretty/metababel/btx_component.c \
-	btx_filter_cudapretty/metababel/btx_upstream.h \
-	btx_filter_cudapretty/metababel/btx_upstream.c \
-	btx_filter_cudapretty/metababel/btx_downstream.h \
-	btx_filter_cudapretty/metababel/btx_downstream.c \
-	btx_filter_cudapretty/btx_main.c
-
-$(BTX_CUDA_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_cuda_model.yaml
-	$(METABABEL) -u btx_cuda_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_cudapretty -p cudapretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i cuda.h.include
-
-btx_cudapretty_callbacks.cpp btx_cudapretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(CUDA_LIB_GEN) $(CUDA_MODEL) btx_cuda_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_cuda_library_base.rb btx_cuda_model.yaml btx_cudapretty_callbacks.cpp btx_cudapretty_formatters.hpp
-
+# filter.cudapretty.pretty: the cuda events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = cuda
+PRETTY_MODEL = btx_cuda_model.yaml
+PRETTY_API = cuda_api.yaml cuda_exports_api.yaml
+PRETTY_INC = -i cuda.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
 bt2_LTLIBRARIES += libCUDAPretty.la
-BUILT_SOURCES += $(BTX_CUDA_PRETTY_GENERATED)
-CLEANFILES += $(BTX_CUDA_PRETTY_GENERATED) btx_cudapretty_callbacks.cpp btx_cudapretty_formatters.hpp
-nodist_libCUDAPretty_la_SOURCES = $(BTX_CUDA_PRETTY_GENERATED) btx_cudapretty_callbacks.cpp btx_cudapretty_formatters.hpp
-libCUDAPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_cudapretty $(FMT_CPPFLAGS)
-libCUDAPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libCUDAPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libCUDAPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+nodist_libCUDAPretty_la_SOURCES = $(PRETTY_GENERATED)
+libCUDAPretty_la_CPPFLAGS = -I$(srcdir)/include -I./btx_filter_cudapretty $(PRETTY_CPPFLAGS)
+libCUDAPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libCUDAPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libCUDAPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

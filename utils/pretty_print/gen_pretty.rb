@@ -1,60 +1,104 @@
 #!/usr/bin/env ruby
-# Usage: SRC_DIR=... gen_cxx_pretty.rb LIBRARY_BASE.rb BTX_MODEL.yaml OUT_CALLBACKS.cpp OUT_FORMATTERS.hpp
-#   e.g. SRC_DIR=$(srcdir) gen_cxx_pretty.rb $(srcdir)/gen_ze_library_base.rb btx_ze_model.yaml \
-#          btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
+# frozen_string_literal: true
+
+# gen_pretty.rb: C++ pretty printers for the events of a babeltrace (metababel)
+# model, printed as THAPI's Ruby pretty printer prints them.
 #
-# OUT_FORMATTERS.hpp: an fmt::formatter for each C struct and enum the events of
-# BTX_MODEL.yaml carry, printing them as the Ruby pretty printer does.
-# OUT_CALLBACKS.cpp: the callbacks of a metababel FILTER that formats each event
-# of BTX_MODEL.yaml that way and pushes the text as a `thapi_pretty:line` event.
+#   gen_pretty.rb --model btx_ze_model.yaml --rules pretty_rules.yaml \
+#                 --callbacks btx_zepretty_callbacks.cpp --formatters btx_zepretty_formatters.hpp \
+#                 ze_api.yaml zet_api.yaml ...
 #
-# LIBRARY_BASE.rb defines the backend's API model (API, NAMING). The C++ code
-# prints most values by their C type (overloads of `pv`); the API model says
-# only what the C type does not: the order of the struct members, which
-# integer members are flags, and which structs print in a special way. Enum
-# values are never evaluated here: the generated code uses the enumerator
-# names, so the compiler gives the values.
+# Inputs, all YAML:
+# - the event model: the events, their fields and the C type of each (`cast_type`);
+# - the API model written by h2yaml from the C headers (any number of files):
+#   the members of each struct, the enumerators of each enum, the typedefs;
+# - the rules (optional): what neither file says (see pretty_rules.yaml).
+# Outputs:
+# - the formatters header: a printer (`pv`) and an fmt::formatter for each C
+#   struct and enum the events carry;
+# - the callbacks of a metababel FILTER that formats each event that way and
+#   pushes the text as a `thapi_pretty:line` event.
+#
+# The C++ code prints most values by their C type; the API model gives only what
+# the C type does not: the order of the struct members, the enumerator names,
+# and which integer types hold flags. Enum values are never evaluated here: the
+# generated code names the enumerators and the compiler gives the values.
+require 'optparse'
+require 'set'
 require 'yaml'
 
-base_path, model_path, out_cpp, out_hpp = ARGV
-if base_path == '-' # a backend without an API model (pytorch): no be_class to print
-  API = nil
-  NAMING = Struct.new(:module_name).new('NONE')
-else
-  require File.expand_path(base_path)
-end
+opts = {}
+OptionParser.new do |o|
+  o.banner = 'Usage: gen_pretty.rb --model M.yaml [--rules R.yaml] --callbacks C.cpp --formatters F.hpp [API.yaml...]'
+  o.on('--model PATH', 'babeltrace (metababel) event model') { |v| opts[:model] = v }
+  o.on('--rules PATH', 'printing rules') { |v| opts[:rules] = v }
+  o.on('--callbacks PATH', 'output: the filter callbacks') { |v| opts[:callbacks] = v }
+  o.on('--formatters PATH', 'output: the formatters header') { |v| opts[:formatters] = v }
+  o.on('--all-types', 'also a formatter for every struct and union of the API') { opts[:all_types] = true }
+end.parse!
+%i[model callbacks formatters].each { |k| raise OptionParser::MissingArgument, "--#{k}" unless opts[k] }
+opts[:api] = ARGV # the h2yaml API models
+model_path = opts[:model]
+out_cpp = opts[:callbacks]
+out_hpp = opts[:formatters]
 
 def c_str(s) = '"' + s.gsub('\\', '\\\\\\\\').gsub('"', '\"') + '"'
 
-# How a backend's Ruby FFI library prints its types (gen_<backend>_library.rb).
-UUID_FORWARD = lambda { |name, _members| NAMING.class_name(name).match('UUID') ? :uuid_forward : nil }
-RULES = {
-  # print_handle_uuid_modules + print_struct_prepending_uuid: a struct named *UUID* prints its `bytes`.
-  # gen_cuda_library.rb declares `typedef :pointer, CUdeviceptr` (an integer in C): printed "0x%016x".
-  'CUDA' => { version: ->(_) { false }, special: UUID_FORWARD, drop: %w[CU_COREDUMP_LIGHTWEIGHT_FLAGS],
-              pointers: %w[CUdeviceptr] },
-  'HIP' => { version: ->(_) { false }, special: UUID_FORWARD },
-  'MPI' => { version: ->(_) { false }, special: UUID_FORWARD },
-  'OMP' => { version: ->(_) { false }, special: ->(_, _) {}, drop: %w[ompt_callback_master] },
-  'ITT' => { version: ->(_) { false }, special: ->(_, _) {} },
-  'NONE' => { version: ->(_) { false }, special: ->(_, _) {} },
-  'ZE' => {
-    # A `_version_t` enum is a { minor, major } struct printed "major.minor".
-    version: ->(name) { name.end_with?('_version_t') },
-    # The modules gen_ze_library.rb prepends by class name. Handle#to_s on a
-    # struct without `data` raises in Ruby (THAPI #559): print it as a plain struct.
-    special: lambda { |name, members|
-      k = NAMING.class_name(name)
-      if k.match('UUID') then k.match('ZEKernelUUID') ? :kuuid : :uuid
-      elsif k.match(/Handle\z/) then members.any? { |m| m.name == 'data' } ? :handle : nil
-      elsif name == 'zet_typed_value_t' then :typed_value # the to_s gen_ze_library.rb meant (THAPI #561)
-      end
-    }
-  }
-}.freeze
-RULE = RULES.fetch(NAMING.module_name)
+# ---- The API model: the h2yaml files, read as they are -----------------------
+# A type node is a Hash with a `kind`: custom_type (a typedef name), pointer,
+# array, struct, union, enum (named, or with their `members` inline), int, char,
+# float, bool, void, function. A member has a `name` (none for an unnamed
+# struct or union), a `type`, and `num_bits` for a bit-field.
+class Api
+  attr_reader :typedefs
 
-# ---- What the C++ code needs to know, from the API model --------------------
+  def initialize(paths)
+    lists = Hash.new { |h, k| h[k] = [] }
+    paths.each { |p| (YAML.load_file(p) || {}).each { |k, v| lists[k] += v } }
+    # A name declared twice (several files): the last typedef, the first definition.
+    @typedefs = lists['typedefs'].to_h { |t| [t['name'], t] }
+    @defs = %w[structs unions enums].to_h { |k| [k, lists[k].reverse.to_h { |d| [d['name'], d] }] }
+    # A typedef of an enum whose own name ends in `flag_t` names flags; so does
+    # the `_flags_t` spelling of a `_flag_t` typedef (THAPI's api_model.rb).
+    flags = @typedefs.values.select { |t| t.dig('type', 'kind') == 'enum' && @defs['enums'][t.dig('type', 'name')]&.dig('name')&.end_with?('flag_t') }
+                     .map { |t| t['name'] }
+    @flags = flags + flags.select { |n| n.end_with?('_flag_t') }.map { |n| n.sub(/_flag_t\z/, '_flags_t') }
+  end
+
+  def flags?(name) = @flags.include?(name)
+
+  # The definition a struct, union or enum node refers to; a node without a name
+  # carries its members itself.
+  def definition(type)
+    return type unless type['name']
+
+    @defs.fetch("#{type['kind']}s")[type['name']] || raise("no definition for #{type['kind']} #{type['name']}")
+  end
+end
+
+# ---- The rules: what neither YAML says ---------------------------------------
+# special:          structs printed in a special way, by kind (see Emitter#struct)
+# version:          enums printed "major.minor" (ze's `_version_t`)
+# drop_enumerators: enumerators the Ruby printer does not know
+# pointers:         integer typedefs printed as pointers ("0x%016x")
+class Rules
+  def initialize(path)
+    r = path ? (YAML.load_file(path) || {}) : {}
+    @special = (r['special'] || {}).flat_map { |kind, names| names.map { |n| [n, kind.to_sym] } }.to_h
+    @version = (r['version'] || []).to_set
+    @drop = r['drop_enumerators'] || []
+    @pointers = r['pointers'] || []
+  end
+
+  def special(name) = @special[name]
+  def version?(name) = @version.include?(name)
+  attr_reader :drop, :pointers
+end
+
+API = Api.new(opts[:api])
+RULE = Rules.new(opts[:rules])
+
+# ---- What the C++ code needs to know -----------------------------------------
 EnumY = Struct.new(:cname, :names)                         # printed by name
 MaskY = Struct.new(:cname, :names)                         # cname: the `_flag_t` enum
 VersionY = Struct.new(:cname)                              # "major.minor"
@@ -69,7 +113,6 @@ class Frontend
 
   def initialize
     @memo = {}
-    @typedefs = API ? API.types.to_h { |t| [t.name, t] } : {}
   end
 
   # The description of the be_class of a model member, from its C type.
@@ -80,15 +123,15 @@ class Frontend
   def type_named(name)
     return @memo[name] if @memo.key?(name)
 
+    t = API.typedefs[name]
+    k = t&.dig('type', 'kind')
     # An alias (`typedef CUdevprop_v1 CUdevprop`) is the same C type: describe the target.
-    t = @typedefs[name]
-    return @memo[name] = type_named(t.type.name) if t && t.type.is_a?(YAMLCAst::CustomType) && @typedefs.key?(t.type.name)
+    return @memo[name] = type_named(t['type']['name']) if k == 'custom_type' && API.typedefs.key?(t['type']['name'])
 
-    if API.bitfield?(name) then mask(name)
-    elsif API.struct_names.include?(name) then struct(name)
-    elsif (t = @typedefs[name]) && t.type.is_a?(YAMLCAst::Enum)
-      @memo[name] = RULE[:version].call(name) ? VersionY.new(name) : EnumY.new(name, enum_names(t.type))
-    elsif (t = @typedefs[name]) && t.type.is_a?(YAMLCAst::Union) then struct(name, union: true)
+    if API.flags?(name) then mask(name)
+    elsif k == 'struct' then struct(name)
+    elsif k == 'enum' then @memo[name] = RULE.version?(name) ? VersionY.new(name) : EnumY.new(name, enum_names(t['type']))
+    elsif k == 'union' then struct(name, union: true)
     end
   end
 
@@ -96,27 +139,27 @@ class Frontend
   # few). FFI numbers a member without a value from the previous one it kept,
   # so a dropped member must not precede one: the C value would differ.
   def enum_names(type)
-    drop = RULE.fetch(:drop, [])
-    ms = API.enum(type).members
-    ms.each_cons(2) { |a, b| raise "#{a.name} is dropped before #{b.name}, which has no value" if drop.include?(a.name) && b.val.nil? }
-    ms.reject { |m| drop.include?(m.name) }.map(&:name)
+    ms = API.definition(type)['members']
+    ms.each_cons(2) do |a, b|
+      raise "#{a['name']} is dropped before #{b['name']}, which has no value" if RULE.drop.include?(a['name']) && b['val'].nil?
+    end
+    ms.reject { |m| RULE.drop.include?(m['name']) }.map { |m| m['name'] }
   end
 
   # An enum known by its tag only (hip prints those too).
   def enum_tag(type)
-    @memo["enum #{type.name}"] ||= EnumY.new(type.name, enum_names(type))
+    @memo["enum #{type['name']}"] ||= EnumY.new(type['name'], enum_names(type))
   end
 
   # A flags type: `ze_x_flags_t` (an integer) or `ze_x_flag_t` (the enum).
   def mask(name)
     flag = name.sub(/_flags_t\z/, '_flag_t')
-    @memo[name] = @memo[flag] ||= MaskY.new(flag, enum_names(@typedefs.fetch(flag).type))
+    @memo[name] = @memo[flag] ||= MaskY.new(flag, enum_names(API.typedefs.fetch(flag)['type']))
   end
 
   def struct(name, union: false)
-    decl = @typedefs.fetch(name)
-    defn = union ? API.union(decl.type) : API.struct(decl.type)
-    s = @memo[name] = StructY.new(name, nil, RULE[:special].call(name, defn.members), union)
+    defn = API.definition(API.typedefs.fetch(name)['type'])
+    s = @memo[name] = StructY.new(name, nil, RULE.special(name), union)
     s.members = members(defn, name)
     s
   end
@@ -129,56 +172,57 @@ class Frontend
     run = nil
     groups = 0
     unnamed = 0
-    defn.members.each do |m|
-      if m.num_bits
+    defn['members'].each do |m|
+      if m['num_bits']
+        ctype = m['type']['name']
         if run
-          raise "#{where}: mixed bit-field types #{run[:ctype]} and #{m.type.name}" if run[:ctype] != m.type.name
+          raise "#{where}: mixed bit-field types #{run} and #{ctype}" if run != ctype
         else
           prev = out.reverse.find { |_, k| !k.is_a?(BitsY) }&.first
-          run = { ctype: m.type.name }
-          out << ["_aggregated_bitfields_#{groups += 1}", BitsY.new(m.type.name, prev)]
+          run = ctype
+          out << ["_aggregated_bitfields_#{groups += 1}", BitsY.new(ctype, prev)]
         end
         next
       end
       run = nil
-      if m.name.nil? # an anonymous struct or union: FFI names it `_unamed_N`
-        k = kind(m.type, "#{where}._unamed")
+      if m['name'].nil? # an anonymous struct or union: FFI names it `_unamed_N`
+        k = kind(m['type'], "#{where}._unamed")
         raise "#{where}: unnamed member that is not a layout" unless k.is_a?(AnonY)
 
         out << ["_unamed_#{unnamed += 1}", AnonY.new(k.members, k.union, true)]
         next
       end
 
-      out << [m.name, kind(m.type, "#{where}.#{m.name}")]
+      out << [m['name'], kind(m['type'], "#{where}.#{m['name']}")]
     end
     out
   end
 
   def kind(type, where)
-    case type
-    when YAMLCAst::CustomType
-      return :pointer if RULE.fetch(:pointers, []).include?(type.name)
+    case type['kind']
+    when 'custom_type'
+      return :pointer if RULE.pointers.include?(type['name'])
 
-      t = type_named(type.name)
+      t = type_named(type['name'])
       t.is_a?(MaskY) ? t : :auto # structs and enums print by their C type
-    when YAMLCAst::Enum
-      enum_tag(type) if type.name
+    when 'enum'
+      enum_tag(type) if type['name']
       :auto
-    when YAMLCAst::Struct, YAMLCAst::Union
-      union = type.is_a?(YAMLCAst::Union)
-      return :auto if type.name && type_named(type.name)
+    when 'struct', 'union'
+      union = type['kind'] == 'union'
+      return :auto if type['name'] && type_named(type['name'])
 
-      AnonY.new(members(union ? API.union(type) : API.struct(type), where), union)
-    when YAMLCAst::Array
-      e = type.type
-      raise "#{where}: array of flags is not supported" if e.is_a?(YAMLCAst::CustomType) && API.bitfield?(e.name)
+      AnonY.new(members(API.definition(type), where), union)
+    when 'array'
+      e = type['type']
+      raise "#{where}: array of flags is not supported" if e['kind'] == 'custom_type' && API.flags?(e['name'])
 
       ek = kind(e, where) # also makes the element printable
       raise "#{where}: array of inline layouts is not supported" if ek.is_a?(AnonY)
 
       :auto
-    when YAMLCAst::Bool then :bool
-    when YAMLCAst::Int, YAMLCAst::Char, YAMLCAst::Float then [:scalar, type.name]
+    when 'bool' then :bool
+    when 'int', 'char', 'float' then [:scalar, type['name']]
     else :auto
     end
   end
@@ -285,9 +329,9 @@ class Emitter
     body =
       case t.special
       when :handle then 'put(o, "{ data: \""); for (unsigned char x : s.data) fmt::format_to(o, "\\\\x{:02x}", x); put(o, "\" }");'
-      when :uuid then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id); put(o, " }");'
-      when :uuid_forward then 'put(o, "{ id: "); uuid_forward(o, (const uint8_t *)s.bytes); put(o, " }");'
-      when :kuuid
+      when :uuid_reversed then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id); put(o, " }");'
+      when :uuid then 'put(o, "{ id: "); uuid_forward(o, (const uint8_t *)s.bytes); put(o, " }");'
+      when :kernel_uuid
         'put(o, "{ kid: "); uuid(o, (const uint8_t *)s.kid); put(o, ", mid: "); uuid(o, (const uint8_t *)s.mid); put(o, " }");'
       when :typed_value
         raise "#{c}: unexpected members" unless ms.key?('type') && ms.key?('value')
@@ -400,29 +444,24 @@ model[:stream_classes].each do |sc|
   end
 end
 
-# PRETTY_ALL_TYPES=1: a printer for every struct and union of the API, not only
-# those the events carry (for testing the formatters on their own).
-if ENV['PRETTY_ALL_TYPES'] && API
-  API.types.each do |t|
-    next unless t.type.is_a?(YAMLCAst::Struct) || t.type.is_a?(YAMLCAst::Union)
-    next if ENV['PRETTY_SKIP'] && t.name.match?(ENV['PRETTY_SKIP'])
+# --all-types: a printer for every struct and union of the API, not only those
+# the events carry. One without a definition (an opaque type) is skipped.
+if opts[:all_types]
+  API.typedefs.each_value do |t|
+    next unless %w[struct union].include?(t.dig('type', 'kind'))
 
     begin
-      fe.type_named(t.name)
+      fe.type_named(t['name'])
     rescue StandardError => e
-      warn "skipped #{t.name}: #{e.message}"
+      warn "skipped #{t['name']}: #{e.message}"
     end
   end
 end
 
 # A printer for every type reached, so each member printed by its C type finds its `pv`.
 fe.memo.values.compact.uniq.each { |t| em.fn(t) }
-# For the tests: the FFI class of each struct, to compare with its Ruby to_s.
-if ENV['PRETTY_ALL_TYPES'] && API
-  File.write("#{out_hpp}.classes", fe.memo.values.grep(StructY).uniq.map { |t| "#{t.cname} #{NAMING.scoped_class_name(t.cname)}\n" }.join)
-end
 
-src = "#{File.basename(model_path)} and the #{NAMING.module_name} API model"
+src = ([model_path] + opts[:api]).map { |p| File.basename(p) }.join(', ')
 File.write(out_hpp, <<~HPP)
   // Generated by #{File.basename(__FILE__)} from #{src}.
   // fmt::formatter for the #{backend} structs and enums, printed as the Ruby

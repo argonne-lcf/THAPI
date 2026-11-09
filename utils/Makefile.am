@@ -90,8 +90,8 @@ EXTRA_DIST = \
 	thapi_log_to_bt_source_component.rb \
 	thapi_text_pretty_set_ts.rb \
 	test_wrapper_thapi_text_pretty.sh \
-	gen_cxx_pretty.rb \
-	include/thapi_pretty.hpp \
+	pretty_print/gen_pretty.rb \
+	pretty_print/thapi_pretty.hpp \
 	include/fmt_bundled/LICENSE \
 	include/fmt_bundled/fmt/base.h \
 	include/fmt_bundled/fmt/format.h \

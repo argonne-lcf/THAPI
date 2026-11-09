@@ -182,28 +182,15 @@ CLEANFILES += \
 	$(BTX_PYTORCH_GENERATED_SOURCE_TEST) \
 	$(abs_builddir)/btx_pytorch_model.yaml
 
-# filter.pytorchpretty.pretty: the pytorch events printed in C++ (utils/gen_cxx_pretty.rb).
-BTX_PYTORCH_PRETTY_GENERATED = \
-	btx_filter_pytorchpretty/metababel/metababel.h \
-	btx_filter_pytorchpretty/metababel/btx_component.h \
-	btx_filter_pytorchpretty/metababel/btx_component.c \
-	btx_filter_pytorchpretty/metababel/btx_upstream.h \
-	btx_filter_pytorchpretty/metababel/btx_upstream.c \
-	btx_filter_pytorchpretty/metababel/btx_downstream.h \
-	btx_filter_pytorchpretty/metababel/btx_downstream.c \
-	btx_filter_pytorchpretty/btx_main.c
-
-$(BTX_PYTORCH_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml $(srcdir)/btx_pytorch_model.yaml
-	$(METABABEL) -u $(srcdir)/btx_pytorch_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_pytorchpretty -p pytorchpretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml
-
-btx_pytorchpretty_callbacks.cpp btx_pytorchpretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/btx_pytorch_model.yaml
-	$(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb - $(srcdir)/btx_pytorch_model.yaml btx_pytorchpretty_callbacks.cpp btx_pytorchpretty_formatters.hpp
-
+# filter.pytorchpretty.pretty: the pytorch events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = pytorch
+PRETTY_MODEL = $(srcdir)/btx_pytorch_model.yaml
+PRETTY_API = 
+PRETTY_INC = 
+include $(top_srcdir)/utils/pretty_print/pretty.am
 bt2_LTLIBRARIES += libPYTORCHPretty.la
-BUILT_SOURCES += $(BTX_PYTORCH_PRETTY_GENERATED)
-CLEANFILES += $(BTX_PYTORCH_PRETTY_GENERATED) btx_pytorchpretty_callbacks.cpp btx_pytorchpretty_formatters.hpp
-nodist_libPYTORCHPretty_la_SOURCES = $(BTX_PYTORCH_PRETTY_GENERATED) btx_pytorchpretty_callbacks.cpp btx_pytorchpretty_formatters.hpp
-libPYTORCHPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./ -I./btx_filter_pytorchpretty $(FMT_CPPFLAGS)
-libPYTORCHPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libPYTORCHPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libPYTORCHPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+nodist_libPYTORCHPretty_la_SOURCES = $(PRETTY_GENERATED)
+libPYTORCHPretty_la_CPPFLAGS = -I./btx_filter_pytorchpretty $(PRETTY_CPPFLAGS)
+libPYTORCHPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libPYTORCHPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libPYTORCHPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

@@ -232,28 +232,15 @@ CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_OMP_GENERATED_SOURCE_TEST)
 
-# filter.omppretty.pretty: the omp events printed in C++ (utils/gen_cxx_pretty.rb).
-BTX_OMP_PRETTY_GENERATED = \
-	btx_filter_omppretty/metababel/metababel.h \
-	btx_filter_omppretty/metababel/btx_component.h \
-	btx_filter_omppretty/metababel/btx_component.c \
-	btx_filter_omppretty/metababel/btx_upstream.h \
-	btx_filter_omppretty/metababel/btx_upstream.c \
-	btx_filter_omppretty/metababel/btx_downstream.h \
-	btx_filter_omppretty/metababel/btx_downstream.c \
-	btx_filter_omppretty/btx_main.c
-
-$(BTX_OMP_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_omp_model.yaml
-	$(METABABEL) -u btx_omp_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_omppretty -p omppretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i ompt.h.include
-
-btx_omppretty_callbacks.cpp btx_omppretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(OMP_LIB_GEN) $(OMP_MODEL) btx_omp_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_omp_library_base.rb btx_omp_model.yaml btx_omppretty_callbacks.cpp btx_omppretty_formatters.hpp
-
+# filter.omppretty.pretty: the omp events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = omp
+PRETTY_MODEL = btx_omp_model.yaml
+PRETTY_API = ompt_api.yaml
+PRETTY_INC = -i ompt.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
 bt2_LTLIBRARIES += libOMPPretty.la
-BUILT_SOURCES += $(BTX_OMP_PRETTY_GENERATED)
-CLEANFILES += $(BTX_OMP_PRETTY_GENERATED) btx_omppretty_callbacks.cpp btx_omppretty_formatters.hpp
-nodist_libOMPPretty_la_SOURCES = $(BTX_OMP_PRETTY_GENERATED) btx_omppretty_callbacks.cpp btx_omppretty_formatters.hpp
-libOMPPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_filter_omppretty $(FMT_CPPFLAGS)
-libOMPPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libOMPPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libOMPPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+nodist_libOMPPretty_la_SOURCES = $(PRETTY_GENERATED)
+libOMPPretty_la_CPPFLAGS = -I./modified_include -I./btx_filter_omppretty $(PRETTY_CPPFLAGS)
+libOMPPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libOMPPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libOMPPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

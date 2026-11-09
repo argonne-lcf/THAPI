@@ -51,22 +51,6 @@ BTX_ZE_GENERATED = \
 	btx_filter_ze/metababel/btx_downstream.c \
 	btx_filter_ze/btx_main.c
 
-BTX_ZE_PRETTY_GENERATED = \
-	btx_filter_zepretty/metababel/metababel.h \
-	btx_filter_zepretty/metababel/btx_component.h \
-	btx_filter_zepretty/metababel/btx_component.c \
-	btx_filter_zepretty/metababel/btx_upstream.h \
-	btx_filter_zepretty/metababel/btx_upstream.c \
-	btx_filter_zepretty/metababel/btx_downstream.h \
-	btx_filter_zepretty/metababel/btx_downstream.c \
-	btx_filter_zepretty/btx_main.c
-
-$(BTX_ZE_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_ze_model.yaml
-	$(METABABEL) -u btx_ze_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_zepretty -p zepretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i ze.h.include
-
-btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(ZE_LIB_GEN) $(ZE_MODEL) btx_ze_model.yaml
-	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_ze_library_base.rb btx_ze_model.yaml btx_zepretty_callbacks.cpp btx_zepretty_formatters.hpp
-
 EXTRA_DIST = \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_zematching_model.yaml \
@@ -205,7 +189,7 @@ zedir = $(pkglibdir)/ze
 ze_LTLIBRARIES = libze_loader.la libZESampling.la
 
 bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libZEInterval.la libZEPretty.la
+bt2_LTLIBRARIES = libZEInterval.la
 
 nodist_libze_loader_la_SOURCES = \
 	$(ZE_PROBES_INCL) \
@@ -272,24 +256,11 @@ xprof_utils.hpp: $(top_srcdir)/utils/xprof_utils.hpp
 
 CLEANFILES += \
 	$(BTX_ZE_GENERATED) \
-	$(BTX_ZE_PRETTY_GENERATED) \
-	btx_zepretty_callbacks.cpp \
-	btx_zepretty_formatters.hpp \
 	xprof_utils.hpp
 
 BUILT_SOURCES += \
-	$(BTX_ZE_GENERATED) \
-	$(BTX_ZE_PRETTY_GENERATED)
+	$(BTX_ZE_GENERATED)
 
-nodist_libZEPretty_la_SOURCES = \
-	$(BTX_ZE_PRETTY_GENERATED) \
-	btx_zepretty_callbacks.cpp \
-	btx_zepretty_formatters.hpp
-
-libZEPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./ -I./btx_filter_zepretty $(FMT_CPPFLAGS)
-libZEPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libZEPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
-libZEPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 nodist_libZEInterval_la_SOURCES = \
 	$(BTX_ZE_GENERATED) \
@@ -350,3 +321,16 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_ZE_GENERATED_SOURCE_TEST)
+
+# filter.zepretty.pretty: the ze events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = ze
+PRETTY_MODEL = btx_ze_model.yaml
+PRETTY_API = ze_api.yaml zet_api.yaml zes_api.yaml zel_api.yaml zex_api.yaml
+PRETTY_INC = -i ze.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libZEPretty.la
+nodist_libZEPretty_la_SOURCES = $(PRETTY_GENERATED)
+libZEPretty_la_CPPFLAGS = -I./modified_include -I./btx_filter_zepretty $(PRETTY_CPPFLAGS)
+libZEPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libZEPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libZEPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

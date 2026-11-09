@@ -170,7 +170,7 @@ $(BTX_PRETTY_PRINT_GENERATED) &: $(srcdir)/btx_pretty_model.yaml $(srcdir)/btx_p
 BUILT_SOURCES += $(BTX_PRETTY_PRINT_GENERATED)
 nodist_libThapiPretty_la_SOURCES = $(BTX_PRETTY_PRINT_GENERATED)
 libThapiPretty_la_SOURCES = btx_pretty_print_callbacks.cpp
-libThapiPretty_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I./ -I./btx_sink_pretty $(FMT_CPPFLAGS)
+libThapiPretty_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(top_srcdir)/utils/pretty_print -I./btx_sink_pretty $(FMT_CPPFLAGS)
 libThapiPretty_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
 libThapiPretty_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
 libThapiPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
