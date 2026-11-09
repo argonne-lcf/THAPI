@@ -18,6 +18,7 @@ infos = YAML.load_file(File.join(DATADIR, 'opencl_infos.yaml'))
 enums_by_type = {}
 enums_by_value = {}
 enums_by_name = {}
+enum_values = {}
 bitfields_by_type = {}
 structs_by_type = {}
 
@@ -53,11 +54,14 @@ opencl_model['enums'].collect do |k, v|
   v['values'].each do |n, str|
     int =
       begin
-        eval(str)
+        eval(str) # rubocop:disable Security/Eval -- values from our own opencl_model.yaml
       rescue StandardError
         nil
       end
-    hash[int] = n if int
+    next unless int
+
+    hash[int] = n
+    enum_values[n] = int
   end
   k = v['type_name'] if v['type_name']
   enums_by_type[k] = hash
@@ -72,7 +76,7 @@ opencl_model['bitfields'].collect do |k, v|
   v['values'].each do |n, str|
     int =
       begin
-        eval(str)
+        eval(str) # rubocop:disable Security/Eval -- values from our own opencl_model.yaml
       rescue StandardError
         nil
       end
@@ -103,6 +107,96 @@ opencl_model['bitfields'].collect do |k, v|
   end
   bitfields_by_type[k] = klass
 end
+
+# A device-partition property list (clCreateSubDevices(EXT) properties,
+# CL_DEVICE_PARTITION_TYPE): keys, each followed by one value or by a list of
+# values ended by its own terminator, and a 0 after the last key. Each element
+# is named by its place in the list: keys by the key enum, values by their key,
+# terminators by their list.
+class PartitionList
+  # The core list is traced signed (intptr_t), the EXT one unsigned (cl_ulong).
+  MASK64 = (1 << 64) - 1
+
+  # keys: value => key name. kinds: key name => [terminator name, terminator
+  # value] for a key that takes a list, or a lambda naming its one value. Any
+  # other key takes one plain value.
+  def initialize(keys, kinds)
+    @keys = keys
+    @kinds = kinds
+  end
+
+  def to_a(vals)
+    res = []
+    idx = 0
+    while idx < vals.size
+      key = vals[idx]
+      return res.push(0).concat(vals[(idx + 1)..]) if key.zero?
+
+      res << (@keys[key] || key)
+      idx = take_values(@kinds[res.last], vals, idx + 1, res)
+    end
+    res
+  end
+
+  private
+
+  # Append the values after a key, from vals[idx], to res. Return the next index.
+  def take_values(kind, vals, idx, res)
+    return take_list(*kind, vals, idx, res) if kind.is_a?(Array)
+    return idx if idx >= vals.size
+
+    res << (kind ? kind.call(vals[idx]) : vals[idx])
+    idx + 1
+  end
+
+  # Append the values up to the list terminator, then the terminator's name.
+  def take_list(term_name, term, vals, idx, res)
+    len = vals[idx..].index { |v| (v & MASK64) == (term & MASK64) }
+    unless len
+      res.concat(vals[idx..])
+      return vals.size
+    end
+    res.concat(vals[idx, len]) << term_name
+    idx + len + 1
+  end
+end
+
+# Terminators are not keys: outside its list, a 0 is a 0. And
+# cl_intel_device_partition_by_names (cl_ext_intel.h) is not in cl.xml.
+%w[cl_device_partition_property cl_device_partition_property_ext].each do |t|
+  enums_by_type[t].reject! { |_, n| n.include?('LIST_END') }
+end
+enums_by_type['cl_device_partition_property'][0x4052] ||= 'CL_DEVICE_PARTITION_BY_NAMES_INTEL'
+%w[cl_device_partition_property cl_device_partition_property_ext].each do |t|
+  enums_by_value[t] = enums_by_type[t].invert
+end
+enum_values['CL_PARTITION_BY_NAMES_LIST_END_INTEL'] ||= -1
+
+list_end = ->(name) { [name, enum_values.fetch(name)] }
+flag_name = lambda { |type|
+  b = bitfields_by_type.fetch(type)
+  ->(val) { b.const_get(:FLAGS).key(val) || b.to_s(val) }
+}
+enum_name = lambda { |type|
+  e = enums_by_type.fetch(type)
+  ->(val) { e[val] || val }
+}
+partition_lists = {
+  'cl_device_partition_property' => PartitionList.new(
+    enums_by_type['cl_device_partition_property'], {
+      'CL_DEVICE_PARTITION_BY_COUNTS' => list_end.call('CL_DEVICE_PARTITION_BY_COUNTS_LIST_END'),
+      'CL_DEVICE_PARTITION_BY_NAMES_INTEL' => list_end.call('CL_PARTITION_BY_NAMES_LIST_END_INTEL'),
+      'CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN' => flag_name.call('cl_device_affinity_domain'),
+    }
+  ),
+  'cl_device_partition_property_ext' => PartitionList.new(
+    enums_by_type['cl_device_partition_property_ext'], {
+      'CL_DEVICE_PARTITION_BY_COUNTS_EXT' => list_end.call('CL_PARTITION_BY_COUNTS_LIST_END_EXT'),
+      'CL_DEVICE_PARTITION_BY_NAMES_EXT' => list_end.call('CL_PARTITION_BY_NAMES_LIST_END_EXT'),
+      'CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT' => enum_name.call('cl_affinity_domain_ext'),
+    }
+  ),
+}
 
 opencl_model['structures'].collect do |n|
   sname = n.sub(/\Acl_/, '').split('_').collect(&:capitalize).join
@@ -136,8 +230,12 @@ type_map = {
 opencl_model['objects'].each do |n|
   type_map[n] = 'J'
 end
-enums_by_type.keys.each do |n|
-  type_map[n] = 'l'
+# Unpack an enum as its C type: cl_context_properties and
+# cl_device_partition_property are intptr_t, not 32 bits.
+enums_by_type.each_key do |n|
+  base = n
+  4.times { base = opencl_model['type_map'][base] unless base.nil? || type_map.key?(base) }
+  type_map[n] = type_map.fetch(base, 'l')
 end
 bitfields_by_type.keys.each do |n|
   type_map[n] = 'Q'
@@ -165,6 +263,7 @@ infos.each do |inf, vers|
         elsif structs_by_type[i['type']]
           ['Z*', false, i['type']]
         end
+      type += [:partition_list] if i['name'] == 'CL_DEVICE_PARTITION_TYPE'
       infos_type[inf][enums_by_value[inf][i['name']]] = type
     end
   end
@@ -178,9 +277,11 @@ info_str_lambda = lambda { |param_name, name, type|
         if i
           v = defi["#{name}"].unpack(i[0])
           v.collect! { |j| '0x' << j.to_s(16) } if i[0].match("J")
-          if i[2]
+          if i[3] == :partition_list
+            v = partition_lists[i[2]].to_a(v)
+          elsif i[2]
             if enums_by_type[i[2]]
-              v.collect! { |val| enums_by_type[i[2]][val] }
+              v.collect! { |val| enums_by_type[i[2]][val] || val }
             elsif bitfields_by_type[i[2]]
               v.collect! { |val| bitfields_by_type[i[2]].to_s(val) }
             elsif structs_by_type[i[2]]
@@ -221,7 +322,9 @@ opencl_model['events'].each do |n, v|
           info_str_lambda.call('_param_name', name, type)
         end
       elsif desc['array']
-        if enums_by_type[desc['type']]
+        if partition_lists[desc['type']]
+          "partition_lists[\"#{desc['type']}\"].to_a(defi[\"#{name}\"])"
+        elsif enums_by_type[desc['type']]
           "defi[\"#{name}\"].collect { |v| (tmp = enums_by_type[\"#{desc['type']}\"][v]) ? tmp : v }"
         elsif bitfields_by_type[desc['type']]
           "defi[\"#{name}\"].collect { |v| bitfields_by_type[\"#{desc['type']}\"].to_s(v) }"
@@ -252,5 +355,5 @@ opencl_model['events'].each do |n, v|
       }.collect { |k,v| "\#{k}: \#{v}"}.join(", ")
     }
   EOF
-  $event_lambdas[n] = eval(src)
+  $event_lambdas[n] = eval(src) # rubocop:disable Security/Eval -- code generated above
 end
