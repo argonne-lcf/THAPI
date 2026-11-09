@@ -479,7 +479,12 @@ end
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
 # category has to contain both to answer "is this an integer?" in one lookup.
 TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
-                         :bytes, keyword_init: true) do
+                         :bytes, :floats, :trace_names, keyword_init: true) do
+  # The name a scalar typedef is recorded under (see ApiModel's trace_as).
+  def trace_name(name)
+    trace_names.fetch(name.to_s, name)
+  end
+
   # The one category a typedef name falls into, or nil when this API never
   # names it. The order is the answer: an object typedef is a pointer under the
   # hood and a hex int is an integer, so the more specific category has to win.
@@ -492,6 +497,7 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
     when *integers then :integer
     when *enums then :enum
     when *structs, *unions then :aggregate
+    when *floats then :float
     end
   end
 
@@ -510,7 +516,7 @@ end
 
 # `hex_ints` are the API's own integer types to log in hex, on top of the ones
 # every API shares.
-def find_all_types(types, hex_ints: [])
+def find_all_types(types, hex_ints: [], trace_as: [])
   objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
   # Int and Char share one category, and the char pass closes over the list the
   # int pass produced, so a typedef aliasing either resolves the same way.
@@ -526,8 +532,25 @@ def find_all_types(types, hex_ints: [])
     bytes: transitive_closure(types, BYTE_TYPES.dup),
     enums: find_types(types, YAMLCAst::Enum),
     structs: find_types(types, YAMLCAst::Struct),
-    unions: find_types(types, YAMLCAst::Union)
+    unions: find_types(types, YAMLCAst::Union),
+    floats: find_types(types, YAMLCAst::Float),
+    trace_names: find_trace_names(types, trace_as)
   ).each_pair { |_, v| v.freeze }.freeze
+end
+
+# Each typedef whose chain reaches one of `bases`, mapped to the first it reaches.
+def find_trace_names(types, bases)
+  return {} if bases.empty?
+
+  aliased = types.to_h { |t| [t.name, t.type] }
+  types.each_with_object({}) do |t, names|
+    name = t.name
+    seen = Set.new
+    while !bases.include?(name) && seen.add?(name) && aliased[name].is_a?(YAMLCAst::DirectType)
+      name = aliased[name].name
+    end
+    names[t.name] = name if name != t.name && bases.include?(name)
+  end
 end
 
 # Each struct typedef mapped to its member list, so a meta-parameter naming

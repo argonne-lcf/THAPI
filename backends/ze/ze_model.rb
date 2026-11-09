@@ -451,18 +451,6 @@ EOF
 EOF
 end
 
-def get_ffi_type(a)
-  if a.type.is_a?(YAMLCAst::Void)
-    'ffi_type_void'
-  elsif a.type.is_a?(YAMLCAst::Pointer)
-    'ffi_type_pointer'
-  elsif FFI_TYPE_MAP["#{a.type}"]
-    FFI_TYPE_MAP["#{a.type}"]
-  else
-    raise "Unsupported type: #{a.type}"
-  end
-end
-
 str = COMMANDS.groups[:lttng_ust_ze].select { |c| c.name.end_with?('Exp') }.map do |c|
   <<EOF
   if (strcmp(name, "#{c.name}") == 0) {
