@@ -92,8 +92,7 @@ COMMANDS.each do |c|
     type = c.result_field == 'errcode_ret_val' ? 'cl_errcode' : c.declaration('return_type')
     stop[c.result_field] = { 'type' => type, 'lttng' => r.macro.to_s }
   end
-  outputs = c.meta_parameters.filter_map(&:lttng_out_type).reject { |f| f.name.to_s == '_param_name' }
-  outputs.each { |f| stop.store(*meta_field.call(params, f)) }
+  c.meta_parameters.filter_map(&:lttng_out_type).each { |f| stop.store(*meta_field.call(params, f)) }
   events["lttng_ust_opencl:#{c.name}_#{STOP}"] = stop
 end
 

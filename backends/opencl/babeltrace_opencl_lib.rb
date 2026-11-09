@@ -210,7 +210,9 @@ opencl_model['events'].each do |n, v|
       {
   EOF
   src << '  '
-  src << v.collect { |name, desc|
+  # _param_name is the queried key the tracer copies into clGet*Info exits, so
+  # that param_value_vals can be decoded; it is not an output of the call.
+  src << v.reject { |name, _| name == '_param_name' }.collect { |name, desc|
     expr =
       if name == 'param_value_vals'
         startn = n.gsub("_#{CL_STOP}", "_#{CL_START}")
