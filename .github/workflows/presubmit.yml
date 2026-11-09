@@ -212,7 +212,7 @@ jobs:
   check-same-generated-files:
     needs: efficios_dep
     name: Assert generated files are equivalent
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v6
     - uses: ./.github/actions/setup-thapi
