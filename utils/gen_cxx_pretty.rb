@@ -61,8 +61,8 @@ VersionY = Struct.new(:cname)                              # "major.minor"
 StructY = Struct.new(:cname, :members, :special, :union)   # members: [name, kind]
 AnonY = Struct.new(:members, :union, :unnamed)             # a layout declared inline; unnamed: its members are the parent's
 BitsY = Struct.new(:ctype, :after)                         # a run of bit-fields after member `after`
-# kind: :auto (printed by C type), :pointer (an integer FFI declares a pointer), a MaskY
-# (an integer holding flags), an AnonY, or a BitsY.
+# kind: :auto (printed by C type), [:scalar, C type], :bool, :pointer (an integer FFI
+# declares a pointer), a MaskY (an integer holding flags), an AnonY, or a BitsY.
 
 class Frontend
   attr_reader :memo
@@ -173,9 +173,12 @@ class Frontend
       e = type.type
       raise "#{where}: array of flags is not supported" if e.is_a?(YAMLCAst::CustomType) && API.bitfield?(e.name)
 
-      raise "#{where}: array of inline layouts is not supported" unless kind(e, where) == :auto # makes the element printable
+      ek = kind(e, where) # also makes the element printable
+      raise "#{where}: array of inline layouts is not supported" if ek.is_a?(AnonY)
 
       :auto
+    when YAMLCAst::Bool then :bool
+    when YAMLCAst::Int, YAMLCAst::Char, YAMLCAst::Float then [:scalar, type.name]
     else :auto
     end
   end
@@ -256,6 +259,11 @@ class Emitter
              when MaskY then "#{fn(k)}(o, (int64_t)(int32_t)#{v});"
              when AnonY then members(k.members, k.unnamed ? s : v)
              when :pointer then "ruby_hex(o, (uint64_t)#{v});"
+             # FFI reads a :bool as the low bit of its byte.
+             when :bool then "{ unsigned char b; std::memcpy(&b, (const void *)&#{v}, 1); put(o, (b & 1) ? \"true\" : \"false\"); }"
+             # A C scalar: the cast is a no-op, except for a C++ wrapper (hip's vector types
+             # hold Scalar_accessor members that convert to the scalar).
+             when Array then "pv(o, (#{k[1]})(#{v}));"
              when BitsY
                off = if k.after
                        "((offsetof(std::remove_reference_t<decltype(#{s})>, #{k.after}) + sizeof(#{s}.#{k.after}) + " \
@@ -392,8 +400,27 @@ model[:stream_classes].each do |sc|
   end
 end
 
+# PRETTY_ALL_TYPES=1: a printer for every struct and union of the API, not only
+# those the events carry (for testing the formatters on their own).
+if ENV['PRETTY_ALL_TYPES'] && API
+  API.types.each do |t|
+    next unless t.type.is_a?(YAMLCAst::Struct) || t.type.is_a?(YAMLCAst::Union)
+    next if ENV['PRETTY_SKIP'] && t.name.match?(ENV['PRETTY_SKIP'])
+
+    begin
+      fe.type_named(t.name)
+    rescue StandardError => e
+      warn "skipped #{t.name}: #{e.message}"
+    end
+  end
+end
+
 # A printer for every type reached, so each member printed by its C type finds its `pv`.
 fe.memo.values.compact.uniq.each { |t| em.fn(t) }
+# For the tests: the FFI class of each struct, to compare with its Ruby to_s.
+if ENV['PRETTY_ALL_TYPES'] && API
+  File.write("#{out_hpp}.classes", fe.memo.values.grep(StructY).uniq.map { |t| "#{t.cname} #{NAMING.scoped_class_name(t.cname)}\n" }.join)
+end
 
 src = "#{File.basename(model_path)} and the #{NAMING.module_name} API model"
 File.write(out_hpp, <<~HPP)
