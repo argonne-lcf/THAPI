@@ -226,7 +226,8 @@ TRACE_COMMON = \
 	tests/results_first.thapi_text_pretty \
 	tests/command_queue.thapi_text_pretty \
 	tests/command_queue_other_thread.thapi_text_pretty \
-	tests/with_error.thapi_text_pretty
+	tests/with_error.thapi_text_pretty \
+	tests/create_sub_devices_ext.thapi_text_pretty
 
 BTX_OPENCL_GENERATED_SOURCE_TEST = \
 	btx_source_cl_test/metababel/metababel.h \
