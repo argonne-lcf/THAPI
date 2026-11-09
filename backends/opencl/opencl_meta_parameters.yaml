@@ -2,10 +2,10 @@
 meta_parameters:
   clGetPlatformIDs:
     - [ OutScalar, num_platforms ]
-    - [ OutArray, platforms ]
+    - [ OutArray, platforms, num_entries ]
   clGetDeviceIDs:
     - [ OutScalar, num_devices ]
-    - [ OutArray, devices ]
+    - [ OutArray, devices, num_entries ]
   clCreateContext:
     - [ InNullArray, properties ]
     - [ InArray, devices, num_devices ]
@@ -19,7 +19,7 @@ meta_parameters:
     - [ OutScalar, old_properties ]
   clGetSupportedImageFormats:
     - [ OutScalar, num_image_formats ]
-    - [ OutArray, image_formats ]
+    - [ OutArray, image_formats, num_entries ]
   clCreateProgramWithSource:
     - [ InArray, strings, count ]
     - [ InArray, lengths, count ]
@@ -86,7 +86,7 @@ meta_parameters:
   clCreateSubDevicesEXT:
     - [ DeviceFissionPropertyList, properties ]
     - [ OutScalar, num_devices ]
-    - [ OutArray, out_devices ]
+    - [ OutArray, out_devices, num_entries ]
   clCreateSubDevices:
     - [ DeviceFissionPropertyList, properties ]
     - [ OutScalar, num_devices_ret ]
@@ -204,3 +204,5 @@ meta_parameters:
     - [ InArray, global_work_offset, work_dim ]
     - [ InArray, work_group_count, work_dim ]
     - [ InArray, local_work_size, work_dim ]
+  clCreateSubBuffer:
+    - [ InLTTng, buffer_create_info, lttng_ust_field_variable_length_blob, buffer_create_info_vals, buffer_create_info, size_t, "buffer_create_info == NULL ? 0 : (buffer_create_type == CL_BUFFER_CREATE_TYPE_REGION ? sizeof(cl_buffer_region) : 0)" ]

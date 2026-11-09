@@ -1,181 +1,116 @@
-require 'yaml'
-
+# opencl_model.yaml: what the babeltrace model (gen_babeltrace_cl_model.rb) and
+# the pretty-printer (babeltrace_opencl_lib.rb) read about OpenCL. The registry
+# facts come from opencl_xml.yaml, the events from the traced commands and the
+# hand-written event files.
 require_relative 'opencl_model'
-require_relative 'opencl_tracepoints'
 
-en = yaml_load_file_cached(File.join(SRC_DIR, 'supported_enums.yaml'))
-en.push({ 'name' => 'cl_bool' })
-en.push({ 'name' => 'command execution status', 'trace_name' => 'command_exec_callback_type',
-          'type_name' => 'cl_command_execution_status' })
+CL_EVENT_SUFFIXES = SUFFIXES.transform_keys(&:to_s)
 
-bitfields = {}
-enums = {}
-objects = CL_OBJECTS + CL_EXT_OBJECTS
-int_scalars = CL_INT_SCALARS
-float_scalars = CL_FLOAT_SCALARS
-lttng_enums = {}
-events = {}
+res = OPENCL_XML.slice('enums', 'bitfields', 'objects', 'int_scalars', 'float_scalars', 'type_map', 'structures')
+                .merge('lttng_enums' => {}, 'events' => {})
+events = res['events']
 
-res = {
-  'enums' => enums,
-  'bitfields' => bitfields,
-  'objects' => objects,
-  'int_scalars' => int_scalars,
-  'float_scalars' => float_scalars,
-  'type_map' => CL_TYPE_MAP,
-  'structures' => CL_STRUCTS,
-  'lttng_enums' => lttng_enums,
-  'events' => events,
-}
-
-en.each do |e|
-  bitfield = false
-  vals = CL_REQUIRES.select do |r|
-    r.comment && r.comment.match(/#{e['name']}(\z| )/)
-  end.each do |r|
-    bitfield = true if r.comment.match(/ - bitfield/)
-  end.collect do |r|
-    r.enums
-  end.reduce(:+).collect do |v|
-    [v, CL_CONSTANTS[v]]
-  end.to_h
-  r = { 'values' => vals }
-  r['trace_name'] = e['trace_name'] if e['trace_name']
-  r['type_name'] = e['type_name'] if e['type_name']
-
-  if bitfield
-    bitfields[e['name']] = r
-  else
-    enums[e['name']] = r
-  end
+def array_field?(f)
+  f.macro.to_s.match?(/array|sequence|blob/)
 end
 
-event_lambda = lambda { |c, dir|
-  name = "lttng_ust_opencl:#{c.prototype.name}_#{CL_EVENT_SUFFIXES[dir]}"
-  fields = {}
-  params = {}
-  c.parameters.each do |p|
-    param = {}
-    params[p.name] = param
-    param['type'] = (if p.callback? || p.type == ''
-                       'void'
-                     else
-                       p.type == '*' ? 'void*' : p.type
-                     end)
-    param['pointer'] = true if p.pointer?
-  end
-  if dir == 'start'
-    c.parameters.select { |p| p.lttng_in_type }.each do |p|
-      field = {}
-      lttng = p.lttng_in_type
-      fname = LTTngFieldTuple.name(*lttng)
-      field.merge!(params[fname])
-      field['lttng'] = lttng[0]
-      fields[fname] = field
-    end
-    c.meta_parameters.select { |p| p.lttng_in_type }.each do |p|
-      meta_field = {}
-      lttng = p.lttng_in_type
-      fname = LTTngFieldTuple.name(*lttng)
-      if fname == 'errcode_ret_val'
-        meta_field['type'] = 'cl_errcode'
-      elsif fname.match(/_val\z/)
-        pname = fname.gsub(/_val\z/, '')
-        meta_field['type'] = params[pname]['type']
-      else
-        meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
-      end
-      if meta_field['type'].match(/\*\z/)
-        meta_field['type'] = meta_field['type'].sub(/\*\z/, '')
-        meta_field['pointer'] = true
-      end
-      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
-      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
-      meta_field['lttng'] = lttng[0]
-      meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
-      if  meta_field['array'] &&
-          !meta_field['pointer'] &&
-          CL_STRUCTS.include?(meta_field['type'])
-        meta_field.delete('array')
-        meta_field['structure'] = true
-      end
-      fields[fname] = meta_field
-    end
-  else
-    field = {}
-    if c.prototype.lttng_return_type
-      field['type'] = c.prototype.return_type
-      lttng = c.prototype.lttng_return_type
-      field['lttng'] = lttng[0]
-      fname = LTTngFieldTuple.name(*lttng)
-      field['type'] = 'cl_errcode' if fname == 'errcode_ret_val'
-      fields[fname] = field
-    end
-    c.meta_parameters.select do |p|
-      p.lttng_out_type && LTTngFieldTuple.name(*p.lttng_out_type) != '_param_name'
-    end.each do |p|
-      meta_field = {}
-      lttng = p.lttng_out_type
-      fname = LTTngFieldTuple.name(*lttng)
-      if fname == 'errcode_ret_val'
-        meta_field['type'] = 'cl_errcode'
-      elsif fname.match(/_val\z/)
-        pname = fname.gsub(/_val\z/, '')
-        meta_field['type'] = params[pname]['type']
-      else
-        begin
-          meta_field['type'] = params[LTTngFieldTuple.expression(*lttng)]['type']
-        rescue StandardError
-          warn name, lttng.inspect
-        end
-      end
-      if meta_field['type'].match(/\*\z/)
-        meta_field['type'] = meta_field['type'].gsub(/\*\z/, '')
-        meta_field['pointer'] = true
-      end
-      meta_field['array'] = true if LTTngFieldTuple.array?(*lttng)
-      meta_field['string'] = true if LTTngFieldTuple.string?(*lttng)
-      meta_field['lttng'] = lttng[0]
-      meta_field['length'] = lttng[4] if meta_field['lttng'].match('ctf_array')
-      if  meta_field['array'] &&
-          !meta_field['pointer'] &&
-          CL_STRUCTS.include?(meta_field['type'])
-        meta_field.delete('array')
-        meta_field['structure'] = true
-      end
-      fields[fname] = meta_field
-    end
-  end
-  [name, fields]
-}
+def string_field?(f)
+  f.macro.to_s.match?('string')
+end
 
-(OPENCL_COMMANDS.groups[:core] + OPENCL_COMMANDS.groups[:extension]).each do |c|
-  %w[start stop].each do |dir|
-    name, val = event_lambda.call(c, dir)
-    events[name] = val
+# A meta-parameter's field, described by the parameter it reads.
+meta_field = lambda do |params, f|
+  fname = f.name.to_s
+  field = {}
+  field['type'] = if fname == 'errcode_ret_val'
+                    'cl_errcode'
+                  elsif fname.match(/_val\z/)
+                    params[fname.gsub(/_val\z/, '')]['type']
+                  else
+                    params[f.expression]['type']
+                  end
+  if field['type'].match(/\*\z/)
+    field['type'] = field['type'].sub(/\*\z/, '')
+    field['pointer'] = true
   end
+  field['array'] = true if array_field?(f)
+  field['string'] = true if string_field?(f)
+  field['lttng'] = f.macro.to_s
+  field['length'] = f.length if f.macro.to_s.match('ctf_array')
+  if field['array'] && !field['pointer'] && res['structures'].include?(field['type'])
+    field.delete('array')
+    field['structure'] = true
+  end
+  [fname, field]
+end
+
+# A hand-written event's field ([macro, *args]), described by the argument it
+# reads.
+declared_field = lambda do |args, tuple|
+  f = LTTng::TracepointField.new(*tuple)
+  name = f.name.to_s
+  type = name.match(/_val\z/) ? args[name.delete_suffix('_val')] : args[name] || args[f.expression]
+  field = {}
+  if type.match(/\*\z/)
+    type = type.sub(/\*\z/, '').strip
+    field['pointer'] = true
+  end
+  field = { 'type' => type }.merge(field)
+  if array_field?(f) || string_field?(f)
+    field.delete('pointer')
+    field['array'] = true if array_field?(f)
+    field['string'] = true if string_field?(f)
+  end
+  field['enum_type'] = f.enum_name if f.macro == :ctf_enum
+  field['lttng'] = tuple[0]
+  [name, field]
+end
+
+declared_fields = lambda do |args, tuples|
+  args_h = args.to_h(&:reverse)
+  tuples.to_a.to_h { |t| declared_field.call(args_h, t) }
+end
+
+COMMANDS.each do |c|
+  params = c.declaration('params').to_h do |p|
+    type = p['callback'] || p['registry_type'] == '' ? 'void' : p['registry_type']
+    type = 'void*' if type == '*'
+    param = { 'type' => type }
+    param['pointer'] = true if p['pointer']
+    [p['name'], param]
+  end
+  start = {}
+  c.parameters.to_a.each do |p|
+    f = p.lttng_type(c.type_classes)
+    start[f.name.to_s] = params[f.name.to_s].merge('lttng' => f.macro.to_s)
+  end
+  c.meta_parameters.filter_map(&:lttng_in_type).each { |f| start.store(*meta_field.call(params, f)) }
+  events["lttng_ust_opencl:#{c.name}_#{START}"] = start
+
+  stop = {}
+  if c.has_return_type? && (r = c.type.lttng_type(c.type_classes))
+    type = c.result_field == 'errcode_ret_val' ? 'cl_errcode' : c.declaration('return_type')
+    stop[c.result_field] = { 'type' => type, 'lttng' => r.macro.to_s }
+  end
+  outputs = c.meta_parameters.filter_map(&:lttng_out_type).reject { |f| f.name.to_s == '_param_name' }
+  outputs.each { |f| stop.store(*meta_field.call(params, f)) }
+  events["lttng_ust_opencl:#{c.name}_#{STOP}"] = stop
 end
 
 yaml_load_file_cached(File.join(SRC_DIR, 'opencl_wrapper_events.yaml')).each do |namespace, h|
   h['events'].each do |e|
-    %w[start stop].each do |dir|
-      event = get_fields(e['args'], e[dir.to_s])
-      events["#{namespace}:#{e['name']}_#{CL_EVENT_SUFFIXES[dir]}"] = event
+    CL_EVENT_SUFFIXES.each do |dir, suffix|
+      events["#{namespace}:#{e['name']}_#{suffix}"] = declared_fields.call(e['args'], e[dir])
     end
   end
 end
 
 yaml_load_file_cached(File.join(SRC_DIR, 'opencl_events.yaml')).each do |namespace, h|
-  if h['enums']
-    h['enums'].each do |e|
-      lttng_enums[e['name']] = {
-        values: e['values'].collect { |v| { type: v[0], name: v[1], value: v[2] } },
-      }
-    end
+  h['enums'].to_a.each do |e|
+    res['lttng_enums'][e['name']] = { values: e['values'].collect { |v| { type: v[0], name: v[1], value: v[2] } } }
   end
   h['events'].each do |e|
-    event = get_fields(e['args'], e['fields'])
-    events["#{namespace}:#{e['name']}"] = event
+    events["#{namespace}:#{e['name']}"] = declared_fields.call(e['args'], e['fields'])
   end
 end
 

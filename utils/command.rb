@@ -54,9 +54,6 @@ end
 #
 # `select` narrows the functions traced, for a backend that wraps only some of
 # what its headers declare: itt traces eight of the hundred-odd it parses.
-#
-# This lives here rather than on CommandIndex because it names Command, which
-# opencl does not share.
 def build_command_index(groups, context:, spec: Hash.new { [] }, select: ->(_func) { true })
   index = CommandIndex.new(groups.transform_values do |funcs|
     funcs.filter_map do |func|
