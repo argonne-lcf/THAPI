@@ -506,12 +506,15 @@ end
 # A device-partition property list (clCreateSubDevices, clCreateSubDevicesEXT):
 # keys, each followed by one value or by a list of values ended by its own
 # terminator, and a 0 after the last key. The core API and cl_ext_device_fission
-# spell the keys with different constants.
+# spell the keys with different constants; cl_intel_device_partition_by_names
+# adds a key to the core list.
 class DeviceFissionPropertyList < InArray
-  # Key => terminator of its value list. Every other key takes one value.
+  # Key => terminator of its value list. Every other key takes one value, so a
+  # key that takes a list must be here, or the walk reads past the array.
   VALUE_LISTS = {
     'cl_device_partition_property' => {
       'CL_DEVICE_PARTITION_BY_COUNTS' => 'CL_DEVICE_PARTITION_BY_COUNTS_LIST_END',
+      'CL_DEVICE_PARTITION_BY_NAMES_INTEL' => 'CL_PARTITION_BY_NAMES_LIST_END_INTEL',
     },
     'cl_device_partition_property_ext' => {
       'CL_DEVICE_PARTITION_BY_COUNTS_EXT' => 'CL_PARTITION_BY_COUNTS_LIST_END_EXT',
