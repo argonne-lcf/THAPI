@@ -8,3 +8,5 @@ tracer_opencl.sh
 cl.xml.patched
 opencl_model.yaml
 clprof_callbacks.cpp
+!include/CL/*.h
+!opencl_missing_apis.h

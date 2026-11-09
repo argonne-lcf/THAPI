@@ -7,7 +7,6 @@ puts <<~EOF
   #include <CL/opencl.h>
   #include <CL/cl_ext.h>
   #include <CL/cl_gl.h>
-  #include <CL/cl_gl_ext.h>
   #include <CL/cl_egl.h>
   #include "./tracer_opencl.h"
 
