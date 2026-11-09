@@ -143,11 +143,16 @@ end
 # `trace` prints with the C++ pretty filters (one per backend, then
 # sink.thapipretty.text) when every selected backend has one, else with the
 # Ruby printer. THAPI_PRETTY=ruby or THAPI_PRETTY=cxx forces one of them.
+# The backends sink.text.rubypretty has a printer (babeltrace_<backend>_lib.rb) for.
+RUBY_PRETTY_BACKENDS = %w[mpi omp cl ze cuda hip itt pytorch].freeze
+
 def cxx_pretty?
   case ENV['THAPI_PRETTY']
   when 'ruby' then false
   when 'cxx' then true
-  else $options[:'backend-names'].all? { |b| thapi_component_classes.include?("filter.#{b}pretty.pretty") }
+  else
+    # A backend without a Ruby printer (cxi) has its events printed by the fallback either way.
+    ($options[:'backend-names'] & RUBY_PRETTY_BACKENDS).all? { |b| thapi_component_classes.include?("filter.#{b}pretty.pretty") }
   end
 end
 
@@ -179,7 +184,7 @@ def get_components(names)
     when 'filter.intervals.interval'
       $options[:'backend-names'].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
     when 'filter.pretty.pretty'
-      $options[:'backend-names'].map do |b|
+      ($options[:'backend-names'] & RUBY_PRETTY_BACKENDS).map do |b|
         n = "filter.#{b}pretty.pretty"
         NameComp.new(n, components_classes[n])
       end

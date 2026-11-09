@@ -211,3 +211,29 @@ libMPIInterval_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include
 libMPIInterval_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) $(BABELTRACE2_CFLAGS)
 libMPIInterval_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+# filter.mpipretty.pretty: the mpi events printed in C++ (utils/gen_cxx_pretty.rb).
+BTX_MPI_PRETTY_GENERATED = \
+	btx_filter_mpipretty/metababel/metababel.h \
+	btx_filter_mpipretty/metababel/btx_component.h \
+	btx_filter_mpipretty/metababel/btx_component.c \
+	btx_filter_mpipretty/metababel/btx_upstream.h \
+	btx_filter_mpipretty/metababel/btx_upstream.c \
+	btx_filter_mpipretty/metababel/btx_downstream.h \
+	btx_filter_mpipretty/metababel/btx_downstream.c \
+	btx_filter_mpipretty/btx_main.c
+
+$(BTX_MPI_PRETTY_GENERATED) &: $(top_srcdir)/xprof/btx_pretty_model.yaml $(top_srcdir)/xprof/btx_pretty_params.yaml btx_mpi_model.yaml
+	$(METABABEL) -u btx_mpi_model.yaml -d $(top_srcdir)/xprof/btx_pretty_model.yaml -t FILTER -o btx_filter_mpipretty -p mpipretty -c pretty --params $(top_srcdir)/xprof/btx_pretty_params.yaml -i mpi.h.include
+
+btx_mpipretty_callbacks.cpp btx_mpipretty_formatters.hpp &: $(top_srcdir)/utils/gen_cxx_pretty.rb $(MPI_LIB_GEN) $(MPI_MODEL) btx_mpi_model.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $(top_srcdir)/utils/gen_cxx_pretty.rb $(srcdir)/gen_mpi_library_base.rb btx_mpi_model.yaml btx_mpipretty_callbacks.cpp btx_mpipretty_formatters.hpp
+
+bt2_LTLIBRARIES += libMPIPretty.la
+BUILT_SOURCES += $(BTX_MPI_PRETTY_GENERATED)
+CLEANFILES += $(BTX_MPI_PRETTY_GENERATED) btx_mpipretty_callbacks.cpp btx_mpipretty_formatters.hpp
+nodist_libMPIPretty_la_SOURCES = $(BTX_MPI_PRETTY_GENERATED) btx_mpipretty_callbacks.cpp btx_mpipretty_formatters.hpp
+libMPIPretty_la_CPPFLAGS = -I$(top_srcdir)/utils -I$(top_srcdir)/utils/include -I./modified_include -I./btx_filter_mpipretty $(FMT_CPPFLAGS)
+libMPIPretty_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+libMPIPretty_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter -fno-fast-math $(WERROR) $(BABELTRACE2_CFLAGS)
+libMPIPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module

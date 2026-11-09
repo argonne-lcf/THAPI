@@ -17,12 +17,27 @@
 require 'yaml'
 
 base_path, model_path, out_cpp, out_hpp = ARGV
-require File.expand_path(base_path)
+if base_path == '-' # a backend without an API model (pytorch): no be_class to print
+  API = nil
+  NAMING = Struct.new(:module_name).new('NONE')
+else
+  require File.expand_path(base_path)
+end
 
 def c_str(s) = '"' + s.gsub('\\', '\\\\\\\\').gsub('"', '\"') + '"'
 
 # How a backend's Ruby FFI library prints its types (gen_<backend>_library.rb).
+UUID_FORWARD = lambda { |name, _members| NAMING.class_name(name).match('UUID') ? :uuid_forward : nil }
 RULES = {
+  # print_handle_uuid_modules + print_struct_prepending_uuid: a struct named *UUID* prints its `bytes`.
+  # gen_cuda_library.rb declares `typedef :pointer, CUdeviceptr` (an integer in C): printed "0x%016x".
+  'CUDA' => { version: ->(_) { false }, special: UUID_FORWARD, drop: %w[CU_COREDUMP_LIGHTWEIGHT_FLAGS],
+              pointers: %w[CUdeviceptr] },
+  'HIP' => { version: ->(_) { false }, special: UUID_FORWARD },
+  'MPI' => { version: ->(_) { false }, special: UUID_FORWARD },
+  'OMP' => { version: ->(_) { false }, special: ->(_, _) {}, drop: %w[ompt_callback_master] },
+  'ITT' => { version: ->(_) { false }, special: ->(_, _) {} },
+  'NONE' => { version: ->(_) { false }, special: ->(_, _) {} },
   'ZE' => {
     # A `_version_t` enum is a { minor, major } struct printed "major.minor".
     version: ->(name) { name.end_with?('_version_t') },
@@ -44,15 +59,17 @@ EnumY = Struct.new(:cname, :names)                         # printed by name
 MaskY = Struct.new(:cname, :names)                         # cname: the `_flag_t` enum
 VersionY = Struct.new(:cname)                              # "major.minor"
 StructY = Struct.new(:cname, :members, :special, :union)   # members: [name, kind]
-AnonY = Struct.new(:members, :union)                       # a layout declared inline
-# kind: :auto (printed by C type), a MaskY (an integer holding flags), or an AnonY.
+AnonY = Struct.new(:members, :union, :unnamed)             # a layout declared inline; unnamed: its members are the parent's
+BitsY = Struct.new(:ctype, :after)                         # a run of bit-fields after member `after`
+# kind: :auto (printed by C type), :pointer (an integer FFI declares a pointer), a MaskY
+# (an integer holding flags), an AnonY, or a BitsY.
 
 class Frontend
   attr_reader :memo
 
   def initialize
     @memo = {}
-    @typedefs = API.types.to_h { |t| [t.name, t] }
+    @typedefs = API ? API.types.to_h { |t| [t.name, t] } : {}
   end
 
   # The description of the be_class of a model member, from its C type.
@@ -63,6 +80,10 @@ class Frontend
   def type_named(name)
     return @memo[name] if @memo.key?(name)
 
+    # An alias (`typedef CUdevprop_v1 CUdevprop`) is the same C type: describe the target.
+    t = @typedefs[name]
+    return @memo[name] = type_named(t.type.name) if t && t.type.is_a?(YAMLCAst::CustomType) && @typedefs.key?(t.type.name)
+
     if API.bitfield?(name) then mask(name)
     elsif API.struct_names.include?(name) then struct(name)
     elsif (t = @typedefs[name]) && t.type.is_a?(YAMLCAst::Enum)
@@ -71,7 +92,20 @@ class Frontend
     end
   end
 
-  def enum_names(type) = API.enum(type).members.map(&:name)
+  # The enumerators the FFI library declares (gen_<backend>_library.rb drops a
+  # few). FFI numbers a member without a value from the previous one it kept,
+  # so a dropped member must not precede one: the C value would differ.
+  def enum_names(type)
+    drop = RULE.fetch(:drop, [])
+    ms = API.enum(type).members
+    ms.each_cons(2) { |a, b| raise "#{a.name} is dropped before #{b.name}, which has no value" if drop.include?(a.name) && b.val.nil? }
+    ms.reject { |m| drop.include?(m.name) }.map(&:name)
+  end
+
+  # An enum known by its tag only (hip prints those too).
+  def enum_tag(type)
+    @memo["enum #{type.name}"] ||= EnumY.new(type.name, enum_names(type))
+  end
 
   # A flags type: `ze_x_flags_t` (an integer) or `ze_x_flag_t` (the enum).
   def mask(name)
@@ -87,20 +121,49 @@ class Frontend
     s
   end
 
+  # FFI cannot lay out bit-fields: gen_library_base.rb merges each run of them
+  # into one `_aggregated_bitfields_N` member of the first one's type, printed as
+  # that integer. Its storage starts at the end of the previous member, aligned.
   def members(defn, where)
-    defn.members.map do |m|
-      raise "#{where}: bit-field member #{m.name} is not supported" if m.num_bits
-      raise "#{where}: unnamed member is not supported" unless m.name
+    out = []
+    run = nil
+    groups = 0
+    unnamed = 0
+    defn.members.each do |m|
+      if m.num_bits
+        if run
+          raise "#{where}: mixed bit-field types #{run[:ctype]} and #{m.type.name}" if run[:ctype] != m.type.name
+        else
+          prev = out.reverse.find { |_, k| !k.is_a?(BitsY) }&.first
+          run = { ctype: m.type.name }
+          out << ["_aggregated_bitfields_#{groups += 1}", BitsY.new(m.type.name, prev)]
+        end
+        next
+      end
+      run = nil
+      if m.name.nil? # an anonymous struct or union: FFI names it `_unamed_N`
+        k = kind(m.type, "#{where}._unamed")
+        raise "#{where}: unnamed member that is not a layout" unless k.is_a?(AnonY)
 
-      [m.name, kind(m.type, "#{where}.#{m.name}")]
+        out << ["_unamed_#{unnamed += 1}", AnonY.new(k.members, k.union, true)]
+        next
+      end
+
+      out << [m.name, kind(m.type, "#{where}.#{m.name}")]
     end
+    out
   end
 
   def kind(type, where)
     case type
     when YAMLCAst::CustomType
+      return :pointer if RULE.fetch(:pointers, []).include?(type.name)
+
       t = type_named(type.name)
       t.is_a?(MaskY) ? t : :auto # structs and enums print by their C type
+    when YAMLCAst::Enum
+      enum_tag(type) if type.name
+      :auto
     when YAMLCAst::Struct, YAMLCAst::Union
       union = type.is_a?(YAMLCAst::Union)
       return :auto if type.name && type_named(type.name)
@@ -110,7 +173,8 @@ class Frontend
       e = type.type
       raise "#{where}: array of flags is not supported" if e.is_a?(YAMLCAst::CustomType) && API.bitfield?(e.name)
 
-      type_named(e.name) if e.is_a?(YAMLCAst::CustomType) # make the element printable
+      raise "#{where}: array of inline layouts is not supported" unless kind(e, where) == :auto # makes the element printable
+
       :auto
     else :auto
     end
@@ -190,7 +254,15 @@ class Emitter
       v = "#{s}.#{m}"
       code = case k
              when MaskY then "#{fn(k)}(o, (int64_t)(int32_t)#{v});"
-             when AnonY then members(k.members, v)
+             when AnonY then members(k.members, k.unnamed ? s : v)
+             when :pointer then "ruby_hex(o, (uint64_t)#{v});"
+             when BitsY
+               off = if k.after
+                       "((offsetof(std::remove_reference_t<decltype(#{s})>, #{k.after}) + sizeof(#{s}.#{k.after}) + " \
+                         "alignof(#{k.ctype}) - 1) / alignof(#{k.ctype}) * alignof(#{k.ctype}))"
+                     else '0'
+                     end
+               "{ #{k.ctype} w; std::memcpy(&w, (const char *)&#{s} + #{off}, sizeof w); pv(o, w); }"
              else "pv(o, #{v});"
              end
       "put(o, #{c_str("#{m}: ")}); #{code}"
@@ -206,6 +278,7 @@ class Emitter
       case t.special
       when :handle then 'put(o, "{ data: \""); for (unsigned char x : s.data) fmt::format_to(o, "\\\\x{:02x}", x); put(o, "\" }");'
       when :uuid then 'put(o, "{ id: "); uuid(o, (const uint8_t *)s.id); put(o, " }");'
+      when :uuid_forward then 'put(o, "{ id: "); uuid_forward(o, (const uint8_t *)s.bytes); put(o, " }");'
       when :kuuid
         'put(o, "{ kid: "); uuid(o, (const uint8_t *)s.kid); put(o, ", mid: "); uuid(o, (const uint8_t *)s.mid); put(o, " }");'
       when :typed_value
@@ -247,9 +320,7 @@ def render(em, fe, m, args)
       if [EnumY, MaskY, VersionY].include?(t.class) then "#{em.fn(t)}(o, (int64_t)#{v});"
       elsif t then raise "#{name}: unsupported be_class for an integer"
       elsif fc[:preferred_display_base] == 16
-        raise "#{name}: signed hexadecimal is not supported" if fc[:type] == 'integer_signed'
-
-        "ruby_hex(o, #{v});"
+        fc[:type] == 'integer_signed' ? "ruby_hex_signed(o, #{v});" : "ruby_hex(o, #{v});"
       else "dec(o, #{fc[:type] == 'integer_signed' ? '(int64_t)' : '(uint64_t)'}#{v});"
       end
     when 'double', 'single' then "ruby_float(o, #{a});"
@@ -333,6 +404,8 @@ File.write(out_hpp, <<~HPP)
 
   #include "thapi_pretty.hpp"
 
+  #include <cstddef>
+  #include <cstring>
   #include <type_traits>
 
   namespace #{ns} {
@@ -343,6 +416,8 @@ File.write(out_hpp, <<~HPP)
   using thapi_pretty::ruby_hex;
   using thapi_pretty::char_array;
   using thapi_pretty::uuid;
+  using thapi_pretty::uuid_forward;
+  using thapi_pretty::ruby_hex_signed;
   inline void sep(it_t o, bool &first) { if (!first) put(o, ", "); first = false; }
   // A positive power of two: a flag (gen_library_base.rb classify_bitfield_members).
   template <class E> constexpr bool flag(E e) { int64_t v = (int64_t)e; return v > 0 && (v & (v - 1)) == 0; }

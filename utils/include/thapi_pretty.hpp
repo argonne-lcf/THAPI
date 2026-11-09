@@ -132,6 +132,27 @@ inline it_t ruby_inspect(it_t o, const char *s, size_t len) {
 // Ruby `"0x%016x" % v`.
 inline it_t ruby_hex(it_t o, uint64_t v) { return fmt::format_to(o, "0x{:016x}", v); }
 
+// Ruby `"0x%016x" % v` of a signed value: a negative value prints as ".." and
+// its two's complement digits, sign-extended with 'f' to the width.
+inline it_t ruby_hex_signed(it_t o, int64_t v) {
+  if (v >= 0) return ruby_hex(o, (uint64_t)v);
+  char d[17];
+  fmt::format_to(d, "{:016x}", (uint64_t)v);
+  int i = 0;
+  while (i < 15 && d[i] == 'f' && d[i + 1] >= '8') i++; // drop sign digits the next one repeats
+  std::string_view digits(d + i, 16 - i);
+  o = put(o, "0x..");
+  if (digits[0] != 'f') *o++ = 'f';
+  for (size_t k = digits.size() + (digits[0] != 'f'); k < 14; k++) *o++ = 'f';
+  return put(o, digits);
+}
+
+// A 16-byte UUID, bytes in order, dashes after 4-2-2-2 (cuda, hip, mpi).
+inline it_t uuid_forward(it_t o, const uint8_t *a) {
+  return fmt::format_to(o, "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                        a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]);
+}
+
 // Ruby `Time.at(0, ns, :nsec).strftime('%H:%M:%S.%9L')` (local time).
 inline it_t ruby_time(it_t o, int64_t ns) {
   int64_t s = ns / 1000000000, f = ns % 1000000000;
