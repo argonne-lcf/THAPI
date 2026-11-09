@@ -503,27 +503,43 @@ class InArray < InMetaParameter
   end
 end
 
+# A device-partition property list (clCreateSubDevices, clCreateSubDevicesEXT):
+# keys, each followed by one value or by a list of values ended by its own
+# terminator, and a 0 after the last key. The core API and cl_ext_device_fission
+# spell the keys with different constants; cl_intel_device_partition_by_names
+# adds a key to the core list.
 class DeviceFissionPropertyList < InArray
+  # Key => terminator of its value list. Every other key takes one value, so a
+  # key that takes a list must be here, or the walk reads past the array.
+  VALUE_LISTS = {
+    'cl_device_partition_property' => {
+      'CL_DEVICE_PARTITION_BY_COUNTS' => 'CL_DEVICE_PARTITION_BY_COUNTS_LIST_END',
+      'CL_DEVICE_PARTITION_BY_NAMES_INTEL' => 'CL_PARTITION_BY_NAMES_LIST_END_INTEL',
+    },
+    'cl_device_partition_property_ext' => {
+      'CL_DEVICE_PARTITION_BY_COUNTS_EXT' => 'CL_PARTITION_BY_COUNTS_LIST_END_EXT',
+      'CL_DEVICE_PARTITION_BY_NAMES_EXT' => 'CL_PARTITION_BY_NAMES_LIST_END_EXT',
+    },
+  }.freeze
+
   def initialize(command, name)
     sname = "_#{name}_size"
-    type = command[name].type
+    lists = VALUE_LISTS.fetch(command[name].type)
+    cases = lists.map do |key, terminator|
+      "case #{key}:\n        while(#{name}[#{sname}++] != #{terminator});\n        break;"
+    end
     command.tracepoint_parameters.push TracepointParameter.new(sname, 'size_t', <<EOF)
   #{sname} = 0;
   if(#{name} != NULL) {
-    while(#{name}[#{sname}++] != CL_PROPERTIES_LIST_END_EXT) {
-      switch(#{name}[#{sname}]) {
-      case CL_DEVICE_PARTITION_EQUALLY_EXT:
-      case CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT:
+    while(#{name}[#{sname}] != 0) {
+      switch(#{name}[#{sname}++]) {
+      #{cases.join("\n      ")}
+      default:
         #{sname}++; //value
-        break;
-      case CL_DEVICE_PARTITION_BY_COUNTS_EXT:
-        while(#{name}[#{sname}++] != CL_PARTITION_BY_COUNTS_LIST_END_EXT);
-        break;
-      case CL_DEVICE_PARTITION_BY_NAMES_EXT:
-        while(#{name}[#{sname}] != (#{type})CL_PARTITION_BY_NAMES_LIST_END_EXT);
         break;
       }
     }
+    #{sname}++; //terminator
   }
 EOF
     super(command, name, sname)
