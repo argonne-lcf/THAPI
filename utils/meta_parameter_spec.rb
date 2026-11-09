@@ -20,13 +20,18 @@ require_relative 'yaml_ast'
 def load_meta_parameters(*filenames)
   spec = Hash.new { [] }
   filenames.each do |filename|
-    path = File.join(SRC_DIR, filename)
+    # A generated spec lives in the build directory: pass its absolute path.
+    path = File.expand_path(filename, SRC_DIR)
     content = yaml_load_file_cached(path)
     entries = content['meta_parameters']
     raise "#{path} has no 'meta_parameters' mapping" unless entries.is_a?(Hash)
 
     rows = entries.transform_values do |list|
-      list.collect { |type, *args| [Kernel.const_get(type), args] }
+      # A trailing mapping holds keyword options: [OutScalar, errcode_ret, {nocheck: true}].
+      list.collect do |type, *args|
+        options = args.last.is_a?(Hash) ? args.pop.transform_keys(&:to_sym) : {}
+        [Kernel.const_get(type), args, options]
+      end
     end
     spec.merge!(rows) { |func, _, _| raise "#{func} is declared twice, second time in #{path}" }
   end
