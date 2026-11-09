@@ -32,7 +32,7 @@ SOURCE_TEMPLATE = <<~TEXT.freeze
 
       <%- data.each do | entry | -%>
       btx_push_message_<%= entry[:name] %>(btx_handle<%= ', ' if not entry[:field_values].empty? %><%=#{' '}
-       entry[:field_casts].zip(entry[:field_values].map{ |v| v.to_s }).map{ |cv| '(' + cv[0] + ')' + cv[1] }.join(', ')
+       entry[:field_casts].zip(entry[:field_values]).map { |c, v| c_value(c, v) }.join(', ')
       %>);
       <%- end -%>
 
@@ -60,20 +60,28 @@ def get_values(name, value)
     # use static const empty array defined in callback template
     value = EMPTY_ARRAY_NAME
   else
-    values = value.split(/, */)
-    count = 1
-    # TODO: handle multiple values
-    value = values[0]
+    value = value.split(/, */)
+    count = value.size
   end
   [count, value]
 end
 
-# expects commas separated list of name: value pairs
+# A C expression for value of C type cast. A list of values (an array field) is
+# a compound literal of the element type.
+def c_value(cast, value)
+  return "(#{cast})#{value}" unless value.is_a?(Array)
+
+  elem = cast.delete_suffix('*').strip
+  "(#{cast})(#{elem}[]){#{value.map { |v| "(#{elem})#{v}" }.join(', ')}}"
+end
+
+# expects commas separated list of name: value pairs; a value can be a
+# bracketed, comma separated list
 def parse_field_values(fields_string, exclude_fields)
-  fields_string.split(/, */).filter_map do |nv_pair|
+  fields_string.split(/, *(?![^\[]*\])/).filter_map do |nv_pair|
     name, value = nv_pair.split(': ', 2).map(&:strip)
     get_values(name, value) unless exclude_fields.member?(name)
-  end.flatten
+  end.flatten(1)
 end
 
 def get_fields(model, event_name, _stream_class = 0)
