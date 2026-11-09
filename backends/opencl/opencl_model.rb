@@ -339,8 +339,10 @@ class Prototype < CLXML
     @name + '_ffi'
   end
 
+  # Not `_t`: the OpenCL headers already declare `<function>_t` as the
+  # function type of every entry point.
   def pointer_type_name
-    @name + '_t'
+    @name + '_ptr_t'
   end
 
   def lttng_return_type
