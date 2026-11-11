@@ -269,5 +269,3 @@ Download the `.pftrace` file and open it using **Open trace file** at:
 
 https://ui.perfetto.dev
 
-## Profile Timeline:
-![profile_timeline](img/profile-timeline.png)
