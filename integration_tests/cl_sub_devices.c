@@ -22,8 +22,9 @@ int main(void) {
   if (clCreateSubDevices(device, props, MAX_SUB_DEVICES, sub_devices, NULL) != CL_SUCCESS)
     return 77;
 
-  cl_context context = clCreateContext(NULL, 1, &sub_devices[0], NULL, NULL, NULL);
-  cl_command_queue queue = clCreateCommandQueueWithProperties(context, sub_devices[0], NULL, NULL);
+  cl_device_id subdevice_used = sub_devices[0];
+  cl_context context = clCreateContext(NULL, 1, &subdevice_used, NULL, NULL, NULL);
+  cl_command_queue queue = clCreateCommandQueueWithProperties(context, subdevice_used, NULL, NULL);
   char host[4096] = {0};
   cl_mem buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof host, NULL, NULL);
   if (clEnqueueWriteBuffer(queue, buffer, CL_TRUE, 0, sizeof host, host, 0, NULL, NULL) !=
@@ -35,6 +36,6 @@ int main(void) {
   clReleaseContext(context);
 
   printf("Device pointer: %" PRIuPTR " | Subdevice pointer: %" PRIuPTR " |\n", (uintptr_t)device,
-         (uintptr_t)sub_devices[0]);
+         (uintptr_t)subdevice_used);
   return 0;
 }

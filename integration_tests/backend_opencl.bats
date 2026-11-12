@@ -4,10 +4,8 @@ bats_require_minimum_version 1.5.0
 # them must still be reported on its root device and sub-device (#572).
 @test "backend_opencl_sub_devices_without_num_devices_ret" {
   gcc ./integration_tests/cl_sub_devices.c -I./backends/opencl/include -l:libOpenCL.so.1 -o cl_sub_devices
-  run ./cl_sub_devices
+  run --separate-stderr iprof --backends cl -e --analysis-output out_cl_sub_devices.txt -- ./cl_sub_devices
   [ "$status" != 77 ] || skip "the OpenCL device cannot be partitioned"
   [ "$status" == 0 ]
-
-  iprof --backends cl -e --analysis-output out_cl_sub_devices.txt -- ./cl_sub_devices >cl_sub_devices.txt
-  grep -F "$(cat cl_sub_devices.txt)" out_cl_sub_devices.txt
+  grep -F "$output" out_cl_sub_devices.txt
 }
