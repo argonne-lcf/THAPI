@@ -1,9 +1,12 @@
 // Partitions the first device with num_devices_ret = NULL, then writes a buffer
 // on a queue of the first sub-device. THAPI must still report that write on the
 // root device and that sub-device (#572).
+// Prints both devices as the extended tally (iprof -e) names them.
 // Exits 77 if the first device cannot be partitioned.
 #define CL_TARGET_OPENCL_VERSION 300
 #include <CL/cl.h>
+#include <inttypes.h>
+#include <stdio.h>
 
 #define MAX_SUB_DEVICES 1024
 
@@ -30,5 +33,8 @@ int main(void) {
   clReleaseMemObject(buffer);
   clReleaseCommandQueue(queue);
   clReleaseContext(context);
+
+  printf("Device pointer: %" PRIuPTR " | Subdevice pointer: %" PRIuPTR " |\n", (uintptr_t)device,
+         (uintptr_t)sub_devices[0]);
   return 0;
 }

@@ -8,6 +8,6 @@ bats_require_minimum_version 1.5.0
   [ "$status" != 77 ] || skip "the OpenCL device cannot be partitioned"
   [ "$status" == 0 ]
 
-  iprof --backends cl -e --analysis-output out_cl_sub_devices.txt -- ./cl_sub_devices
-  grep "Subdevice pointer" out_cl_sub_devices.txt
+  iprof --backends cl -e --analysis-output out_cl_sub_devices.txt -- ./cl_sub_devices >cl_sub_devices.txt
+  grep -F "$(cat cl_sub_devices.txt)" out_cl_sub_devices.txt
 }
