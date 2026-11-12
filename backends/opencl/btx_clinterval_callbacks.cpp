@@ -185,9 +185,6 @@ static void create_sub_devices_exit(data_t *state,
     return;
 
   const thapi_device_id root_device = state->device_to_root_device[{hostname, vpid, in_device}];
-  // A successful call creates at least one sub-device, so a count of 0 means the
-  // application passed NULL for it: then map the whole recorded out_devices (its
-  // capacity), as we cannot know where the sub-devices end.
   const size_t n = num_devices_ret != 0 ? num_devices_ret : _out_devices_vals_length;
   for (size_t i = 0; i < n; i++) {
     const thapi_device_id d = reinterpret_cast<thapi_device_id>(out_devices_vals[i]);
