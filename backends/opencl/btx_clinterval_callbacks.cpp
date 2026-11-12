@@ -169,22 +169,26 @@ static void create_sub_devices_entry_callback(void *btx_handle,
   state->entry_state.set_data({hostname, vpid, vtid}, reinterpret_cast<thapi_device_id>(in_device));
 }
 
-// clCreateSubDevices and clCreateSubDevicesEXT exits
+// clCreateSubDevices and clCreateSubDevicesEXT exits. num_devices_ret is the number
+// of sub-devices the call returned (0 if the application passed NULL for it).
 static void create_sub_devices_exit(data_t *state,
                                     const char *hostname,
                                     int64_t vpid,
                                     uint64_t vtid,
                                     cl_int errcode_ret_val,
-                                    cl_uint num_devices,
+                                    cl_uint num_devices_ret,
+                                    size_t _out_devices_vals_length,
                                     cl_device_id *out_devices_vals) {
   // No matter of the error code, we need to pop the stack
   auto in_device = state->entry_state.get_data<thapi_device_id>({hostname, vpid, vtid});
-  if ((out_devices_vals != nullptr) && (errcode_ret_val == CL_SUCCESS)) {
-    const thapi_device_id root_device = state->device_to_root_device[{hostname, vpid, in_device}];
-    for (unsigned int i = 0; i < num_devices; i++) {
-      const thapi_device_id d = reinterpret_cast<thapi_device_id>(out_devices_vals[i]);
-      state->device_to_root_device[{hostname, vpid, d}] = root_device;
-    }
+  if ((out_devices_vals == nullptr) || (errcode_ret_val != CL_SUCCESS))
+    return;
+
+  const thapi_device_id root_device = state->device_to_root_device[{hostname, vpid, in_device}];
+  const size_t n = num_devices_ret != 0 ? num_devices_ret : _out_devices_vals_length;
+  for (size_t i = 0; i < n; i++) {
+    const thapi_device_id d = reinterpret_cast<thapi_device_id>(out_devices_vals[i]);
+    state->device_to_root_device[{hostname, vpid, d}] = root_device;
   }
 }
 
@@ -197,9 +201,10 @@ static void create_sub_devices_exit_callback(void *btx_handle,
                                              uint64_t vtid,
                                              cl_int errcode_ret_val,
                                              cl_uint num_devices_ret_val,
+                                             size_t _out_devices_vals_length,
                                              cl_device_id *out_devices_vals) {
   create_sub_devices_exit(static_cast<data_t *>(usr_data), hostname, vpid, vtid, errcode_ret_val,
-                          num_devices_ret_val, out_devices_vals);
+                          num_devices_ret_val, _out_devices_vals_length, out_devices_vals);
 }
 
 static void create_sub_devices_ext_exit_callback(void *btx_handle,
@@ -211,9 +216,10 @@ static void create_sub_devices_ext_exit_callback(void *btx_handle,
                                                  uint64_t vtid,
                                                  cl_int errcode_ret_val,
                                                  cl_uint num_devices_val,
+                                                 size_t _out_devices_vals_length,
                                                  cl_device_id *out_devices_vals) {
   create_sub_devices_exit(static_cast<data_t *>(usr_data), hostname, vpid, vtid, errcode_ret_val,
-                          num_devices_val, out_devices_vals);
+                          num_devices_val, _out_devices_vals_length, out_devices_vals);
 }
 
 static void create_command_queue_entry_callback(void *btx_handle,

@@ -67,6 +67,7 @@
       :members:
       - :name: ^errcode_ret_val$
       - :name: ^num_devices_ret_val$
+      - :name: ^_out_devices_vals_length$
       - :name: ^out_devices_vals$
   # clCreateSubDevicesEXT: the entry matches create_sub_devices_entry, the exit
   # names its count num_devices_val.
@@ -78,6 +79,7 @@
       :members:
       - :name: ^errcode_ret_val$
       - :name: ^num_devices_val$
+      - :name: ^_out_devices_vals_length$
       - :name: ^out_devices_vals$
   - :set_id: create_command_queue_entry
     :domain: entries
