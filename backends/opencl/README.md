@@ -8,6 +8,12 @@ What matters is the version of the **implementation** (the Intel OpenCL runtime)
 the loader only forwards calls, while the extension signatures are those the implementation implements.
 Use the headers oneAPI ships, which are the ones applications compile against.
 
+The revision an implementation reports can still differ from the one the headers declare, and differ
+between devices: the GPU reports `cl_khr_external_memory` 0.9.1, the headers declare 1.0.1. What matters
+is the signature of each function, not the revision number: compare the prototypes in both header versions
+(identical for `cl_khr_external_memory`; not for `cl_khr_command_buffer`, see "Functions of experimental
+extensions").
+
 Current (Aurora stack `26.181.0`, oneAPI `2026.1`, `intel-opencl-25.18`):
 
 - Headers: `https://github.com/KhronosGroup/OpenCL-Headers` at `6eabe90` (2025-06-10, `git describe`: `v2024.10.24-10-g6eabe90`),
@@ -101,8 +107,8 @@ done
   diff <(fns /tmp/gen/*.h) <(cd ../CL && fns $(ls /tmp/gen))       # nothing
   ```
 
-  An exact match may not exist: OpenCL-Headers is sometimes generated from a `cl.xml` that never was on
-  OpenCL-Docs `main`. For `6eabe90`, `5efafb0` leaves 25 lines (two extensions without functions:
+  An exact match may not exist. For `6eabe90`, no OpenCL-Docs `main` commit of `xml/cl.xml` from 2024-11-12
+  to 2026-11-10 (46 tried) reproduces the headers; `5efafb0` leaves 25 lines (two extensions without functions:
   `cl_khr_external_semaphore_dx_fence` and the `cl_khr_kernel_clock` version).
 - Copy it unmodified into `cl.xml`, then rebase `cl.xml.patch`:
 
@@ -164,9 +170,12 @@ Run `make check` in `backends/opencl`.
 
 ## `Missing symbol clFooKHR!` printed when an app starts
 
-The tracer looks up the core functions when it loads; KHR/EXT ones through `clGetExtensionFunctionAddress`.
-That fails when the implementation does not provide the extension (the GPU runtime lacks most of them),
-and no loader exports an extension function. New KHR/EXT functions go into `supported_extensions.yaml`:
+The tracer looks up the core functions when it loads; KHR/EXT ones through the platform-less
+`clGetExtensionFunctionAddress`, since no loader exports an extension function. That lookup can return
+NULL even where the implementation provides the function: on the Sunspot CPU platform,
+`clCreateCommandBufferKHR` is advertised and `clGetExtensionFunctionAddressForPlatform` returns it, but
+`clGetExtensionFunctionAddress` returns NULL. It also returns NULL when no platform provides the extension
+(the GPU platform has no command buffers and no semaphores). New KHR/EXT functions go into `supported_extensions.yaml`:
 they are then traced per platform, when the application gets them with
 `clGetExtensionFunctionAddress(ForPlatform)`. A function listed there is never looked up at load time.
 
