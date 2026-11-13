@@ -111,9 +111,20 @@ done
   { head -2 cl.xml.patch; diff -u cl.xml /tmp/cl.xml.patched | tail -n +3; } > /tmp/new.patch && mv /tmp/new.patch cl.xml.patch
   ```
 
-  Drop what upstream now has (for `5efafb0`: `cl_icdl_info` and `clGetICDLoaderInfoOCLICD`), and check nothing
-  is defined twice. The `<require comment=...>` rewordings matter: the generator reads them (` - bitfield`,
-  the type name first).
+  Then remove from `cl.xml.patch` every addition that upstream now has, or the patched file defines it twice.
+  Some of these hunks are rejected, others still apply cleanly and only show up as duplicates. For `5efafb0`:
+  the `cl_icdl_info` typedef was rejected, while the `cl_icdl_info` enum group and the
+  `clGetICDLoaderInfoOCLICD` command applied, each giving a second copy. List what the patch defines twice:
+
+  ```bash
+  utils_spec_update/cl_xml_duplicates.sh cl.xml > /tmp/upstream.dup
+  utils_spec_update/cl_xml_duplicates.sh /tmp/cl.xml.patched | comm -13 /tmp/upstream.dup -      # nothing
+  ```
+
+  Upstream itself defines four `cl_ext_device_fission` enums twice, with different values
+  (`CL_DEVICE_PARENT_DEVICE_EXT` is `0x4030` and `0x4054`); leave them, as before.
+
+  The `<require comment=...>` rewordings matter: the generator reads them (` - bitfield`, the type name first).
 
 ## 3/ Build and fix
 
