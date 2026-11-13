@@ -45,8 +45,12 @@ device on the node reports. A different revision matters only for functions THAP
 prototypes decide (see above). Here: the `cl_khr_icd` functions are the loader's, not traced, and the headers
 declare Intel's own extensions `0.0.0`.
 
-Run it on a compute node too (`ssh` to one of your job's nodes): the GPU does not implement the same extensions
-as the CPU device (for example, no `cl_khr_command_buffer` on the GPU, and `cl_khr_external_memory` 0.9.1).
+Run it on every system you care about, for example a GPU compute node (`ssh` to one of your job's nodes):
+each driver reports its own extensions, per device, so different hardware supports different ones. The GPU
+has no `cl_khr_command_buffer`, and reports `cl_khr_external_memory` 0.9.1. The loader cannot tell: it only
+reports its own name and version, exports no extension function, and forwards
+`clGetExtensionFunctionAddress(ForPlatform)` to the drivers it loads (`/etc/OpenCL/vendors/*.icd` or
+`OCL_ICD_FILENAMES`; on Sunspot `libigdrcl.so` for the GPU and `libintelocl.so` for the CPU).
 
 Then find the OpenCL-Headers commit the oneAPI headers come from:
 

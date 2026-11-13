@@ -5,8 +5,8 @@
 # platform or device on this node reports, prints the revision the runtime
 # reports (clinfo) next to the one the headers declare
 # (CL_<EXT>_EXTENSION_VERSION). Default headers: the vendored include/CL.
-# Run it on a compute node too: the GPU does not report the same extensions
-# as the CPU.
+# Run it on every system you care about (a GPU compute node, ...): each driver
+# reports its own extensions, per device; the loader does not know them.
 set -euo pipefail
 srcdir=$(dirname "$0")/..
 inc=${1:-$srcdir/include/CL}
