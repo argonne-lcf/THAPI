@@ -1,4 +1,3 @@
----
 - clCreateProgramWithILKHR
 - clTerminateContextKHR
 - clCreateCommandQueueWithPropertiesKHR
@@ -27,3 +26,20 @@
 - clGetDeviceGlobalVariablePointerINTEL
 - clGetExecutionInfoINTEL
 - clEnqueueNDRangeKernelINTEL
+# Added with the OpenCL-Headers 6eabe90 / cl.xml 5efafb0 bump (cl_khr_semaphore,
+# cl_khr_external_memory, cl_ext_image_requirements_info, cl_ext_buffer_device_address).
+# No loader exports an extension function, and the platform-less
+# clGetExtensionFunctionAddress the tracer calls at load can return NULL even where
+# the platform provides it: they are traced per platform instead.
+- clCreateSemaphoreWithPropertiesKHR
+- clEnqueueAcquireExternalMemObjectsKHR
+- clEnqueueReleaseExternalMemObjectsKHR
+- clEnqueueSignalSemaphoresKHR
+- clEnqueueWaitSemaphoresKHR
+- clGetImageRequirementsInfoEXT
+- clGetSemaphoreHandleForTypeKHR
+- clGetSemaphoreInfoKHR
+- clReImportSemaphoreSyncFdKHR
+- clReleaseSemaphoreKHR
+- clRetainSemaphoreKHR
+- clSetKernelArgDevicePointerEXT

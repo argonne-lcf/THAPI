@@ -16,14 +16,16 @@ EXTRA_DIST = \
 	cl.xml \
 	cl.xml.patch
 
-tracer_opencl.h: $(srcdir)/gen_opencl_header.rb
-	$(RUBY) $< > $@
+# Types and prototypes that no public OpenCL header declares. The generated
+# probes include it as "./tracer_opencl.h", hence the copy into the build dir.
+tracer_opencl.h: $(srcdir)/opencl_missing_apis.h
+	cp $< $@
 
 BUILT_SOURCES = tracer_opencl.h
 
 CLEANFILES += tracer_opencl.h
 
-EXTRA_DIST += gen_opencl_header.rb
+EXTRA_DIST += opencl_missing_apis.h
 
 ML_FILES = \
 	$(srcdir)/opencl_meta_parameters.yaml \

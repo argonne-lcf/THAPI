@@ -14,22 +14,43 @@ HOST_PROFILE = true
 
 WINDOWS = /D3D|DX9/
 
-VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$/
+VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$|PoCL$/
 
-ABSENT_FUNCTIONS = /^clIcdGetPlatformIDsKHR$|^clCreateProgramWithILKHR$|^clTerminateContextKHR$|^clCreateCommandQueueWithPropertiesKHR$|^clGetKernelSuggestedLocalWorkSizeKHR$|^clEnqueueMigrateMemObjectEXT$|^clGetLayerInfo$|^clInitLayer$/
+# Traced through clGetExtensionFunctionAddress(ForPlatform), per platform: the
+# ICD loader exports no extension function, and the platform-less lookup at load
+# can return NULL even where the platform provides it.
+SUPPORTED_EXTENSIONS = yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml'))
+
+# Not looked up when the tracer loads. The clIcd*KHR are called by the loader on
+# the drivers (cl_khr_icd), and the layer functions are the loader's.
+ICD_AND_LAYER_FUNCTIONS = %w[
+  clIcdGetPlatformIDsKHR clIcdGetFunctionAddressForPlatformKHR clIcdSetPlatformDispatchDataKHR
+  clGetLayerInfo clInitLayer
+].freeze
+ABSENT_FUNCTIONS = /\A(?:#{(ICD_AND_LAYER_FUNCTIONS + SUPPORTED_EXTENSIONS).join('|')})\z/
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
-SUPPORTED_EXTENSION_FUNCTIONS = /#{yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml')).join('|')}/
+SUPPORTED_EXTENSION_FUNCTIONS = /#{SUPPORTED_EXTENSIONS.join('|')}/
 
 INIT_FUNCTIONS = /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 
 # map = Hash::new { |h, k| h[k] = [] }
 
 doc = Nokogiri::XML(open('cl.xml.patched'))
+
+# Functions only experimental extensions require: the headers declare them only
+# with CL_ENABLE_BETA_EXTENSIONS, and their signatures change between revisions.
+experimental, final = doc.xpath('//extensions/extension').partition do |e|
+  e['experimental'] == 'true' || e['provisional'] == 'true'
+end
+required = ->(nodes) { nodes.flat_map { |n| n.xpath('require/command').map { |c| c['name'] } } }
+EXPERIMENTAL_FUNCTIONS = required[experimental] - required[final] - required[doc.xpath('//feature')]
+
 funcs_e = doc.xpath('//commands/command').reject do |l|
   name = l.search('proto/name').text
-  name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS)
+  name.match(VENDOR_EXT) || name.match(ABSENT_FUNCTIONS) || name.match(WINDOWS) ||
+    EXPERIMENTAL_FUNCTIONS.include?(name)
 end.collect
 
 ext_funcs_e = doc.xpath('//commands/command').select do |l|
@@ -56,7 +77,7 @@ end.to_h
 CL_OBJECTS = %w[cl_platform_id cl_device_id cl_context cl_command_queue cl_mem cl_program cl_kernel
                 cl_event cl_sampler]
 
-CL_EXT_OBJECTS = %w[cl_GLsync CLeglImageKHR CLeglDisplayKHR CLeglSyncKHR cl_accelerator_intel]
+CL_EXT_OBJECTS = %w[cl_GLsync CLeglImageKHR CLeglDisplayKHR CLeglSyncKHR cl_accelerator_intel cl_semaphore_khr]
 
 CL_INT_SCALARS = ['unsigned int', 'int', 'uintptr_t', 'intptr_t', 'size_t', 'cl_int', 'cl_uint', 'cl_long', 'cl_ulong',
                   'cl_short', 'cl_ushort', 'cl_char', 'cl_uchar']
@@ -88,10 +109,10 @@ if err
   raise 'Failed to achieve transitive closure!'
 end
 
-FFI_BASE_TYPES = %w[ffi_type_int ffi_type_uint ffi_type_uint8 ffi_type_sint8 ffi_type_uint16
+FFI_BASE_TYPES = %w[ffi_type_sint ffi_type_uint ffi_type_uint8 ffi_type_sint8 ffi_type_uint16
                     ffi_type_sint16 ffi_type_uint32 ffi_type_sint32 ffi_type_uint64 ffi_type_sint64 ffi_type_float ffi_type_double ffi_type_void ffi_type_pointer]
 FFI_TYPE_MAP = {
-  'int' => 'ffi_type_int',
+  'int' => 'ffi_type_sint',
   'unsigned int' => 'ffi_type_uint',
   'uint8_t' => 'ffi_type_uint8',
   'int8_t' => 'ffi_type_sint8',
@@ -339,8 +360,10 @@ class Prototype < CLXML
     @name + '_ffi'
   end
 
+  # Not `_t`: the OpenCL headers already declare `<function>_t` as the
+  # function type of every entry point.
   def pointer_type_name
-    @name + '_t'
+    @name + '_ptr_t'
   end
 
   def lttng_return_type
@@ -353,7 +376,8 @@ class Prototype < CLXML
     when *CL_OBJECTS
       return ['ctf_integer_hex', 'uintptr_t', @return_type.gsub(/^cl_/, ''), '(uintptr_t)_retval']
     when *CL_EXT_OBJECTS
-      return ['ctf_integer_hex', 'uintptr_t', @return_type.gsub(/^CL/, '').gsub(/KHR$/, ''), '(uintptr_t)_retval']
+      name = @return_type.sub(/^(?:CL|cl_)/, '').sub(/(?:KHR|_khr)$/, '')
+      return ['ctf_integer_hex', 'uintptr_t', name, '(uintptr_t)_retval']
     when 'void*'
       return ['ctf_integer_hex', 'uintptr_t', 'ret_ptr', '(uintptr_t)_retval']
     end
@@ -668,11 +692,17 @@ class Command < CLXML
   end
 
   def decl
-    'CL_API_ENTRY ' + @prototype.decl + '(' + @parameters.collect(&:decl).join(', ') + ')'
+    'CL_API_ENTRY ' + @prototype.decl + '(' + parameter_list(&:decl) + ')'
   end
 
   def decl_pointer(type: false)
-    'CL_API_ENTRY ' + @prototype.decl_pointer(type: type) + '(' + @parameters.collect(&:decl_pointer).join(', ') + ')'
+    'CL_API_ENTRY ' + @prototype.decl_pointer(type: type) + '(' + parameter_list(&:decl_pointer) + ')'
+  end
+
+  # The registry used to spell "no parameters" as one `void` parameter; it now
+  # lists none (clUnloadCompiler). Either way, C wants `(void)`.
+  def parameter_list(&block)
+    @parameters.empty? ? 'void' : @parameters.collect(&block).join(', ')
   end
 
   def decl_ffi_wrapper
