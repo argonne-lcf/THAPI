@@ -117,12 +117,11 @@ done
   `clGetICDLoaderInfoOCLICD` command applied, each giving a second copy. List what the patch defines twice:
 
   ```bash
-  utils_spec_update/cl_xml_duplicates.sh cl.xml > /tmp/upstream.dup
-  utils_spec_update/cl_xml_duplicates.sh /tmp/cl.xml.patched | comm -13 /tmp/upstream.dup -      # nothing
+  utils_spec_update/cl_xml_duplicates.sh /tmp/cl.xml.patched      # nothing
   ```
 
-  Upstream itself defines four `cl_ext_device_fission` enums twice, with different values
-  (`CL_DEVICE_PARENT_DEVICE_EXT` is `0x4030` and `0x4054`); leave them, as before.
+  (Grepping `cl.xml` by hand, mind the XML comments: it keeps some retired values in `<!-- -->`, such as
+  `CL_DEVICE_PARENT_DEVICE_EXT` `0x4030`, defined once as `0x4054`.)
 
   The `<require comment=...>` rewordings matter: the generator reads them (` - bitfield`, the type name first).
 
