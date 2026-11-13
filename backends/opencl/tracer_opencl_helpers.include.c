@@ -1,3 +1,5 @@
+#include "tracer_init_utils.h"
+
 void CL_CALLBACK event_notify(cl_event event, cl_int event_command_exec_status, void *user_data) {
   (void)user_data;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling_results)) {
@@ -131,19 +133,6 @@ static int64_t dump_end = INT64_MAX;
 #define BIN_BUILD_TEMPLATE "/tmp/binbuildXXXXXX"
 #define OBJ_BUILD_TEMPLATE "/tmp/objbuildXXXXXX"
 #define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
-
-pthread_mutex_t opencl_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct opencl_closure {
-  void *ptr;
-  void *c_ptr;
-  UT_hash_handle hh;
-  ffi_cif cif;
-  ffi_closure *closure;
-  ffi_type **types;
-};
-
-struct opencl_closure *opencl_closures = NULL;
 
 struct buffer_obj_data {
   size_t size;
@@ -612,7 +601,7 @@ static void dump_opencl_object(cl_command_queue command_queue,
   } else {
     // check if it is a pointer into an SVM region
     pthread_mutex_lock(&opencl_obj_mutex);
-    DL_FOREACH(svmptr_objs, svm_data) {
+    DL_FOREACH (svmptr_objs, svm_data) {
       if (*(uintptr_t *)(arg->arg_value) > (uintptr_t)(svm_data->ptr) &&
           *(uintptr_t *)(arg->arg_value) < (uintptr_t)(svm_data->ptr) + svm_data->size) {
         HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
@@ -948,7 +937,7 @@ static void dump_program_objects(cl_program program) {
   size_t *binary_sizes;
   size_t total_size = 0;
   void **binaries;
-  char (*paths)[sizeof(OBJ_BUILD_TEMPLATE)];
+  char(*paths)[sizeof(OBJ_BUILD_TEMPLATE)];
   int *fds;
   cl_uint i;
 
@@ -967,7 +956,7 @@ static void dump_program_objects(cl_program program) {
   binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices * sizeof(OBJ_BUILD_TEMPLATE), 1);
+  paths = (char(*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices * sizeof(OBJ_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
   fds = (int *)calloc(num_devices * sizeof(int), 1);
@@ -1040,7 +1029,7 @@ static void dump_program_binaries(cl_program program) {
   size_t *binary_sizes;
   size_t total_size = 0;
   void **binaries;
-  char (*paths)[sizeof(BIN_BUILD_TEMPLATE)];
+  char(*paths)[sizeof(BIN_BUILD_TEMPLATE)];
   int *fds;
   cl_uint i;
 
@@ -1059,7 +1048,7 @@ static void dump_program_binaries(cl_program program) {
   binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices * sizeof(BIN_BUILD_TEMPLATE), 1);
+  paths = (char(*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices * sizeof(BIN_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
   fds = (int *)calloc(num_devices * sizeof(int), 1);
@@ -1311,32 +1300,14 @@ static inline uint64_t get_timestamp_ns() {
   return ((uint64_t)ts.tv_sec) * 1000000000 + ((uint64_t)ts.tv_nsec);
 }
 
-static pthread_once_t _init = PTHREAD_ONCE_INIT;
-static __thread volatile int in_init = 0;
-static volatile cl_uint _initialized = 0;
-
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
 
-  s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
-  if (s)
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else
-    handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  if (handle) {
-    void *ptr = dlsym(handle, "clGetPlatformIDs");
-    if (ptr == (void *)&clGetPlatformIDs) { // opening oneself
-      dlclose(handle);
-      handle = NULL;
-    }
-  }
-
-  if (!handle) {
-    printf("Failure: could not load OpenCL library!\n");
-    exit(1);
-  }
+  handle = thapi_dlopen_real("LTTNG_UST_OPENCL_LIBOPENCL", "libOpenCL.so",
+                             RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND, "clGetPlatformIDs",
+                             (void *)&clGetPlatformIDs, "OpenCL");
 
   s = getenv("LTTNG_UST_OPENCL_HOST_PROFILE");
   if (s)
@@ -1358,16 +1329,4 @@ static void _load_tracer(void) {
   find_opencl_symbols(handle, verbose);
 }
 
-static inline void _init_tracer(void) {
-  if (__builtin_expect(_initialized, 1))
-    return;
-  /* Avoid reentrancy */
-  if (!in_init) {
-    in_init = 1;
-    __sync_synchronize();
-    pthread_once(&_init, _load_tracer);
-    __sync_synchronize();
-    in_init = 0;
-  }
-  _initialized = 1;
-}
+THAPI_INIT_ONCE(_init_tracer, _load_tracer)

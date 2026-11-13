@@ -8,7 +8,7 @@ SUFFIXES = { start: START, stop: STOP }.freeze
 # says only which events those are. Prepending one is therefore a whole class
 # definition.
 module In
-  def initialize(*args, **options)
+  def initialize(*args)
     super
     @lttng_in_type = @lttng_type
   end
@@ -19,7 +19,7 @@ module In
 end
 
 module Out
-  def initialize(*args, **options)
+  def initialize(*args)
     super
     @lttng_out_type = @lttng_type
   end
@@ -63,11 +63,11 @@ class MetaParameter
     MemberPath.prefixes(expr, incl: incl)
   end
 
-  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0, cast: false)
+  def sanitize_expression(expr, checks = check_for_null(expr, false), default = 0)
     if checks.empty?
       expr
     else
-      @command.null_guard(checks, expr, default, cast: cast)
+      "(#{checks.join(' && ')} ? #{expr} : #{default})"
     end
   end
 
@@ -159,10 +159,8 @@ class OutPtrString < MetaParameter
 end
 
 class ScalarMetaParameter < MetaParameter
-  # `nocheck` drops the NULL guard, for a pointer the tracer has already made
-  # non-NULL itself (opencl's errcode_ret).
-  def initialize(command, name, nocheck: false)
-    super(command, name)
+  def initialize(command, name)
+    super
     a = command[name]
     raise "Invalid parameter: #{name} for #{command.name}!" unless a
 
@@ -176,13 +174,12 @@ class ScalarMetaParameter < MetaParameter
       # blob whose length collapses to 0 when the pointer is null.
       lttngt.macro = :lttng_ust_field_variable_length_blob
       lttngt.expression = sanitize_expression("#{name}")
-      lttngt.cast = 'uint8_t *' if command.legacy_blobs?
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)
       lttngt.length_type = 'size_t'
     else
-      checks = nocheck ? [] : check_for_null("#{name}")
-      lttngt.expression = sanitize_expression("*#{name}", checks, cast: !lttngt.cast.nil?)
+      checks = check_for_null("#{name}")
+      lttngt.expression = sanitize_expression("*#{name}", checks)
     end
     @lttng_type = lttngt
   end
@@ -221,39 +218,18 @@ class ArrayMetaParameter < MetaParameter
       size = "*#{size}"
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = INT_SIGN_MAP["#{s.type.type}"] ? 'size_t' : command.type_classes.trace_name("#{s.type.type}")
+      st = INT_SIGN_MAP["#{s.type.type}"] ? 'size_t' : "#{s.type.type}"
     else
       checks = check_for_null("#{name}")
       size = "(#{size} < 0 ? 0 : (size_t)#{size})" if INT_SIGN_MAP["#{s.type}"]
       sz = sanitize_expression("#{size}", checks)
-      st = INT_SIGN_MAP["#{s.type}"] ? 'size_t' : command.type_classes.trace_name("#{s.type}")
+      st = INT_SIGN_MAP["#{s.type}"] ? 'size_t' : "#{s.type}"
     end
-    lttngt = if command.legacy_blobs? && legacy_blob?(t.type)
-               legacy_blob(t.type, sz, st)
-             else
-               YAMLCAst::Array.new(type: element_type(t.type)).lttng_type(command.type_classes, length: sz,
-                                                                                                length_type: st)
-             end
+    y = YAMLCAst::Array.new(type: element_type(t.type))
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
-  end
-
-  private
-
-  def legacy_blob?(pointee)
-    pointee.is_a?(YAMLCAst::Void) ||
-      (pointee.is_a?(YAMLCAst::CustomType) && command.type_classes.category_of(pointee.name) == :aggregate)
-  end
-
-  # See BackendContext's legacy_blobs.
-  def legacy_blob(pointee, length, length_type)
-    ev = LTTng::TracepointField.new
-    ev.macro = :lttng_ust_field_variable_length_blob
-    ev.length = length
-    ev.length_type = length_type
-    ev.blob_type = pointee.is_a?(YAMLCAst::Void) ? 'void' : pointee.name
-    ev
   end
 end
 
@@ -287,7 +263,7 @@ module NullTerminated
     checks = check_for_null(name)
     fill = <<EOF
   #{sname} = 0;
-  if(#{checks.map { |c| command.null_test(c) }.join(' && ')}) {
+  if(#{checks.join(' && ')}) {
     while(#{name}[#{sname}] != 0) {
       #{sname} += 2;
     }

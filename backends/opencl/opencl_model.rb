@@ -3,15 +3,23 @@ require_relative '../../utils/backend_model'
 # What the registry says and the headers cannot (gen_opencl_xml_yaml.rb).
 OPENCL_XML = yaml_load_file_cached('opencl_xml.yaml')
 
-# OpenCL traces each scalar typedef as the cl_* (or C) type the registry says
-# it is (type_map).
-API = ApiModel.load_file('opencl_api.yaml', trace_names: OPENCL_XML['type_map']).register_ffi_types
-# The libffi type OpenCL's closures have always named a C int with.
-FFI_TYPE_MAP['int'] = 'ffi_type_sint'
+# The headers #define the values of OpenCL's enums and flags, so no typedef
+# says it is one: the registry does, by grouping the constants each type takes.
+class OpenCLApi < ApiModel
+  def enum_names
+    OPENCL_XML['enums'].keys
+  end
 
-# The field a call's return value is recorded in: the error code, or the
-# object it creates, named after its type.
-def opencl_result_field(command)
+  def bitfield_names
+    OPENCL_XML['bitfields'].keys
+  end
+end
+
+API = OpenCLApi.load_file('opencl_api.yaml').register_ffi_types
+
+# What a call's return value is recorded as: the error code, or the object it
+# creates, named after its type.
+def opencl_result_name(command)
   type = command.type.to_s
   case type
   when 'cl_int' then 'errcode_ret_val'
@@ -21,18 +29,8 @@ def opencl_result_field(command)
 end
 
 CONTEXT = BackendContext.for(
-  API, result_name: '_retval',
-       result_field: method(:opencl_result_field),
-       duration: true,
-       xml_arg_spelling: true,
-       legacy_blobs: true,
-       null_test: ->(pointer) { "#{pointer} != NULL" },
+  API, result_name: method(:opencl_result_name),
        pointer_type_suffix: '_ptr_t',
-       declarations: OPENCL_XML['declarations'],
-       null_guard: lambda { |checks, expr, default, cast: false|
-         guard = "#{checks.map { |c| "#{c} == NULL" }.join(' || ')} ? #{default} : #{expr}"
-         cast ? "(#{guard})" : guard
-       },
        init_functions: /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 )
 
@@ -81,19 +79,6 @@ C
   end
 end
 
-# The registry names the parameters: the tracepoints keep its names where a
-# header spells one differently (the oneAPI cl.h's clGetKernelArgInfo says
-# `arg_indx` for `arg_index`).
-def with_registry_names(func)
-  names = OPENCL_XML['declarations'].fetch(func.name)['params'].filter_map { |p| p['name'] }
-  params = func.type.params.to_a
-  return func if params.map(&:name) == names
-
-  params = params.zip(names).map { |p, n| YAMLCAst::Declaration.new(name: n, type: p.type) }
-  type = YAMLCAst::Function.new(type: func.type.type, params: params, var_args: func.type.var_args)
-  YAMLCAst::Declaration.new(name: func.name, type: type, storage: func.storage)
-end
-
 # Whether a function takes a pointer named `name`.
 def pointer_parameter?(func, name)
   func.type.params.to_a.any? { |p| p.name == name && p.type.is_a?(YAMLCAst::Pointer) }
@@ -101,14 +86,26 @@ end
 
 # A function's meta-parameters: the ones OpenCL's naming conventions imply, in
 # the order the tracepoints list them, then the hand-written ones, then the key
-# a clGet*Info call queries. errcode_ret and param_value_size_ret need no NULL
-# check: the prologues below point them at a local when the caller passes NULL.
+# a clGet*Info call queries.
+# The host time a call took, which every exit event carries as `_duration`
+# when LTTNG_UST_OPENCL_HOST_PROFILE asks for it. The clock starts in the last
+# prologue (below), so it times the call alone.
+class HostDuration < OutLTTng
+  def initialize(command)
+    command.tracepoint_parameters.push TracepointParameter.new(
+      name: '_duration', type: YAMLCAst::CustomType.new(name: 'uint64_t'), dir: :stop,
+      fill: "  _duration = do_host_profile ? get_timestamp_ns() - _start_ts : 0;\n"
+    )
+    super(command, '_duration', 'ctf_integer', 'uint64_t', '_duration', '_duration')
+  end
+end
+
 def opencl_meta_parameters(func, hand)
   params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
   rows = []
   rows << [InArray, %w[event_wait_list num_events_in_wait_list]] if params.key?('event_wait_list')
-  rows << [OutScalar, ['errcode_ret'], { nocheck: true }] if pointer_parameter?(func, 'errcode_ret')
-  rows << [OutScalar, ['param_value_size_ret'], { nocheck: true }] if pointer_parameter?(func, 'param_value_size_ret')
+  rows << [OutScalar, ['errcode_ret']] if pointer_parameter?(func, 'errcode_ret')
+  rows << [OutScalar, ['param_value_size_ret']] if pointer_parameter?(func, 'param_value_size_ret')
   # clSetKernelExecInfo's param_value is an input.
   if params.key?('param_value') && func.name != 'clSetKernelExecInfo'
     rows << [OutArray, %w[param_value param_value_size]]
@@ -118,11 +115,11 @@ def opencl_meta_parameters(func, hand)
   if func.name.match?(/clGet\w*?Info/) && params.key?('param_name')
     rows << [OutLTTng, ['param_name', 'ctf_integer_hex', params['param_name'].to_s, '_param_name', 'param_name']]
   end
-  rows
+  rows << [HostDuration, []]
 end
 
 functions = API.functions.to_h { |f| [f.name, f] }
-traced = OPENCL_XML['functions'].values.flatten.map { |n| with_registry_names(functions.fetch(n)) }
+traced = OPENCL_XML['functions'].values.flatten.map { |n| functions.fetch(n) }
 hand = load_meta_parameters('opencl_meta_parameters.yaml')
 check_meta_parameters(hand, traced)
 COMMANDS = build_command_index(
@@ -553,9 +550,9 @@ EOF
 
   COMMANDS.add_epilogue ext_method, ffi_closure_epilogue(
     EXTENSION_COMMANDS, condition: '_retval != NULL', provider: :lttng_ust_opencl,
-                        name_var: 'func_name', prefix: 'opencl', real: '_retval', slot: '&_retval', found: <<~EOF
+                        name_var: 'func_name', real: '_retval', found: <<~EOF
                           tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
-                          return closure->c_ptr;
+                          return closure;
                         EOF
   )
 end
@@ -629,3 +626,6 @@ str = <<EOF
 EOF
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernel', str
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernelINTEL', str
+
+# After every other prologue: see HostDuration.
+COMMANDS.each { |c| c.add_prologue "  uint64_t _start_ts = do_host_profile ? get_timestamp_ns() : 0;\n" }

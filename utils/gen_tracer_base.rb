@@ -11,9 +11,9 @@ def tracepoint_call_args(c)
   return [] unless c.parameters
 
   c.parameters.collect do |p|
-    if p.type.is_a?(YAMLCAst::Pointer) && p.type.type.is_a?(YAMLCAst::Function)
+    if function_pointer?(p.type)
       "(void *)(intptr_t)#{p.name}"
-    elsif p.type.to_s.match(/\[.*\]/) && !c.xml_arg_spelling?
+    elsif p.type.to_s.match(/\[.*\]/)
       "(#{p.type.to_s.gsub(/\[.*\]/, '*')}) #{p.name}"
     else
       p.name
@@ -100,40 +100,16 @@ def print_traced_body(c, provider, pointer_names, epilogues: :before_exit,
 
   c.prologues.each { |p| puts p }
 
-  print_duration_start if c.duration?
   print_traced_call(c, pointer_names[c], declare_retval: declare_retval)
-  print_duration_stop if c.duration?
 
   puts c.tracepoint_inits(:stop)
   c.epilogues.each { |e| puts e } if epilogues == :before_exit
 
   call_args.push '_retval' if c.has_return_type?
-  call_args.push '_duration' if c.duration?
   print_tracepoint_call(provider, c, :stop, call_args)
   after_exit&.call(c)
 
   c.epilogues.each { |e| puts e } if epilogues == :after_exit
-end
-
-# The `_duration` an exit event carries (BackendContext's `duration`): the
-# host time the call took, measured when `do_host_profile` asks for it.
-def print_duration_start
-  puts <<C
-  uint64_t _start_ts = 0;
-  uint64_t _stop_ts = 0;
-  uint64_t _duration = 0;
-  if (do_host_profile)
-    _start_ts = get_timestamp_ns();
-C
-end
-
-def print_duration_stop
-  puts <<C
-  if (do_host_profile) {
-    _stop_ts = get_timestamp_ns();
-    _duration = _stop_ts - _start_ts;
-  }
-C
 end
 
 # The function-pointer table the dlsym lookups fill in: for each traced
@@ -161,10 +137,13 @@ end
 # the tracer's one-time init calls, wrapping the lookups below. Every backend
 # declares it the same way, so the signature is stated here rather than in each
 # generator's heredoc.
+#
+# The block prints the lookups a backend makes some other way than dlsym.
 def print_find_symbols(backend, commands, pointer_names, **opts)
   puts
   puts "static void find_#{backend}_symbols(void * handle, int verbose) {"
   print_dlsym_lookups(commands, pointer_names, **opts)
+  yield if block_given?
   puts '}'
   puts
 end
@@ -218,4 +197,30 @@ def print_wrapper(c, storage: nil, init: nil)
   puts '  return _retval;' if c.has_return_type?
   puts '}'
   puts
+end
+
+# What a backend declares for the commands it hands out through an
+# extension-function lookup, wrapped in a libffi closure (ffi_closure_epilogue)
+# rather than interposed: the pointer typedef and the closure's function.
+def print_ffi_wrapper_declarations(commands)
+  commands.each do |c|
+    puts
+    puts "#{c.decl_pointer(c.pointer_type_name)};"
+    puts "static #{c.decl_ffi_wrapper};"
+  end
+end
+
+# The closure's function: unpack the arguments libffi hands over, then trace
+# the call like an interposed wrapper does. The real function is the closure's
+# user data, which arrives as the last parameter.
+def print_ffi_wrappers(commands, provider, pointer_names, body_opts: ->(_c) { {} })
+  commands.each do |c|
+    puts "static #{c.decl_ffi_wrapper} {"
+    puts '  (void)cif;'
+    c.parameters.to_a.each_with_index { |p, i| puts "  #{p} = *(#{p.type} *)args[#{i}];" }
+    print_traced_body(c, provider, pointer_names, **body_opts.call(c))
+    puts '  *ffi_ret = _retval;' if c.has_return_type?
+    puts '}'
+    puts
+  end
 end

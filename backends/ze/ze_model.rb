@@ -468,9 +468,9 @@ COMMANDS.add_prologue 'zeDriverGetExtensionFunctionAddress', str
 
 COMMANDS.add_epilogue 'zeDriverGetExtensionFunctionAddress', ffi_closure_epilogue(
   zex_commands, condition: '_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress', provider: :lttng_ust_zex,
-                name_var: 'name', prefix: 'ze', real: '*ppFunctionAddress', slot: 'ppFunctionAddress', found: <<~EOF
+                name_var: 'name', real: '*ppFunctionAddress', found: <<~EOF
                   tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
-                  *ppFunctionAddress = closure->c_ptr;
+                  *ppFunctionAddress = closure;
                   return _retval;
                 EOF
 )

@@ -13,10 +13,8 @@ c.add_traces(path: ARGV[0] )
 
 it = c.iter_create
 
-opencl_model = YAML::load_file(File.join(DATADIR,"opencl_model.yaml"))
-SUFFIXES = opencl_model["suffixes"]
-START = SUFFIXES["start"]
-STOP = SUFFIXES["stop"]
+START = "entry"
+STOP = "exit"
 
 def get_enqueues(it)
 

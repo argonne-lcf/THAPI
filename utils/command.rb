@@ -10,29 +10,14 @@ require_relative 'meta_parameter_spec'
 # A Command belongs to exactly one backend, so it carries this rather than the
 # shared generators reading it from whichever backend was required last.
 #
-# The settings after `directions` keep the C a backend generated before it
-# moved to these generators byte-for-byte (opencl). Each one defaults to the
-# shared spelling:
+# `result_name` is one name for the whole API, or a callable naming the result
+# of each command: OpenCL records an error code and a created object under
+# different names.
 #
-#   result_field  the field the return value is recorded in, from the command
-#                 (default: result_name)
-#   duration      every exit event also carries the call's `_duration`
-#   null_guard    spells "the expression if these pointers are non-NULL, else
-#                 the default": ->(checks, expr, default, cast:) { C }
-#   xml_arg_spelling  tracepoint arguments spelled as the Khronos registry
-#                 writes them: a callback as `void *`, `T x[]` as `T * *`
-#   legacy_blobs  a pointed-to struct is cast to `(uint8_t *)`, and an array of
-#                 structs or of void is a blob whose length is its element count
-#   null_test     spells "this pointer is not NULL": ->(pointer) { C }
-#   pointer_type_suffix  of the function-pointer typedefs (default `_t`; the
-#                 OpenCL headers already declare `<function>_t`)
-#   declarations  the C declaration of each function as written by hand rather
-#                 than printed from the AST: {name => {'decl' =>, 'decl_pointer'
-#                 => (with %s for the typedef name)}}
+# `pointer_type_suffix` is the suffix of the function-pointer typedefs. It
+# defaults to `_t`, which the OpenCL headers already declare.
 BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
-                            :result_field, :duration, :null_guard, :xml_arg_spelling, :legacy_blobs,
-                            :null_test, :pointer_type_suffix, :declarations,
-                            keyword_init: true) do
+                            :pointer_type_suffix, keyword_init: true) do
   # The two derived fields always come from the same model, so a backend names
   # the model rather than restating where each one is read from.
   #
@@ -68,14 +53,12 @@ class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
   # `meta_parameters` is this function's rows from a meta-parameter spec, as
-  # returned by load_meta_parameters: a list of [MetaParameter subclass, args, options].
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
   def initialize(function, context:, meta_parameters: [])
     @function = function
     @context = context
     @tracepoint_parameters = []
-    @meta_parameters = meta_parameters.collect do |type, args, options|
-      type.new(self, *args, **options.to_h)
-    end
+    @meta_parameters = meta_parameters.collect { |type, args| type.new(self, *args) }
     @prologues = []
     @epilogues = []
   end
@@ -93,33 +76,8 @@ class Command
   end
 
   def result_name
-    @context.result_name
-  end
-
-  def result_field
-    @context.result_field ? @context.result_field.call(self) : result_name
-  end
-
-  def duration?
-    !!@context.duration
-  end
-
-  def xml_arg_spelling?
-    !!@context.xml_arg_spelling
-  end
-
-  def legacy_blobs?
-    !!@context.legacy_blobs
-  end
-
-  def null_test(pointer)
-    @context.null_test ? @context.null_test.call(pointer) : pointer
-  end
-
-  def null_guard(checks, expr, default, cast: false)
-    return @context.null_guard.call(checks, expr, default, cast: cast) if @context.null_guard
-
-    "(#{checks.join(' && ')} ? #{expr} : #{default})"
+    name = @context.result_name
+    name.respond_to?(:call) ? name.call(self) : name
   end
 
   def type_classes
@@ -143,16 +101,7 @@ class Command
   end
 
   def decl_pointer(name = pointer_name)
-    if (spelled = declaration('decl_pointer'))
-      "typedef #{format(spelled, name)}"
-    else
-      YAMLCAst::Declaration.new(name: name, type: YAMLCAst::Pointer.new(type: @function.type), storage: 'typedef').to_s
-    end
-  end
-
-  # How the backend spells this function's declaration, when it does.
-  def declaration(key)
-    @context.declarations&.dig(name, key)
+    YAMLCAst::Declaration.new(name: name, type: YAMLCAst::Pointer.new(type: @function.type), storage: 'typedef').to_s
   end
 
   def ffi_name
@@ -173,7 +122,7 @@ class Command
   end
 
   def decl
-    declaration('decl') || @function.to_s
+    @function.to_s
   end
 
   def pointer_name
@@ -232,44 +181,21 @@ end
 
 # The epilogue of an extension-function lookup (ze's
 # zeDriverGetExtensionFunctionAddress, opencl's clGetExtensionFunctionAddress):
-# when it found one of `commands`, wrap the real function in a libffi closure
-# that calls the tracer's `<command>_ffi` wrapper, and hand that back instead.
-# Each driver returns its own function, so there is one closure per real
-# pointer, kept in `<prefix>_closures`.
+# when it found one of `commands`, hand back a libffi closure that calls the
+# tracer's `<command>_ffi` wrapper with the real function
+# (utils/include/function_pointer_utils.h).
 #
-# `real` is the C holding the real pointer, `slot` its address (the hash key),
-# `name_var` the looked-up name, and `found` the C that ends the lookup with
-# the closure's `c_ptr`.
-def ffi_closure_epilogue(commands, condition:, provider:, name_var:, prefix:, real:, slot:, found:)
+# `real` is the C holding the real pointer, `name_var` the looked-up name, and
+# `found` the C that ends the lookup with `closure`, what to hand back.
+def ffi_closure_epilogue(commands, condition:, provider:, name_var:, real:, found:)
   blocks = commands.map do |c|
-    n = c.parameters.size
-    types = c.parameters.each_with_index.map { |a, i| "\n          closure->types[#{i}] = &#{get_ffi_type(a)};" }
+    types = c.parameters.to_a.map { |a| "&#{get_ffi_type(a)}" }
     <<EOF
     if (tracepoint_enabled(#{provider}, #{c.name}_#{START}) && strcmp(#{name_var}, "#{c.name}") == 0) {
-      struct #{prefix}_closure *closure = NULL;
-      pthread_mutex_lock(&#{prefix}_closures_mutex);
-      HASH_FIND_PTR(#{prefix}_closures, #{slot}, closure);
-      pthread_mutex_unlock(&#{prefix}_closures_mutex);
+      static ffi_type *types[] = { #{(types + ['NULL']).join(', ')} };
+      void *closure = thapi_closure_for(#{real}, (thapi_closure_wrapper)#{c.name}_ffi, &#{get_ffi_type(c)}, #{types.size}, types);
       if (closure != NULL) {
         #{found.strip.gsub("\n", "\n        ")}
-      }
-      closure = (struct #{prefix}_closure *)malloc(sizeof(struct #{prefix}_closure) + #{n} * sizeof(ffi_type *));
-      if (closure != NULL) {
-        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct #{prefix}_closure));
-        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-        if (closure->closure != NULL) {
-          closure->ptr = #{real};#{types.join}
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{n}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
-            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, #{real}, closure->c_ptr) == FFI_OK) {
-              pthread_mutex_lock(&#{prefix}_closures_mutex);
-              HASH_ADD_PTR(#{prefix}_closures, ptr, closure);
-              pthread_mutex_unlock(&#{prefix}_closures_mutex);
-              #{found.strip.gsub("\n", "\n              ")}
-            }
-          }
-          ffi_closure_free(closure->closure);
-        }
-        free(closure);
       }
     }
 EOF

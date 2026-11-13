@@ -130,21 +130,20 @@ done
 ### What `cl.xml.patch` changes
 
 Only the first kind is about entry points; the others adapt the registry to THAPI's generators, mostly
-`gen_opencl_xml_yaml.rb` (the enum groups of `opencl_model.yaml`) and the Ruby pretty printer that reads
-`opencl_model.yaml` (`babeltrace_opencl_lib.rb`).
+`gen_opencl_xml_yaml.rb` (the enum groups) and `gen_cl_library.rb`, which turns each group into the class of
+`cl_library.rb` that the pretty printer names values with.
 
 | Hunk | Why | Without it |
 |---|---|---|
 | Intel `<command>`s (and their types) | Intel entry points that neither the headers nor upstream `cl.xml` declare. The same list as `opencl_missing_apis.h` (`check_missing_apis.sh` checks both agree). | not traced |
-| A type name put in a `<require comment>` | `gen_opencl_xml_yaml.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names stops the generator (`no <require comment> of cl.xml names ...`); otherwise its values are missing from `opencl_model.yaml` |
-| A typedef for a type `supported_enums.yaml` lists but upstream does not define (`cl_affinity_domain_ext`) | `opencl_model.yaml`'s `type_map` gives the C type of each typedef | the type is missing from `type_map` |
-| ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `opencl_model.yaml`: one name printed instead of OR'ed flags |
-| C casts in enum values replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
-| `_KHR` aliases of core enums removed | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | the `_KHR` name printed instead of the core one |
+| A type name put in a `<require comment>` | `gen_opencl_xml_yaml.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names stops the generator (`no <require comment> of cl.xml names ...`); otherwise its values are missing from `cl_library.rb` |
+| ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `cl_library.rb`: one name printed instead of OR'ed flags |
+| C casts in enum values replaced by plain values | `gen_cl_library.rb` reads a value as a literal or `(1 << n)`; a cast is neither | those values are printed without a name |
+| `_KHR` aliases of core enums removed | same value as the core name; an enum's value-to-name table keeps the last one | the `_KHR` name printed instead of the core one |
 
 Keep only hunks that change a generated file: after rebasing, revert each kind of hunk and regenerate; if
 nothing changes, drop it. Apart from the crashes, only the first kind changes the traced API (`tracer_opencl.c`,
-`opencl_tracepoints.tp`, `btx_cl_model.yaml`); the others only change `opencl_model.yaml`.
+`opencl_tracepoints.tp`, `btx_cl_model.yaml`); the others only change `cl_library.rb`.
 
 ## 3/ Build and fix
 
@@ -154,13 +153,10 @@ utils_spec_update/check_missing_apis.sh $BUILD/backends/opencl/tracer_opencl.c
 ```
 
 The generated code takes its signatures from the headers (through h2yaml) and the rest from `cl.xml`
-(`gen_opencl_xml_yaml.rb`), so the build stops when they disagree:
+(`gen_opencl_xml_yaml.rb`), so the build stops when a traced function has no signature:
 
-- `clFoo is traced but no header declares it`: add it to `opencl_missing_apis.h`, with its signature from
+- `traced but declared by no header: clFoo`: add it to `opencl_missing_apis.h`, with its signature from
   `cl.xml.patch`.
-- `clFoo: parameters [...] in cl.xml but [...] in the headers`: the two do not describe the same function.
-  Only the parameter count has to match: the tracepoints keep the registry's names (see "A changed spelling"
-  below).
 
 `check_missing_apis.sh` finds the reverse: `-clFoo` means upstream now declares it, remove it from
 `opencl_missing_apis.h` (a repeated prototype compiles, even with `-Werror`). No output: nothing to do.
@@ -214,12 +210,6 @@ them (`experimental_functions` in `gen_opencl_xml_yaml.rb`). Applications still 
 
 Both are in `gen_opencl_xml_yaml.rb`.
 
-## A new opaque handle type
-
-`typedef struct _cl_foo_khr * cl_foo_khr`: the build stops with `CL_OBJECTS must list exactly the handles`.
-Add it to `CL_OBJECTS` in `gen_opencl_xml_yaml.rb`, so that `opencl_model.yaml` lists it among the
-`objects` the pretty printer reads as handles. (The tracer finds the handles in the headers by itself.)
-
 ## A variable named after its type, in `btx_upstream.c`
 
 `cl_semaphore_khr = (cl_semaphore_khr)...`: the event field of a returned handle is named after its type
@@ -228,11 +218,8 @@ Add it to `CL_OBJECTS` in `gen_opencl_xml_yaml.rb`, so that `opencl_model.yaml` 
 
 ## A changed spelling in `cl.xml`
 
-- No parameter used to be one `void` parameter; it is now none (`clUnloadCompiler`). The generated
-  declarations must still say `(void)` (`gen_opencl_xml_yaml.rb`).
-- A header can name a parameter differently from `cl.xml` (`clGetKernelArgInfo`: `arg_indx` in the oneAPI
-  `cl.h`, `arg_index` in `cl.xml`). The tracepoint fields keep the registry's name (`with_registry_names`
-  in `opencl_model.rb`), so a trace does not change with the headers.
+- The tracepoint fields are named after the headers' parameters (`clGetKernelArgInfo`: `arg_indx`, where
+  `cl.xml` says `arg_index`): a parameter renamed in a header renames its field in the trace.
 - Look at each `-` line of the generated diff: a fix in the registry (`clCreateFromGLBuffer`'s `errcode_ret`
   became `cl_int *`) is fine, anything else is a bug.
 

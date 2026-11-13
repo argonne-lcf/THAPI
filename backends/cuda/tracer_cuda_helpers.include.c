@@ -1,16 +1,4 @@
-// pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
-//
-// struct cuda_closure {
-//   void *ptr;
-//   void *c_ptr;
-//   UT_hash_handle hh;
-//   ffi_cif cif;
-//   ffi_closure *closure;
-//   ffi_type **types;
-// };
-//
-// struct cuda_closure * cuda_closures = NULL;
-//
+#include "tracer_init_utils.h"
 
 #ifdef THAPI_USE_DESTRUCTORS
 #define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
@@ -374,7 +362,7 @@ static void _context_event_cleanup(CUcontext hContext) {
   struct _cuda_event_s *evs = NULL;
 
   pthread_mutex_lock(&_cuda_events_mutex);
-  DL_FOREACH_SAFE(_events, ev, tmp) {
+  DL_FOREACH_SAFE (_events, ev, tmp) {
     if (ev->context == hContext) {
       DL_DELETE(_events, ev);
       DL_APPEND(evs, ev);
@@ -382,7 +370,7 @@ static void _context_event_cleanup(CUcontext hContext) {
   }
   pthread_mutex_unlock(&_cuda_events_mutex);
 
-  DL_FOREACH_SAFE(evs, ev, tmp) {
+  DL_FOREACH_SAFE (evs, ev, tmp) {
     DL_DELETE(evs, ev);
     _profile_event_results(ev);
     CU_EVENT_DESTROY_V2_PTR(ev->start);
@@ -393,7 +381,7 @@ static void _context_event_cleanup(CUcontext hContext) {
 
 static void _event_cleanup() {
   struct _cuda_event_s *ev, *tmp;
-  DL_FOREACH_SAFE(_events, ev, tmp) {
+  DL_FOREACH_SAFE (_events, ev, tmp) {
     DL_DELETE(_events, ev);
     _profile_event_results(ev);
     CU_EVENT_DESTROY_V2_PTR(ev->start);
@@ -472,23 +460,9 @@ static void _load_tracer(void) {
   void *handle = NULL;
   int verbose = 0;
 
-  s = getenv("LTTNG_UST_CUDA_LIBCUDA");
-  if (s)
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else
-    handle = dlopen("libcuda.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  if (handle) {
-    void *ptr = dlsym(handle, "cuInit");
-    if (ptr == (void *)&cuInit) { // opening oneself
-      dlclose(handle);
-      handle = NULL;
-    }
-  }
-
-  if (!handle) {
-    fprintf(stderr, "THAPI: Failure: could not load cuda library!\n");
-    exit(1);
-  }
+  handle =
+      thapi_dlopen_real("LTTNG_UST_CUDA_LIBCUDA", "libcuda.so",
+                        RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND, "cuInit", (void *)&cuInit, "cuda");
 
   s = getenv("LTTNG_UST_CUDA_VERBOSE");
   if (s)
@@ -510,39 +484,8 @@ static void _load_tracer(void) {
 #endif
 }
 
-static pthread_once_t _init_tracer_once = PTHREAD_ONCE_INIT;
-static __thread volatile int _in_init = 0;
-static volatile int _initialized = 0;
-
-static void _init_tracer(void) {
-  if (__builtin_expect(_initialized, 1))
-    return;
-  /* Avoid reentrancy */
-  if (!_in_init) {
-    _in_init = 1;
-    __sync_synchronize();
-    pthread_once(&_init_tracer_once, _load_tracer);
-    __sync_synchronize();
-    _in_init = 0;
-  }
-  _initialized = 1;
-}
+THAPI_INIT_ONCE(_init_tracer, _load_tracer)
 
 static void _load_cuda(void) { _dump_properties(); }
 
-static pthread_once_t _init_cuda_once = PTHREAD_ONCE_INIT;
-static __thread volatile int _in_init_cuda = 0;
-static volatile int _initialized_cuda = 0;
-
-static void _init_cuda(void) {
-  if (__builtin_expect(_initialized_cuda, 1))
-    return;
-  if (!_in_init_cuda) {
-    _in_init_cuda = 1;
-    __sync_synchronize();
-    pthread_once(&_init_cuda_once, _load_cuda);
-    __sync_synchronize();
-    _in_init_cuda = 0;
-  }
-  _initialized_cuda = 1;
-}
+THAPI_INIT_ONCE(_init_cuda, _load_cuda)
