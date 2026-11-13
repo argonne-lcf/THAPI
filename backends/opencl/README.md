@@ -145,10 +145,9 @@ Only the first row is about entry points; the rest adapts the registry to THAPI'
 | ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `opencl_model.yaml`: one name printed instead of OR'ed flags |
 | `MiscNumbers`: C casts replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
 | 8 `_KHR` aliases of core 3.0 enums removed (`CL_PLATFORM_NUMERIC_VERSION_KHR`, ...) | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | `CL_PLATFORM_NUMERIC_VERSION_KHR` printed instead of `CL_PLATFORM_NUMERIC_VERSION` |
-| `cl_image_desc`: the anonymous `union` member replaced by `cl_mem buffer` | from 2021 | no generated file changes: can be dropped |
-| `cl_program_info OpenCL 2.2 ...` comment | from 2021 | no change: upstream's comment already matches |
-| a blank line | from 2021 | none |
 
+Hunks that changed no generated file were dropped (the `cl_image_desc` union written as one `cl_mem buffer`
+member, a `cl_program_info` comment upstream already matches, a blank line).
 Apart from the crashes, only the first row changes the traced API: for the others, `btx_cl_model.yaml`,
 `tracer_opencl.c` and `opencl_tracepoints.tp` stay the same, and only `opencl_model.yaml` changes. The
 removed `_KHR` names still appear there, with no value, because `cl_khr_extended_versioning` requires them.

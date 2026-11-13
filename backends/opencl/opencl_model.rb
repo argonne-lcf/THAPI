@@ -16,9 +16,9 @@ WINDOWS = /D3D|DX9/
 
 VENDOR_EXT = /QCOM$|INTEL$|ARM$|APPLE$|IMG$|OCLICD$|PoCL$/
 
-# Traced through clGetExtensionFunctionAddress(ForPlatform), per platform:
-# the ICD loader exports no extension function, and the implementation may not
-# provide one.
+# Traced through clGetExtensionFunctionAddress(ForPlatform), per platform: the
+# ICD loader exports no extension function, and the platform-less lookup at load
+# can return NULL even where the platform provides it.
 SUPPORTED_EXTENSIONS = yaml_load_file_cached(File.join(SRC_DIR, 'supported_extensions.yaml'))
 
 # Not looked up when the tracer loads. The clIcd*KHR are called by the loader on

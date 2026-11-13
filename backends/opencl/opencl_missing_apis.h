@@ -1,10 +1,10 @@
 #ifndef OPENCL_MISSING_APIS_H
 #define OPENCL_MISSING_APIS_H
 
-/* Intel extension entry points that THAPI traces but that no public OpenCL
- * header declares (KhronosGroup/OpenCL-Headers does not carry them; they live
- * in Intel compute-runtime private headers). The signatures are the ones of
- * cl.xml.patch. */
+/* Intel entry points that THAPI traces but that no public OpenCL header
+ * declares: neither KhronosGroup/OpenCL-Headers nor the oneAPI headers carry
+ * them; Intel compute-runtime declares them in its own sources
+ * (opencl/source/api/api.h). The signatures are the ones of cl.xml.patch. */
 
 typedef cl_uint cl_execution_info_intel;
 
