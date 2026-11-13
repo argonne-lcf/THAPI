@@ -153,7 +153,7 @@ OPENCL_STATIC_PROBES_INCL = $(OPENCL_STATIC_PROBES:=.h)
 
 OPENCL_STATIC_PROBES_SRC = $(OPENCL_STATIC_PROBES:=.c)
 
-opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h
+opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(OPENCL_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/opencl_events.yaml $(srcdir)/cl.h.include $(top_srcdir)/utils/gen_probe_base.rb
@@ -189,7 +189,7 @@ bin_SCRIPTS = \
 	tracer_opencl.sh \
 	extract_enqueues
 
-tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h
+tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += tracer_opencl.c
