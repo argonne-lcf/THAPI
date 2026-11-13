@@ -20,7 +20,6 @@ CONTEXT = BackendContext.for(
   API, result_name: '_retval',
        result_field: method(:opencl_result_field),
        duration: true,
-       legacy_blobs: true,
        pointer_type_suffix: '_ptr_t',
        init_functions: /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 )

@@ -17,12 +17,10 @@ require_relative 'meta_parameter_spec'
 #   result_field  the field the return value is recorded in, from the command
 #                 (default: result_name)
 #   duration      every exit event also carries the call's `_duration`
-#   legacy_blobs  a pointed-to struct is cast to `(uint8_t *)`, and an array of
-#                 structs or of void is a blob whose length is its element count
 #   pointer_type_suffix  of the function-pointer typedefs (default `_t`; the
 #                 OpenCL headers already declare `<function>_t`)
 BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
-                            :result_field, :duration, :legacy_blobs, :pointer_type_suffix,
+                            :result_field, :duration, :pointer_type_suffix,
                             keyword_init: true) do
   # The two derived fields always come from the same model, so a backend names
   # the model rather than restating where each one is read from.
@@ -91,10 +89,6 @@ class Command
 
   def duration?
     !!@context.duration
-  end
-
-  def legacy_blobs?
-    !!@context.legacy_blobs
   end
 
   def type_classes

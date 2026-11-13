@@ -174,7 +174,6 @@ class ScalarMetaParameter < MetaParameter
       # blob whose length collapses to 0 when the pointer is null.
       lttngt.macro = :lttng_ust_field_variable_length_blob
       lttngt.expression = sanitize_expression("#{name}")
-      lttngt.cast = 'uint8_t *' if command.legacy_blobs?
       checks = check_for_null("#{name}")
       lttngt.length = sanitize_expression("#{lttngt.length}", checks)
       lttngt.length_type = 'size_t'
@@ -226,32 +225,11 @@ class ArrayMetaParameter < MetaParameter
       sz = sanitize_expression("#{size}", checks)
       st = INT_SIGN_MAP["#{s.type}"] ? 'size_t' : "#{s.type}"
     end
-    lttngt = if command.legacy_blobs? && legacy_blob?(t.type)
-               legacy_blob(t.type, sz, st)
-             else
-               YAMLCAst::Array.new(type: element_type(t.type)).lttng_type(command.type_classes, length: sz,
-                                                                                                length_type: st)
-             end
+    y = YAMLCAst::Array.new(type: element_type(t.type))
+    lttngt = y.lttng_type(command.type_classes, length: sz, length_type: st)
     lttngt.name = name + '_vals'
     lttngt.expression = sanitize_expression("#{name}")
     @lttng_type = lttngt
-  end
-
-  private
-
-  def legacy_blob?(pointee)
-    pointee.is_a?(YAMLCAst::Void) ||
-      (pointee.is_a?(YAMLCAst::CustomType) && command.type_classes.category_of(pointee.name) == :aggregate)
-  end
-
-  # See BackendContext's legacy_blobs.
-  def legacy_blob(pointee, length, length_type)
-    ev = LTTng::TracepointField.new
-    ev.macro = :lttng_ust_field_variable_length_blob
-    ev.length = length
-    ev.length_type = length_type
-    ev.blob_type = pointee.is_a?(YAMLCAst::Void) ? 'void' : pointee.name
-    ev
   end
 end
 
