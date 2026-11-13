@@ -71,14 +71,18 @@ declared_fields = lambda do |args, tuples|
   tuples.to_a.to_h { |t| declared_field.call(args_h, t) }
 end
 
+# A parameter as the readers know it: a pointer (or `T x[]`) by the type it
+# points at, a callback as a pointer to void.
+def model_parameter(p)
+  t = p.type
+  return { 'type' => t.to_s } unless t.respond_to?(:type)
+
+  pointee = t.type.is_a?(YAMLCAst::Function) ? 'void' : t.type.to_s
+  { 'type' => pointee.gsub(/\bconst\s*/, '').gsub(/\s*\*/, '*').strip, 'pointer' => true }
+end
+
 COMMANDS.each do |c|
-  params = c.declaration('params').to_h do |p|
-    type = p['callback'] || p['registry_type'] == '' ? 'void' : p['registry_type']
-    type = 'void*' if type == '*'
-    param = { 'type' => type }
-    param['pointer'] = true if p['pointer']
-    [p['name'], param]
-  end
+  params = c.parameters.to_a.to_h { |p| [p.name, model_parameter(p)] }
   start = {}
   c.parameters.to_a.each do |p|
     f = p.lttng_type(c.type_classes)
@@ -89,7 +93,7 @@ COMMANDS.each do |c|
 
   stop = {}
   if c.has_return_type? && (r = c.type.lttng_type(c.type_classes))
-    type = c.result_field == 'errcode_ret_val' ? 'cl_errcode' : c.declaration('return_type')
+    type = c.result_field == 'errcode_ret_val' ? 'cl_errcode' : c.type.to_s
     stop[c.result_field] = { 'type' => type, 'lttng' => r.macro.to_s }
   end
   outputs = c.meta_parameters.filter_map(&:lttng_out_type).reject { |f| f.name.to_s == '_param_name' }

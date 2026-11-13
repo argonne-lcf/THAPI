@@ -17,21 +17,12 @@ require_relative 'meta_parameter_spec'
 #   result_field  the field the return value is recorded in, from the command
 #                 (default: result_name)
 #   duration      every exit event also carries the call's `_duration`
-#   null_guard    spells "the expression if these pointers are non-NULL, else
-#                 the default": ->(checks, expr, default, cast:) { C }
-#   xml_arg_spelling  tracepoint arguments spelled as the Khronos registry
-#                 writes them: a callback as `void *`, `T x[]` as `T * *`
 #   legacy_blobs  a pointed-to struct is cast to `(uint8_t *)`, and an array of
 #                 structs or of void is a blob whose length is its element count
-#   null_test     spells "this pointer is not NULL": ->(pointer) { C }
 #   pointer_type_suffix  of the function-pointer typedefs (default `_t`; the
 #                 OpenCL headers already declare `<function>_t`)
-#   declarations  the C declaration of each function as written by hand rather
-#                 than printed from the AST: {name => {'decl' =>, 'decl_pointer'
-#                 => (with %s for the typedef name)}}
 BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
-                            :result_field, :duration, :null_guard, :xml_arg_spelling, :legacy_blobs,
-                            :null_test, :pointer_type_suffix, :declarations,
+                            :result_field, :duration, :legacy_blobs, :pointer_type_suffix,
                             keyword_init: true) do
   # The two derived fields always come from the same model, so a backend names
   # the model rather than restating where each one is read from.
@@ -68,14 +59,12 @@ class Command
   attr_reader :tracepoint_parameters, :meta_parameters, :prologues, :epilogues, :function
 
   # `meta_parameters` is this function's rows from a meta-parameter spec, as
-  # returned by load_meta_parameters: a list of [MetaParameter subclass, args, options].
+  # returned by load_meta_parameters: a list of [MetaParameter subclass, args].
   def initialize(function, context:, meta_parameters: [])
     @function = function
     @context = context
     @tracepoint_parameters = []
-    @meta_parameters = meta_parameters.collect do |type, args, options|
-      type.new(self, *args, **options.to_h)
-    end
+    @meta_parameters = meta_parameters.collect { |type, args| type.new(self, *args) }
     @prologues = []
     @epilogues = []
   end
@@ -104,22 +93,8 @@ class Command
     !!@context.duration
   end
 
-  def xml_arg_spelling?
-    !!@context.xml_arg_spelling
-  end
-
   def legacy_blobs?
     !!@context.legacy_blobs
-  end
-
-  def null_test(pointer)
-    @context.null_test ? @context.null_test.call(pointer) : pointer
-  end
-
-  def null_guard(checks, expr, default, cast: false)
-    return @context.null_guard.call(checks, expr, default, cast: cast) if @context.null_guard
-
-    "(#{checks.join(' && ')} ? #{expr} : #{default})"
   end
 
   def type_classes
@@ -143,16 +118,7 @@ class Command
   end
 
   def decl_pointer(name = pointer_name)
-    if (spelled = declaration('decl_pointer'))
-      "typedef #{format(spelled, name)}"
-    else
-      YAMLCAst::Declaration.new(name: name, type: YAMLCAst::Pointer.new(type: @function.type), storage: 'typedef').to_s
-    end
-  end
-
-  # How the backend spells this function's declaration, when it does.
-  def declaration(key)
-    @context.declarations&.dig(name, key)
+    YAMLCAst::Declaration.new(name: name, type: YAMLCAst::Pointer.new(type: @function.type), storage: 'typedef').to_s
   end
 
   def ffi_name
@@ -173,7 +139,7 @@ class Command
   end
 
   def decl
-    declaration('decl') || @function.to_s
+    @function.to_s
   end
 
   def pointer_name

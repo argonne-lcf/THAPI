@@ -3,11 +3,7 @@ require_relative '../../utils/backend_model'
 # What the registry says and the headers cannot (gen_opencl_xml_yaml.rb).
 OPENCL_XML = yaml_load_file_cached('opencl_xml.yaml')
 
-# OpenCL traces each scalar typedef as the cl_* (or C) type the registry says
-# it is (type_map).
-API = ApiModel.load_file('opencl_api.yaml', trace_names: OPENCL_XML['type_map']).register_ffi_types
-# The libffi type OpenCL's closures have always named a C int with.
-FFI_TYPE_MAP['int'] = 'ffi_type_sint'
+API = ApiModel.load_file('opencl_api.yaml').register_ffi_types
 
 # The field a call's return value is recorded in: the error code, or the
 # object it creates, named after its type.
@@ -24,15 +20,8 @@ CONTEXT = BackendContext.for(
   API, result_name: '_retval',
        result_field: method(:opencl_result_field),
        duration: true,
-       xml_arg_spelling: true,
        legacy_blobs: true,
-       null_test: ->(pointer) { "#{pointer} != NULL" },
        pointer_type_suffix: '_ptr_t',
-       declarations: OPENCL_XML['declarations'],
-       null_guard: lambda { |checks, expr, default, cast: false|
-         guard = "#{checks.map { |c| "#{c} == NULL" }.join(' || ')} ? #{default} : #{expr}"
-         cast ? "(#{guard})" : guard
-       },
        init_functions: /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 )
 
@@ -81,19 +70,6 @@ C
   end
 end
 
-# The registry names the parameters: the tracepoints keep its names where a
-# header spells one differently (the oneAPI cl.h's clGetKernelArgInfo says
-# `arg_indx` for `arg_index`).
-def with_registry_names(func)
-  names = OPENCL_XML['declarations'].fetch(func.name)['params'].filter_map { |p| p['name'] }
-  params = func.type.params.to_a
-  return func if params.map(&:name) == names
-
-  params = params.zip(names).map { |p, n| YAMLCAst::Declaration.new(name: n, type: p.type) }
-  type = YAMLCAst::Function.new(type: func.type.type, params: params, var_args: func.type.var_args)
-  YAMLCAst::Declaration.new(name: func.name, type: type, storage: func.storage)
-end
-
 # Whether a function takes a pointer named `name`.
 def pointer_parameter?(func, name)
   func.type.params.to_a.any? { |p| p.name == name && p.type.is_a?(YAMLCAst::Pointer) }
@@ -101,14 +77,13 @@ end
 
 # A function's meta-parameters: the ones OpenCL's naming conventions imply, in
 # the order the tracepoints list them, then the hand-written ones, then the key
-# a clGet*Info call queries. errcode_ret and param_value_size_ret need no NULL
-# check: the prologues below point them at a local when the caller passes NULL.
+# a clGet*Info call queries.
 def opencl_meta_parameters(func, hand)
   params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
   rows = []
   rows << [InArray, %w[event_wait_list num_events_in_wait_list]] if params.key?('event_wait_list')
-  rows << [OutScalar, ['errcode_ret'], { nocheck: true }] if pointer_parameter?(func, 'errcode_ret')
-  rows << [OutScalar, ['param_value_size_ret'], { nocheck: true }] if pointer_parameter?(func, 'param_value_size_ret')
+  rows << [OutScalar, ['errcode_ret']] if pointer_parameter?(func, 'errcode_ret')
+  rows << [OutScalar, ['param_value_size_ret']] if pointer_parameter?(func, 'param_value_size_ret')
   # clSetKernelExecInfo's param_value is an input.
   if params.key?('param_value') && func.name != 'clSetKernelExecInfo'
     rows << [OutArray, %w[param_value param_value_size]]
@@ -122,7 +97,7 @@ def opencl_meta_parameters(func, hand)
 end
 
 functions = API.functions.to_h { |f| [f.name, f] }
-traced = OPENCL_XML['functions'].values.flatten.map { |n| with_registry_names(functions.fetch(n)) }
+traced = OPENCL_XML['functions'].values.flatten.map { |n| functions.fetch(n) }
 hand = load_meta_parameters('opencl_meta_parameters.yaml')
 check_meta_parameters(hand, traced)
 COMMANDS = build_command_index(

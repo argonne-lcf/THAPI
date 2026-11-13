@@ -41,71 +41,25 @@ puts <<~EOF
           tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-# The libffi trampoline an extension function is wrapped in.
-def decl_ffi_wrapper(c)
-  "void #{c.ffi_name}(ffi_cif *cif, #{c.declaration('return_type')} *ffi_ret, void** args, #{c.pointer_type_name} #{c.pointer_name})"
-end
-
 print_pointer_defines(CORE_COMMANDS, OPENCL_POINTER_NAMES)
+print_pointer_table(CORE_COMMANDS, OPENCL_POINTER_NAMES)
+print_ffi_wrapper_declarations(EXTENSION_COMMANDS)
 
-CORE_COMMANDS.each do |c|
-  puts <<~EOF
+# The libraries export the core functions, except the KHR and EXT ones:
+# clGetExtensionFunctionAddress hands those out.
+lookup = OPENCL_POINTER_NAMES[COMMANDS['clGetExtensionFunctionAddress']]
+print_find_symbols('opencl', CORE_COMMANDS - LOOKED_UP_COMMANDS, OPENCL_POINTER_NAMES) do
+  LOOKED_UP_COMMANDS.each do |c|
+    puts <<EOF
 
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.pointer_type_name}  #{OPENCL_POINTER_NAMES[c]} = (void *) 0x0;
-  EOF
-end
-
-EXTENSION_COMMANDS.each do |c|
-  puts <<~EOF
-
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{decl_ffi_wrapper(c)};
-  EOF
-end
-
-puts <<~EOF
-
-  static void find_opencl_symbols(void * handle, int verbose) {
-EOF
-
-(CORE_COMMANDS - LOOKED_UP_COMMANDS).each do |c|
-  puts <<EOF
-
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}") ;
-  if (!#{OPENCL_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "Missing symbol #{c.name}!\\n");
-EOF
-end
-
-LOOKED_UP_COMMANDS.each do |c|
-  puts <<EOF
-
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[COMMANDS['clGetExtensionFunctionAddress']]}("#{c.name}");
+  #{OPENCL_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)#{lookup}("#{c.name}");
   if (!#{OPENCL_POINTER_NAMES[c]})
     fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
+  end
 end
-
-puts <<~EOF
-  }
-
-EOF
 
 puts File.read(File.join(SRC_DIR, 'tracer_opencl_helpers.include.c'))
 
 print_traced_wrappers(CORE_COMMANDS, :lttng_ust_opencl, OPENCL_POINTER_NAMES)
-
-EXTENSION_COMMANDS.each do |c|
-  puts <<~EOF
-    static #{decl_ffi_wrapper(c)} {
-      (void)cif;
-  EOF
-  c.declaration('params').each_with_index do |p, i|
-    puts "  #{p['decl']} = *(#{p['type']} *)args[#{i}];"
-  end
-  print_traced_body(c, :lttng_ust_opencl, OPENCL_POINTER_NAMES)
-  puts '  *ffi_ret = _retval;' if c.has_return_type?
-  puts '}'
-  puts
-end
+print_ffi_wrappers(EXTENSION_COMMANDS, :lttng_ust_opencl, OPENCL_POINTER_NAMES)

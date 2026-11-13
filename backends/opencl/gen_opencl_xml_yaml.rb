@@ -4,12 +4,6 @@
 #   functions        the functions traced, in registry order: `core` ones are
 #                    found with dlsym, `extension` ones through
 #                    clGetExtensionFunctionAddress.
-#   declarations     how the registry spells each traced function's C
-#                    declaration (CL_API_ENTRY, CL_API_CALL, CL_CALLBACK ...),
-#                    which the tracer's wrappers repeat word for word: the
-#                    whole declaration, the pointer typedef with `%s` for its
-#                    name, the return type, and each parameter with and
-#                    without its name.
 #   enums, bitfields the value of each constant of the integer types listed in
 #                    supported_enums.yaml, grouped as the registry's <require
 #                    comment="<type>[ - bitfield]"> blocks group them
@@ -103,53 +97,11 @@ def pointer_before_name?(node)
   node.children.take_while { |c| c.name != 'name' }.any? { |c| c.text.include?('*') }
 end
 
-# The registry's text of a node's children, one space between them, with the
-# <name> child spelled by the block (or dropped when it returns nil).
-def spelled(node)
-  node.children.filter_map { |c| c.name == 'name' ? yield(c.text) : c.text }.join(' ').squeeze(' ').strip
-end
-
-def param_declaration(param)
-  decl = spelled(param) { |name| name }
-  type = param.search('type').text
-  type += '*' if decl.match?(/\*\*/)
-  type += '*' if decl.match?(/\[\]/)
-  {
-    'name' => param.at_xpath('name')&.text,
-    'decl' => decl,
-    'type' => spelled(param) { nil },
-    'registry_type' => type,
-    'pointer' => pointer_before_name?(param),
-    'callback' => param.text.include?('CL_CALLBACK'),
-  }
-end
-
-declarations = (core + extension).to_h do |n|
-  proto = commands[n].at_xpath('proto')
-  params = commands[n].xpath('param').map { |p| param_declaration(p) }
-  decl = spelled(proto) { |name| "CL_API_CALL #{name}" }
-  pointer = spelled(proto) { '(CL_API_CALL *%s)' }
-  # C spells "no parameters" `(void)`; the registry lists none (clUnloadCompiler).
-  list = ->(key) { params.empty? ? 'void' : params.map { |p| p[key] }.join(', ') }
-  [n, {
-    'decl' => "CL_API_ENTRY #{decl}(#{list.call('decl')})",
-    'decl_pointer' => "CL_API_ENTRY #{pointer}(#{list.call('type')})",
-    'return_type' => spelled(proto) { nil },
-    'params' => params,
-  }]
-end
-
-# The headers, not the registry, give the shared generators their signatures
-# (the registry only renames the parameters, see opencl_model.rb), so every
-# traced function needs a header declaration with as many parameters.
+# The headers give the shared generators their signatures, so every traced
+# function needs a header declaration.
 api_yaml = YAML.load_file(api_path)
-api = api_yaml['functions'].to_h { |f| [f['name'], (f['params'] || []).map { |p| p['name'] }] }
-declarations.each do |n, d|
-  raise "#{n} is traced but no header declares it" unless api.key?(n)
-  next if api[n].size == d['params'].size
-
-  raise "#{n}: parameters #{d['params'].map { |p| p['name'] }} in cl.xml but #{api[n]} in the headers"
-end
+undeclared = core + extension - api_yaml['functions'].map { |f| f['name'] }
+raise "traced but declared by no header: #{undeclared.join(', ')}" unless undeclared.empty?
 
 # The handles are the registry's pointer typedefs (`struct _cl_foo *`,
 # `void *`) that the headers declare.
@@ -163,5 +115,4 @@ raise "CL_OBJECTS must list exactly the handles: #{handles.sort.join(' ')}" if h
 puts({ 'functions' => { 'core' => core, 'extension' => extension },
        'enums' => enums, 'bitfields' => bitfields, 'type_map' => type_map,
        'structures' => doc.xpath('//types/type').select { |l| l['category'] == 'struct' }.map { |l| l['name'] },
-       'int_scalars' => CL_INT_SCALARS, 'float_scalars' => CL_FLOAT_SCALARS, 'objects' => CL_OBJECTS,
-       'declarations' => declarations }.to_yaml)
+       'int_scalars' => CL_INT_SCALARS, 'float_scalars' => CL_FLOAT_SCALARS, 'objects' => CL_OBJECTS }.to_yaml)
