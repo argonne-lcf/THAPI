@@ -106,7 +106,7 @@ BTX_OPENCL_GENERATED = \
 opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-btx_cl_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb opencl_model.yaml
+btx_cl_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb $(srcdir)/gen_opencl_library_base.rb $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_clmatching_model.yaml btx_cl_model.yaml

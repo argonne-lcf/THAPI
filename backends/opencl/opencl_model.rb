@@ -3,7 +3,21 @@ require_relative '../../utils/backend_model'
 # What the registry says and the headers cannot (gen_opencl_xml_yaml.rb).
 OPENCL_XML = yaml_load_file_cached('opencl_xml.yaml')
 
-API = ApiModel.load_file('opencl_api.yaml').register_ffi_types
+# The headers #define the values of OpenCL's enums and flags, so no typedef
+# says it is one: the registry does, by grouping the constants each type takes.
+class OpenCLApi < ApiModel
+  GROUPS = %w[enums bitfields].to_h { |kind| [kind, OPENCL_XML[kind].to_h { |name, g| [g['type_name'] || name, g] }] }
+
+  def enum_names
+    GROUPS['enums'].keys
+  end
+
+  def bitfield_names
+    GROUPS['bitfields'].keys
+  end
+end
+
+API = OpenCLApi.load_file('opencl_api.yaml').register_ffi_types
 
 # The field a call's return value is recorded in: the error code, or the
 # object it creates, named after its type.
