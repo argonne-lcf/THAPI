@@ -17,11 +17,6 @@
 #   structures       the struct types
 #   int_scalars, float_scalars, objects
 #                    the base types typedef chains end in, and the handles
-#   meta_parameters  every function's meta-parameter rows: the ones OpenCL's
-#                    naming conventions imply (event_wait_list, errcode_ret,
-#                    param_value ...), then the hand-written ones of
-#                    opencl_meta_parameters.yaml, then the queried param_name
-#                    of the clGet*Info functions.
 #
 # Usage: gen_opencl_xml_yaml.rb cl.xml.patched opencl_api.yaml > opencl_xml.yaml
 require 'nokogiri'
@@ -145,37 +140,8 @@ declarations.each do |n, d|
   raise "#{n}: parameters #{d['params'].map { |p| p['name'] }} in cl.xml but #{api[n]} in the headers"
 end
 
-# The meta-parameters OpenCL's naming conventions imply, in the order the
-# tracepoints list them.
-def implied_rows(name, params)
-  has = ->(n, pointer: false) { params.any? { |p| p['name'] == n && (!pointer || p['pointer'] || p['callback']) } }
-  rows = []
-  rows << %w[InArray event_wait_list num_events_in_wait_list] if has.call('event_wait_list')
-  rows << ['OutScalar', 'errcode_ret', { 'nocheck' => true }] if has.call('errcode_ret', pointer: true)
-  if has.call('param_value_size_ret', pointer: true)
-    rows << ['OutScalar', 'param_value_size_ret', { 'nocheck' => true }]
-  end
-  rows << %w[OutArray param_value param_value_size] if has.call('param_value') && name != 'clSetKernelExecInfo'
-  rows << %w[OutScalar event] if has.call('event', pointer: true)
-  rows
-end
-
-hand = YAML.load_file(File.join(SRC_DIR, 'opencl_meta_parameters.yaml'))['meta_parameters']
-unknown = hand.keys - declarations.keys
-raise "opencl_meta_parameters.yaml names untraced functions: #{unknown.join(', ')}" unless unknown.empty?
-
-meta_parameters = {}
-declarations.each do |n, d|
-  rows = implied_rows(n, d['params']) + hand.fetch(n, [])
-  if n.match(/clGet(\w*?)Info/) && (pn = d['params'].find { |p| p['name'] == 'param_name' })
-    rows << ['OutLTTng', 'param_name', 'ctf_integer_hex', pn['registry_type'], '_param_name', 'param_name']
-  end
-  meta_parameters[n] = rows unless rows.empty?
-end
-
 puts({ 'functions' => { 'core' => core, 'extension' => extension },
        'enums' => enums, 'bitfields' => bitfields, 'type_map' => type_map,
        'structures' => doc.xpath('//types/type').select { |l| l['category'] == 'struct' }.map { |l| l['name'] },
        'int_scalars' => CL_INT_SCALARS, 'float_scalars' => CL_FLOAT_SCALARS, 'objects' => CL_OBJECTS,
-       'declarations' => declarations,
-       'meta_parameters' => meta_parameters }.to_yaml)
+       'declarations' => declarations }.to_yaml)

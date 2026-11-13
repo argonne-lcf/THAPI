@@ -72,8 +72,9 @@ ML_FILES = \
 	$(srcdir)/supported_enums.yaml
 
 # What the registry says and the headers cannot: the functions traced, their
-# meta-parameters, their declarations as written, the enum groups.
-opencl_xml.yaml: $(srcdir)/gen_opencl_xml_yaml.rb cl.xml.patched opencl_api.yaml $(ML_FILES)
+# declarations as written, the enum groups.
+opencl_xml.yaml: $(srcdir)/gen_opencl_xml_yaml.rb cl.xml.patched opencl_api.yaml \
+		$(srcdir)/supported_extensions.yaml $(srcdir)/supported_enums.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< cl.xml.patched opencl_api.yaml > $@
 
 CLEANFILES += opencl_xml.yaml
@@ -87,6 +88,7 @@ TRACEPOINT_GEN = \
 
 OPENCL_MODEL = \
 	$(TRACEPOINT_GEN) \
+	$(srcdir)/opencl_meta_parameters.yaml \
 	opencl_api.yaml \
 	opencl_xml.yaml \
 	$(BACKEND_MODEL_DEPS)

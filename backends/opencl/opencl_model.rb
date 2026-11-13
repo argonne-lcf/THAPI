@@ -1,8 +1,7 @@
 require_relative '../../utils/backend_model'
 
 # What the registry says and the headers cannot (gen_opencl_xml_yaml.rb).
-OPENCL_XML_PATH = File.expand_path('opencl_xml.yaml')
-OPENCL_XML = yaml_load_file_cached(OPENCL_XML_PATH)
+OPENCL_XML = yaml_load_file_cached('opencl_xml.yaml')
 
 # OpenCL traces each scalar typedef as the cl_* (or C) type the registry says
 # it is (type_map).
@@ -95,10 +94,35 @@ def with_registry_names(func)
   YAMLCAst::Declaration.new(name: func.name, type: type, storage: func.storage)
 end
 
+# A function's meta-parameters: the ones OpenCL's naming conventions imply, in
+# the order the tracepoints list them, then the hand-written ones, then the key
+# a clGet*Info call queries. errcode_ret and param_value_size_ret need no NULL
+# check: the prologues below point them at a local when the caller passes NULL.
+def opencl_meta_parameters(func, hand)
+  params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
+  pointer = ->(name) { params[name].is_a?(YAMLCAst::Pointer) }
+  rows = []
+  rows << [InArray, %w[event_wait_list num_events_in_wait_list]] if params.key?('event_wait_list')
+  rows << [OutScalar, ['errcode_ret'], { nocheck: true }] if pointer['errcode_ret']
+  rows << [OutScalar, ['param_value_size_ret'], { nocheck: true }] if pointer['param_value_size_ret']
+  # clSetKernelExecInfo's param_value is an input.
+  if params.key?('param_value') && func.name != 'clSetKernelExecInfo'
+    rows << [OutArray, %w[param_value param_value_size]]
+  end
+  rows << [OutScalar, ['event']] if pointer['event']
+  rows += hand[func.name]
+  if func.name.match?(/clGet\w*?Info/) && params.key?('param_name')
+    rows << [OutLTTng, ['param_name', 'ctf_integer_hex', params['param_name'].to_s, '_param_name', 'param_name']]
+  end
+  rows
+end
+
 functions = API.functions.to_h { |f| [f.name, f] }
+traced = OPENCL_XML['functions'].values.flatten.map { |n| with_registry_names(functions.fetch(n)) }
+hand = load_meta_parameters('opencl_meta_parameters.yaml')
+check_meta_parameters(hand, traced)
 COMMANDS = build_command_index(
-  { lttng_ust_opencl: OPENCL_XML['functions'].values.flatten.map { |n| with_registry_names(functions.fetch(n)) } },
-  context: CONTEXT, spec: load_meta_parameters(OPENCL_XML_PATH)
+  { lttng_ust_opencl: traced }, context: CONTEXT, spec: traced.to_h { |f| [f.name, opencl_meta_parameters(f, hand)] }
 )
 
 CORE_COMMANDS = OPENCL_XML['functions']['core'].map { |n| COMMANDS[n] }
