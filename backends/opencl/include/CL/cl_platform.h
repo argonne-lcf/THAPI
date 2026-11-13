@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008-2026 The Khronos Group Inc.
+ * Copyright (c) 2008-2020 The Khronos Group Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,20 +23,24 @@
 extern "C" {
 #endif
 
-#if !defined(CL_API_ENTRY)
-    #define CL_API_ENTRY
-#endif
-#if !defined(CL_API_CALL)
-    #if defined(_WIN32) && !defined(__aarch64__) && !defined(__arm64__)
-        #define CL_API_CALL __stdcall
-    #else
+#if defined(_WIN32)
+    #if !defined(CL_API_ENTRY)
+        #define CL_API_ENTRY
+    #endif
+    #if !defined(CL_API_CALL)
+        #define CL_API_CALL     __stdcall
+    #endif
+    #if !defined(CL_CALLBACK)
+        #define CL_CALLBACK     __stdcall
+    #endif
+#else
+    #if !defined(CL_API_ENTRY)
+        #define CL_API_ENTRY
+    #endif
+    #if !defined(CL_API_CALL)
         #define CL_API_CALL
     #endif
-#endif
-#if !defined(CL_CALLBACK)
-    #if defined(_WIN32) && !defined(__aarch64__) && !defined(__arm64__)
-        #define CL_CALLBACK __stdcall
-    #else
+    #if !defined(CL_CALLBACK)
         #define CL_CALLBACK
     #endif
 #endif
@@ -67,7 +71,6 @@ extern "C" {
 #define CL_API_SUFFIX__VERSION_2_1 CL_API_SUFFIX_COMMON
 #define CL_API_SUFFIX__VERSION_2_2 CL_API_SUFFIX_COMMON
 #define CL_API_SUFFIX__VERSION_3_0 CL_API_SUFFIX_COMMON
-#define CL_API_SUFFIX__VERSION_3_1 CL_API_SUFFIX_COMMON
 #define CL_API_SUFFIX__EXPERIMENTAL CL_API_SUFFIX_COMMON
 
 
@@ -241,7 +244,7 @@ typedef double                  cl_double;
 
 #define CL_NAN              (CL_INFINITY - CL_INFINITY)
 #define CL_HUGE_VALF        ((cl_float) 1e50)
-#define CL_HUGE_VAL         ((cl_double) (1e300 * 1e300))
+#define CL_HUGE_VAL         ((cl_double) 1e500)
 #define CL_MAXFLOAT         CL_FLT_MAX
 #define CL_INFINITY         CL_HUGE_VALF
 
@@ -376,12 +379,7 @@ typedef double          cl_double;
 
 /* Define basic vector types */
 #if defined( __VEC__ )
-  /* GCC and clang both predefine __vector, __pixel and __bool whenever
-     __VEC__ is set, so the typedefs below do not require altivec.h.
-     Including it is harmful: it aliases the short AltiVec spellings
-     (#define bool __bool), which breaks any C translation unit that
-     uses bool as a scalar after including this header. */
-  #if !defined(__clang__) && !defined(__GNUC__)
+  #if !defined(__clang__)
      #include <altivec.h>   /* may be omitted depending on compiler. AltiVec spec provides no way to detect whether the header is required. */
   #endif
    typedef __vector unsigned char     __cl_uchar16;
@@ -519,16 +517,6 @@ typedef double          cl_double;
 #else
 #define  __CL_HAS_ANON_STRUCT__ 0
 #define  __CL_ANON_STRUCT__
-#endif
-
-/* Define capabilities for anonymous union members. */
-#if defined(__cplusplus) && __cplusplus >= 201103L
-#define  __CL_HAS_ANON_UNION__ 1
-#define  __CL_ANON_UNION__
-#else
-    /* Follow anonymous struct logic */
-#define  __CL_HAS_ANON_UNION__ __CL_HAS_ANON_STRUCT__
-#define  __CL_ANON_UNION__ __CL_ANON_STRUCT__
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER) && __CL_HAS_ANON_STRUCT__

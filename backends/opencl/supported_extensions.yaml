@@ -27,3 +27,18 @@
 - clGetDeviceGlobalVariablePointerINTEL
 - clGetExecutionInfoINTEL
 - clEnqueueNDRangeKernelINTEL
+# Added with the OpenCL-Headers 6eabe90 / cl.xml 5efafb0 bump. No loader exports an
+# extension function, and an implementation may not provide it (cl_khr_semaphore,
+# cl_khr_external_memory, cl_ext_image_requirements_info, cl_ext_buffer_device_address).
+- clCreateSemaphoreWithPropertiesKHR
+- clEnqueueAcquireExternalMemObjectsKHR
+- clEnqueueReleaseExternalMemObjectsKHR
+- clEnqueueSignalSemaphoresKHR
+- clEnqueueWaitSemaphoresKHR
+- clGetImageRequirementsInfoEXT
+- clGetSemaphoreHandleForTypeKHR
+- clGetSemaphoreInfoKHR
+- clReImportSemaphoreSyncFdKHR
+- clReleaseSemaphoreKHR
+- clRetainSemaphoreKHR
+- clSetKernelArgDevicePointerEXT

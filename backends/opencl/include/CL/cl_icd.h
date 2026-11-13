@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019-2026 The Khronos Group Inc.
+ * Copyright (c) 2019-2020 The Khronos Group Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,11 @@
 #include <CL/cl_egl.h>
 #include <CL/cl_ext.h>
 #include <CL/cl_gl.h>
-#include <CL/cl_platform.h>
 
 #if defined(_WIN32)
 #include <CL/cl_d3d11.h>
 #include <CL/cl_d3d10.h>
 #include <CL/cl_dx9_media_sharing.h>
-#endif
-
-#if defined(_WIN32) && defined(_MSC_VER) && __CL_HAS_ANON_STRUCT__
-   /* Disable warning C4201: nonstandard extension used : nameless struct/union */
-    #pragma warning( push )
-    #pragma warning( disable : 4201 )
 #endif
 
 #ifdef __cplusplus
@@ -44,15 +37,7 @@ extern "C" {
 
 typedef struct _cl_icd_dispatch {
   /* OpenCL 1.0 */
-#if __CL_HAS_ANON_UNION__
-  __CL_ANON_UNION__ union {
-#endif
-    clGetPlatformIDs_t *clGetPlatformIDs;
-#if __CL_HAS_ANON_UNION__
-    /* Set to CL_ICD2_TAG_KHR for cl_khr_icd 2.0.0 */
-    intptr_t clGetPlatformIDs_icd2_tag;
-  };
-#endif
+  clGetPlatformIDs_t *clGetPlatformIDs;
   clGetPlatformInfo_t *clGetPlatformInfo;
   clGetDeviceIDs_t *clGetDeviceIDs;
   clGetDeviceInfo_t *clGetDeviceInfo;
@@ -83,15 +68,7 @@ typedef struct _cl_icd_dispatch {
   clRetainProgram_t *clRetainProgram;
   clReleaseProgram_t *clReleaseProgram;
   clBuildProgram_t *clBuildProgram;
-#if __CL_HAS_ANON_UNION__
-  __CL_ANON_UNION__ union {
-#endif
-    clUnloadCompiler_t *clUnloadCompiler;
-#if __CL_HAS_ANON_UNION__
-    /* Set to CL_ICD2_TAG_KHR for cl_khr_icd 2.0.0 */
-    intptr_t clUnloadCompiler_icd2_tag;
-  };
-#endif
+  clUnloadCompiler_t *clUnloadCompiler;
   clGetProgramInfo_t *clGetProgramInfo;
   clGetProgramBuildInfo_t *clGetProgramBuildInfo;
   clCreateKernel_t *clCreateKernel;
@@ -329,21 +306,10 @@ typedef struct _cl_icd_dispatch {
   void *clSetContextDestructorCallback;
 #endif
 
-  /* OpenCL 3.1 */
-#ifdef CL_VERSION_3_1
-  clGetKernelSuggestedLocalWorkSize_t *clGetKernelSuggestedLocalWorkSize;
-#else
-  void *clGetKernelSuggestedLocalWorkSize;
-#endif
-
 } cl_icd_dispatch;
 
 #ifdef __cplusplus
 }
-#endif
-
-#if defined(_WIN32) && defined(_MSC_VER) && __CL_HAS_ANON_STRUCT__
-    #pragma warning( pop )
 #endif
 
 #endif /* #ifndef OPENCL_CL_ICD_H */
