@@ -99,7 +99,6 @@ def print_tracepoint(provider, c, dir = nil)
   end
   params = c.parameters.to_a.collect(&decl)
   params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
-  params.push('uint64_t, _duration') if c.duration? && dir == :stop
   params += c.tracepoint_parameters_for(dir).collect(&decl)
 
   # A tracepoint that carries nothing still has to say so: TP_ARGS(void).
@@ -113,7 +112,7 @@ EOF
   # Add Result
   r = c.type.lttng_type(c.type_classes)
   if dir != :start && r
-    r.name = c.result_field
+    r.name = c.result_name
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
                      "&#{c.result_name}"
                    else
@@ -126,10 +125,6 @@ EOF
   fields += c.parameters.collect { |p| p.lttng_type(c.type_classes) } if dir != :stop && c.parameters
 
   fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
-  if c.duration? && dir == :stop
-    fields.push(LTTng::TracepointField.new('ctf_integer', 'uint64_t', '_duration',
-                                           '_duration'))
-  end
 
   rows = fields.compact.map(&:call_string)
   puts "    #{rows.join("\n    ")}" unless rows.empty?

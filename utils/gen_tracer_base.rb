@@ -100,40 +100,16 @@ def print_traced_body(c, provider, pointer_names, epilogues: :before_exit,
 
   c.prologues.each { |p| puts p }
 
-  print_duration_start if c.duration?
   print_traced_call(c, pointer_names[c], declare_retval: declare_retval)
-  print_duration_stop if c.duration?
 
   puts c.tracepoint_inits(:stop)
   c.epilogues.each { |e| puts e } if epilogues == :before_exit
 
   call_args.push '_retval' if c.has_return_type?
-  call_args.push '_duration' if c.duration?
   print_tracepoint_call(provider, c, :stop, call_args)
   after_exit&.call(c)
 
   c.epilogues.each { |e| puts e } if epilogues == :after_exit
-end
-
-# The `_duration` an exit event carries (BackendContext's `duration`): the
-# host time the call took, measured when `do_host_profile` asks for it.
-def print_duration_start
-  puts <<C
-  uint64_t _start_ts = 0;
-  uint64_t _stop_ts = 0;
-  uint64_t _duration = 0;
-  if (do_host_profile)
-    _start_ts = get_timestamp_ns();
-C
-end
-
-def print_duration_stop
-  puts <<C
-  if (do_host_profile) {
-    _stop_ts = get_timestamp_ns();
-    _duration = _stop_ts - _start_ts;
-  }
-C
 end
 
 # The function-pointer table the dlsym lookups fill in: for each traced

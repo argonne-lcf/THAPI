@@ -10,17 +10,14 @@ require_relative 'meta_parameter_spec'
 # A Command belongs to exactly one backend, so it carries this rather than the
 # shared generators reading it from whichever backend was required last.
 #
-# The settings after `directions` are what OpenCL's events and headers have
-# that the other backends' do not:
+# `result_name` is one name for the whole API, or a callable naming the result
+# of each command: OpenCL records an error code and a created object under
+# different names.
 #
-#   result_field  the field the return value is recorded in, from the command
-#                 (default: result_name)
-#   duration      every exit event also carries the call's `_duration`
-#   pointer_type_suffix  of the function-pointer typedefs (default `_t`; the
-#                 OpenCL headers already declare `<function>_t`)
+# `pointer_type_suffix` is the suffix of the function-pointer typedefs. It
+# defaults to `_t`, which the OpenCL headers already declare.
 BackendContext = Struct.new(:result_name, :init_functions, :struct_map, :type_classes, :directions,
-                            :result_field, :duration, :pointer_type_suffix,
-                            keyword_init: true) do
+                            :pointer_type_suffix, keyword_init: true) do
   # The two derived fields always come from the same model, so a backend names
   # the model rather than restating where each one is read from.
   #
@@ -79,15 +76,8 @@ class Command
   end
 
   def result_name
-    @context.result_name
-  end
-
-  def result_field
-    @context.result_field ? @context.result_field.call(self) : result_name
-  end
-
-  def duration?
-    !!@context.duration
+    name = @context.result_name
+    name.respond_to?(:call) ? name.call(self) : name
   end
 
   def type_classes

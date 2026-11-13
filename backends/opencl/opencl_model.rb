@@ -17,9 +17,9 @@ end
 
 API = OpenCLApi.load_file('opencl_api.yaml').register_ffi_types
 
-# The field a call's return value is recorded in: the error code, or the
-# object it creates, named after its type.
-def opencl_result_field(command)
+# What a call's return value is recorded as: the error code, or the object it
+# creates, named after its type.
+def opencl_result_name(command)
   type = command.type.to_s
   case type
   when 'cl_int' then 'errcode_ret_val'
@@ -29,9 +29,7 @@ def opencl_result_field(command)
 end
 
 CONTEXT = BackendContext.for(
-  API, result_name: '_retval',
-       result_field: method(:opencl_result_field),
-       duration: true,
+  API, result_name: method(:opencl_result_name),
        pointer_type_suffix: '_ptr_t',
        init_functions: /clGetPlatformIDs|clGetPlatformInfo|clGetDeviceIDs|clCreateContext|clCreateContextFromType|clUnloadPlatformCompiler|clGetExtensionFunctionAddressForPlatform|clGetExtensionFunctionAddress|clGetGLContextInfoKHR/
 )
@@ -89,6 +87,19 @@ end
 # A function's meta-parameters: the ones OpenCL's naming conventions imply, in
 # the order the tracepoints list them, then the hand-written ones, then the key
 # a clGet*Info call queries.
+# The host time a call took, which every exit event carries as `_duration`
+# when LTTNG_UST_OPENCL_HOST_PROFILE asks for it. The clock starts in the last
+# prologue (below), so it times the call alone.
+class HostDuration < OutLTTng
+  def initialize(command)
+    command.tracepoint_parameters.push TracepointParameter.new(
+      name: '_duration', type: YAMLCAst::CustomType.new(name: 'uint64_t'), dir: :stop,
+      fill: "  _duration = do_host_profile ? get_timestamp_ns() - _start_ts : 0;\n"
+    )
+    super(command, '_duration', 'ctf_integer', 'uint64_t', '_duration', '_duration')
+  end
+end
+
 def opencl_meta_parameters(func, hand)
   params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
   rows = []
@@ -104,7 +115,7 @@ def opencl_meta_parameters(func, hand)
   if func.name.match?(/clGet\w*?Info/) && params.key?('param_name')
     rows << [OutLTTng, ['param_name', 'ctf_integer_hex', params['param_name'].to_s, '_param_name', 'param_name']]
   end
-  rows
+  rows << [HostDuration, []]
 end
 
 functions = API.functions.to_h { |f| [f.name, f] }
@@ -615,3 +626,6 @@ str = <<EOF
 EOF
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernel', str
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernelINTEL', str
+
+# After every other prologue: see HostDuration.
+COMMANDS.each { |c| c.add_prologue "  uint64_t _start_ts = do_host_profile ? get_timestamp_ns() : 0;\n" }
