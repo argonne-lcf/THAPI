@@ -1,3 +1,5 @@
+#include "tracer_init_utils.h"
+
 void CL_CALLBACK event_notify(cl_event event, cl_int event_command_exec_status, void *user_data) {
   (void)user_data;
   if (tracepoint_enabled(lttng_ust_opencl_profiling, event_profiling_results)) {
@@ -1298,32 +1300,14 @@ static inline uint64_t get_timestamp_ns() {
   return ((uint64_t)ts.tv_sec) * 1000000000 + ((uint64_t)ts.tv_nsec);
 }
 
-static pthread_once_t _init = PTHREAD_ONCE_INIT;
-static __thread volatile int in_init = 0;
-static volatile cl_uint _initialized = 0;
-
 static void _load_tracer(void) {
   char *s = NULL;
   void *handle = NULL;
   int verbose = 0;
 
-  s = getenv("LTTNG_UST_OPENCL_LIBOPENCL");
-  if (s)
-    handle = dlopen(s, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  else
-    handle = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
-  if (handle) {
-    void *ptr = dlsym(handle, "clGetPlatformIDs");
-    if (ptr == (void *)&clGetPlatformIDs) { // opening oneself
-      dlclose(handle);
-      handle = NULL;
-    }
-  }
-
-  if (!handle) {
-    printf("Failure: could not load OpenCL library!\n");
-    exit(1);
-  }
+  handle = thapi_dlopen_real("LTTNG_UST_OPENCL_LIBOPENCL", "libOpenCL.so",
+                             RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND, "clGetPlatformIDs",
+                             (void *)&clGetPlatformIDs, "OpenCL");
 
   s = getenv("LTTNG_UST_OPENCL_HOST_PROFILE");
   if (s)
@@ -1345,16 +1329,4 @@ static void _load_tracer(void) {
   find_opencl_symbols(handle, verbose);
 }
 
-static inline void _init_tracer(void) {
-  if (__builtin_expect(_initialized, 1))
-    return;
-  /* Avoid reentrancy */
-  if (!in_init) {
-    in_init = 1;
-    __sync_synchronize();
-    pthread_once(&_init, _load_tracer);
-    __sync_synchronize();
-    in_init = 0;
-  }
-  _initialized = 1;
-}
+THAPI_INIT_ONCE(_init_tracer, _load_tracer)

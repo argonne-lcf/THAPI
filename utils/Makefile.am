@@ -9,6 +9,7 @@ noinst_HEADERS = \
 	include/uthash.h \
 	include/utlist.h \
 	include/function_pointer_utils.h \
+	include/tracer_init_utils.h \
 	include/json.hpp \
 	include/magic_enum.hpp \
 	include/daemon_proto.hpp \
