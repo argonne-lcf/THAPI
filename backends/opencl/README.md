@@ -9,10 +9,8 @@ the loader only forwards calls, while the extension signatures are those the imp
 Use the headers oneAPI ships, which are the ones applications compile against.
 
 The revision an implementation reports can still differ from the one the headers declare, and differ
-between devices: the GPU reports `cl_khr_external_memory` 0.9.1, the headers declare 1.0.1. What matters
-is the signature of each function, not the revision number: compare the prototypes in both header versions
-(identical for `cl_khr_external_memory`; not for `cl_khr_command_buffer`, see "Functions of experimental
-extensions").
+between devices. What matters is the signature of each function, not the revision number: compare the
+prototypes in both header versions.
 
 Current (Aurora stack `26.181.0`, oneAPI `2026.1`, `intel-opencl-25.18`):
 
@@ -27,30 +25,21 @@ Current (Aurora stack `26.181.0`, oneAPI `2026.1`, `intel-opencl-25.18`):
 ```bash
 $ module load oneapi
 $ clinfo | grep "ICD loader Version"                                     # loader
-  ICD loader Version                              3.0.6
-$ readlink /opt/aurora/26.181.0/support/libraries/khronos/default        # Khronos SDK (loader + headers)
-v2023.12.14
+$ readlink /opt/aurora/<stack>/support/libraries/khronos/default         # Khronos SDK (loader + headers)
 $ O=$(dirname $(which icx))/../include/CL                                # oneAPI headers
 $ utils_spec_update/extension_versions.sh $O    # extensions with host functions: runtime vs headers revision
-cl_intel_unified_shared_memory          runtime  1.1.0  headers  0.0.0
-cl_khr_command_buffer                   runtime  0.9.7  headers  0.9.7
-cl_khr_command_buffer_mutable_dispatch  runtime  0.9.3  headers  0.9.3
-cl_khr_icd                              runtime  1.0.0  headers  2.0.0
-cl_khr_il_program                       runtime  1.0.0  headers  1.0.0
-cl_khr_suggested_local_work_size        runtime  1.0.0  headers  1.0.0
 ```
 
 `extension_versions.sh` lists only the extensions that add host functions (per `cl.xml`) and that a platform or
 device on the node reports. A different revision matters only for functions THAPI traces, and then the
-prototypes decide (see above). Here: the `cl_khr_icd` functions are the loader's, not traced, and the headers
-declare Intel's own extensions `0.0.0`.
+prototypes decide (see above). Functions only the loader calls (`cl_khr_icd`) are not traced, and the headers
+declare vendor extensions `0.0.0` (unversioned).
 
 Run it on every system you care about, for example a GPU compute node (`ssh` to one of your job's nodes):
-each driver reports its own extensions, per device, so different hardware supports different ones. The GPU
-has no `cl_khr_command_buffer`, and reports `cl_khr_external_memory` 0.9.1. The loader cannot tell: it only
-reports its own name and version, exports no extension function, and forwards
+each driver reports its own extensions, per device, so different hardware supports different ones. The loader
+cannot tell: it only reports its own name and version, exports no extension function, and forwards
 `clGetExtensionFunctionAddress(ForPlatform)` to the drivers it loads (`/etc/OpenCL/vendors/*.icd` or
-`OCL_ICD_FILENAMES`; on Sunspot `libigdrcl.so` for the GPU and `libintelocl.so` for the CPU).
+`OCL_ICD_FILENAMES`).
 
 Then find the OpenCL-Headers commit the oneAPI headers come from:
 
@@ -61,7 +50,7 @@ for c in $(git tag) $(git log --format=%h --since=<a year before> main -- CL); d
 done | sort -n | head -3        # 0 = exact match
 ```
 
-The loader (here `v2023.12.14`) can be older than the headers: check that it exports every core function
+The loader can be older than the headers: check that it exports every core function
 the new `cl.h` declares (`nm -D --defined-only libOpenCL.so.1`). It exports no extension function at all;
 those are reached through `clGetExtensionFunctionAddress(ForPlatform)`.
 
@@ -85,15 +74,11 @@ Upstream deprecates a header by turning it into a stub with a `#pragma message` 
 when lttng re-includes the tracepoint header. Their content is usually reachable from `opencl.h`.
 
 ```bash
-$ grep -l 'pragma message' include/CL/*.h
-include/CL/cl_dx9_media_sharing_intel.h
-include/CL/cl_ext_intel.h
-include/CL/cl_gl_ext.h
-include/CL/cl_version.h
+grep -l 'pragma message' include/CL/*.h
 ```
 
 (`cl_version.h` is fine: its `#pragma message` only fires when `CL_TARGET_OPENCL_VERSION` is missing or
-invalid, and the three files above define it.)
+invalid, and the build defines it.)
 
 ## 2/ `cl.xml`
 
@@ -119,9 +104,7 @@ done
   diff <(fns /tmp/gen/*.h) <(cd ../CL && fns $(ls /tmp/gen))       # nothing
   ```
 
-  An exact match may not exist. For `6eabe90`, no OpenCL-Docs `main` commit of `xml/cl.xml` from 2024-11-12
-  to 2026-11-10 (46 tried) reproduces the headers; `5efafb0` leaves 25 lines (two extensions without functions:
-  `cl_khr_external_semaphore_dx_fence` and the `cl_khr_kernel_clock` version).
+  An exact match may not exist: the closest commit is fine as long as the remaining diff declares no function.
 - Copy it unmodified into `cl.xml`, then rebase `cl.xml.patch`:
 
   ```bash
@@ -130,39 +113,34 @@ done
   ```
 
   Then remove from `cl.xml.patch` every addition that upstream now has, or the patched file defines it twice.
-  Some of these hunks are rejected, others still apply cleanly and only show up as duplicates. For `5efafb0`:
-  the `cl_icdl_info` typedef was rejected, while the `cl_icdl_info` enum group and the
-  `clGetICDLoaderInfoOCLICD` command applied, each giving a second copy. List what the patch defines twice:
+  Some of these hunks are rejected, others still apply cleanly and only show up as duplicates. List what the
+  patched file defines twice:
 
   ```bash
   utils_spec_update/cl_xml_duplicates.sh /tmp/cl.xml.patched      # nothing
   ```
 
-  (Grepping `cl.xml` by hand, mind the XML comments: it keeps some retired values in `<!-- -->`, such as
-  `CL_DEVICE_PARENT_DEVICE_EXT` `0x4030`, defined once as `0x4054`.)
+  (Grepping `cl.xml` by hand, mind the XML comments: it keeps some retired values in `<!-- -->`.)
 
   The `<require comment=...>` rewordings matter: the generator reads them (see below).
 
 ### What `cl.xml.patch` changes
 
-Only the first row is about entry points; the rest adapts the registry to THAPI's generators, mostly
+Only the first kind is about entry points; the others adapt the registry to THAPI's generators, mostly
 `gen_opencl_model.rb` and the Ruby pretty printer that reads `opencl_model.yaml` (`babeltrace_opencl_lib.rb`).
-"Without it" was checked for `5efafb0` by reverting each kind of hunk and regenerating the files.
 
 | Hunk | Why | Without it |
 |---|---|---|
-| 10 Intel `<command>`s (`clGetExecutionInfoINTEL`, ...) and the `cl_execution_info_intel` typedef | Intel entry points that neither the headers nor upstream `cl.xml` declare. The same list as `opencl_missing_apis.h` (`check_missing_apis.sh` checks both agree). | not traced |
-| A type name put in a `<require comment>` (`cl_device_unified_shared_memory_capabilities_intel - bitfield`, `cl_command_type for events created with clEnqueueAcquireEGLObjectsKHR`, `Error codes for clCreateFromEGLImageKHR`) | `gen_opencl_model.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names crashes the generator (`reduce(:+)` on `nil`); otherwise the values are missing from `opencl_model.yaml` |
-| `cl_affinity_domain_ext` typedef, and the affinity-domain comment renamed to it | `supported_enums.yaml` lists that type; upstream files those values under `cl_device_partition_property_ext`. | the generator crashes |
+| Intel `<command>`s (and their types) | Intel entry points that neither the headers nor upstream `cl.xml` declare. The same list as `opencl_missing_apis.h` (`check_missing_apis.sh` checks both agree). | not traced |
+| A type name put in a `<require comment>` | `gen_opencl_model.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names crashes the generator (`reduce(:+)` on `nil`); otherwise its values are missing from `opencl_model.yaml` |
+| A typedef for a type `supported_enums.yaml` lists but upstream does not define (`cl_affinity_domain_ext`) | same | the generator crashes |
 | ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `opencl_model.yaml`: one name printed instead of OR'ed flags |
-| `MiscNumbers`: C casts replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
-| 8 `_KHR` aliases of core 3.0 enums removed (`CL_PLATFORM_NUMERIC_VERSION_KHR`, ...) | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | `CL_PLATFORM_NUMERIC_VERSION_KHR` printed instead of `CL_PLATFORM_NUMERIC_VERSION` |
+| C casts in enum values replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
+| `_KHR` aliases of core enums removed | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | the `_KHR` name printed instead of the core one |
 
-Hunks that changed no generated file were dropped (the `cl_image_desc` union written as one `cl_mem buffer`
-member, a `cl_program_info` comment upstream already matches, a blank line).
-Apart from the crashes, only the first row changes the traced API: for the others, `btx_cl_model.yaml`,
-`tracer_opencl.c` and `opencl_tracepoints.tp` stay the same, and only `opencl_model.yaml` changes. The
-removed `_KHR` names still appear there, with no value, because `cl_khr_extended_versioning` requires them.
+Keep only hunks that change a generated file: after rebasing, revert each kind of hunk and regenerate; if
+nothing changes, drop it. Apart from the crashes, only the first kind changes the traced API (`tracer_opencl.c`,
+`opencl_tracepoints.tp`, `btx_cl_model.yaml`); the others only change `opencl_model.yaml`.
 
 ## 3/ Build and fix
 
@@ -204,11 +182,9 @@ Run `make check` in `backends/opencl`.
 ## `Missing symbol clFooKHR!` printed when an app starts
 
 The tracer looks up the core functions when it loads; KHR/EXT ones through the platform-less
-`clGetExtensionFunctionAddress`, since no loader exports an extension function. That lookup can return
-NULL even where the implementation provides the function: on the Sunspot CPU platform,
-`clCreateCommandBufferKHR` is advertised and `clGetExtensionFunctionAddressForPlatform` returns it, but
-`clGetExtensionFunctionAddress` returns NULL. It also returns NULL when no platform provides the extension
-(the GPU platform has no command buffers and no semaphores). New KHR/EXT functions go into `supported_extensions.yaml`:
+`clGetExtensionFunctionAddress`, since no loader exports an extension function. That lookup returns NULL
+when no platform provides the extension, and can also return NULL where a platform does (where
+`clGetExtensionFunctionAddressForPlatform` returns it). New KHR/EXT functions go into `supported_extensions.yaml`:
 they are then traced per platform, when the application gets them with
 `clGetExtensionFunctionAddress(ForPlatform)`. A function listed there is never looked up at load time.
 
