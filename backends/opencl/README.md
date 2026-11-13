@@ -129,7 +129,29 @@ done
   (Grepping `cl.xml` by hand, mind the XML comments: it keeps some retired values in `<!-- -->`, such as
   `CL_DEVICE_PARENT_DEVICE_EXT` `0x4030`, defined once as `0x4054`.)
 
-  The `<require comment=...>` rewordings matter: the generator reads them (` - bitfield`, the type name first).
+  The `<require comment=...>` rewordings matter: the generator reads them (see below).
+
+### What `cl.xml.patch` changes
+
+Only the first row is about entry points; the rest adapts the registry to THAPI's generators, mostly
+`gen_opencl_model.rb` and the Ruby pretty printer that reads `opencl_model.yaml` (`babeltrace_opencl_lib.rb`).
+"Without it" was checked for `5efafb0` by reverting each kind of hunk and regenerating the files.
+
+| Hunk | Why | Without it |
+|---|---|---|
+| 10 Intel `<command>`s (`clGetExecutionInfoINTEL`, ...) and the `cl_execution_info_intel` typedef | Intel entry points that neither the headers nor upstream `cl.xml` declare. The same list as `opencl_missing_apis.h` (`check_missing_apis.sh` checks both agree). | not traced |
+| A type name put in a `<require comment>` (`cl_device_unified_shared_memory_capabilities_intel - bitfield`, `cl_command_type for events created with clEnqueueAcquireEGLObjectsKHR`, `Error codes for clCreateFromEGLImageKHR`) | `gen_opencl_model.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names crashes the generator (`reduce(:+)` on `nil`); otherwise the values are missing from `opencl_model.yaml` |
+| `cl_affinity_domain_ext` typedef, and the affinity-domain comment renamed to it | `supported_enums.yaml` lists that type; upstream files those values under `cl_device_partition_property_ext`. | the generator crashes |
+| ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `opencl_model.yaml`: one name printed instead of OR'ed flags |
+| `MiscNumbers`: C casts replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
+| 8 `_KHR` aliases of core 3.0 enums removed (`CL_PLATFORM_NUMERIC_VERSION_KHR`, ...) | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | `CL_PLATFORM_NUMERIC_VERSION_KHR` printed instead of `CL_PLATFORM_NUMERIC_VERSION` |
+| `cl_image_desc`: the anonymous `union` member replaced by `cl_mem buffer` | from 2021 | no generated file changes: can be dropped |
+| `cl_program_info OpenCL 2.2 ...` comment | from 2021 | no change: upstream's comment already matches |
+| a blank line | from 2021 | none |
+
+Apart from the crashes, only the first row changes the traced API: for the others, `btx_cl_model.yaml`,
+`tracer_opencl.c` and `opencl_tracepoints.tp` stay the same, and only `opencl_model.yaml` changes. The
+removed `_KHR` names still appear there, with no value, because `cl_khr_extended_versioning` requires them.
 
 ## 3/ Build and fix
 
