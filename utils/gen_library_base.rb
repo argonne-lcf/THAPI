@@ -205,7 +205,7 @@ def to_ffi_name(name)
 end
 
 # FFI stores a flag by bit position and cannot express a multi-bit alias like
-# ALL = READ|WRITE, so composites are printed as a comment instead.
+# ALL = READ|WRITE, so the bitmask class reads composites back itself.
 BitfieldMembers = Struct.new(:flags, :default, :composites)
 
 # A header writes an enum value as a decimal or hex literal, which Integer()
@@ -236,7 +236,7 @@ def classify_bitfield_members(enum, resolver: ->(_val) {})
     elsif counter.zero?
       default = m.name.to_sym
     else
-      composites.push [m.name.to_sym, m.val || counter]
+      composites.push [m.name.to_sym, counter]
     end
   end
   BitfieldMembers.new(flags, default, composites)
@@ -258,7 +258,7 @@ EOF
   #{klass}.default = #{members.default.inspect}
 EOF
   puts <<EOF unless members.composites.empty?
-  # #{members.composites.collect(&pair).join(",\n  # ")}
+  #{klass}.composites = { #{members.composites.collect { |n, v| "#{n}: #{v}" }.join(', ')} }
 EOF
   if check_flags && ffi_name.match('_flag_t')
     puts "  #{klass}s = #{klass}"
@@ -415,6 +415,10 @@ def print_ffi_bitmask_class(namespace)
       @default = default
     end
 
+    def composites=(composites)
+      @composites = composites
+    end
+
     def []
       if @default && query.size == 1
         if query[0] == 0
@@ -435,7 +439,9 @@ def print_ffi_bitmask_class(namespace)
 
     def from_native(val, ctx)
       return [@default] if val == 0 && @default
-      super
+
+      name, bits = @composites&.find { |_, bits| val & bits == bits }
+      name ? [name] + super(val ^ bits, ctx) : super
     end
   end
 EOF

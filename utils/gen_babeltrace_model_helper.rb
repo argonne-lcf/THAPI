@@ -85,6 +85,14 @@ end
 
 # `lttng_enums` maps the name of each LTTng enum the provider declares to its
 # [macro, label, value] rows, for a ctf_enum field.
+# An integer whose type is an enum or a set of flags names the class that
+# reads it back, whether the field holds one or an array of them.
+def name_enum(registry, member, type)
+  return unless registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
+
+  member[:metadata] = { be_class: registry.class_namer.call(type) }
+end
+
 def gen_bt_field_model(registry, lttng_name, type, name, lttng, lttng_enums: {})
   types_by_name = registry.types_by_name
   member = { name: name }
@@ -102,9 +110,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng, lttng_enums: {})
     field[:type] = registry.integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
     field[:field_value_range] = registry.integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
-    if registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
-      member[:metadata] = { be_class: registry.class_namer.call(type) }
-    end
+    name_enum(registry, member, type)
   when 'ctf_enum'
     field[:type] = registry.integer_signed?(type) ? 'enumeration_signed' : 'enumeration_unsigned'
     field[:mappings] = lttng_enums.fetch(lttng.enum_name).map do |_macro, label, value|
@@ -116,6 +122,7 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng, lttng_enums: {})
     field[:type] = 'array_dynamic'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
     field[:element_field_class][:cast_type] = type.sub(/ ?\*\z/, '')
+    name_enum(registry, member, field[:element_field_class][:cast_type])
     field[:length_field_location] = payload_length_field_location(name)
   when 'ctf_array', 'ctf_array_hex'
     field[:type] = 'array_static'

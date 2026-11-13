@@ -103,29 +103,44 @@ BTX_OPENCL_GENERATED = \
 	btx_filter_opencl/metababel/btx_downstream.c \
 	btx_filter_opencl/btx_main.c
 
-opencl_model.yaml: $(srcdir)/gen_opencl_model.rb $(OPENCL_MODEL)
+CL_LIB_GEN = \
+	$(top_srcdir)/utils/gen_babeltrace_model_helper.rb \
+	$(top_srcdir)/utils/gen_babeltrace_lib_helper.rb \
+	$(top_srcdir)/utils/type_registry.rb \
+	$(top_srcdir)/utils/gen_library_base.rb \
+	$(top_srcdir)/utils/gen_probe_base.rb \
+	$(srcdir)/gen_opencl_library_base.rb
+
+btx_cl_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb $(CL_LIB_GEN) $(OPENCL_MODEL)
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
-btx_cl_model.yaml: $(srcdir)/gen_babeltrace_cl_model.rb $(srcdir)/gen_opencl_library_base.rb $(OPENCL_MODEL)
+cl_library.rb: $(srcdir)/gen_cl_library.rb $(CL_LIB_GEN) $(OPENCL_MODEL)
+	SRC_DIR=$(srcdir) $(RUBY) $< > $@
+
+babeltrace_opencl_lib.rb: $(srcdir)/gen_babeltrace_cl_lib.rb $(CL_LIB_GEN) $(OPENCL_MODEL) $(srcdir)/opencl_infos.yaml btx_cl_model.yaml
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(BTX_OPENCL_GENERATED) &: $(top_srcdir)/xprof/btx_interval_model.yaml btx_clmatching_model.yaml btx_cl_model.yaml
 	$(METABABEL) -u btx_cl_model.yaml -d $(top_srcdir)/xprof/btx_interval_model.yaml -t FILTER -o btx_filter_opencl -p clinterval -c interval --matching $(srcdir)/btx_clmatching_model.yaml -i cl.h.include
 
 data_DATA = \
-	opencl_model.yaml \
-	babeltrace_opencl_lib.rb
+	cl_library.rb \
+	babeltrace_opencl_lib.rb \
+	babeltrace_opencl_values.rb
 
 CLEANFILES += \
-	opencl_model.yaml \
+	cl_library.rb \
+	babeltrace_opencl_lib.rb \
 	btx_cl_model.yaml \
 	$(BTX_OPENCL_GENERATED)
 
 EXTRA_DIST += \
 	$(TRACEPOINT_GEN) \
 	$(ML_FILES) \
-	gen_opencl_model.rb \
-	babeltrace_opencl_lib.rb \
+	gen_opencl_library_base.rb \
+	gen_cl_library.rb \
+	gen_babeltrace_cl_lib.rb \
+	babeltrace_opencl_values.rb \
 	gen_babeltrace_cl_model.rb \
 	$(top_srcdir)/xprof/btx_interval_model.yaml \
 	btx_clmatching_model.yaml
@@ -181,9 +196,6 @@ BUILT_SOURCES += \
 	$(OPENCL_STATIC_PROBES_INCL)
 
 EXTRA_DIST += opencl_infos.yaml
-
-data_DATA += \
-	opencl_infos.yaml
 
 bin_SCRIPTS = \
 	tracer_opencl.sh \
