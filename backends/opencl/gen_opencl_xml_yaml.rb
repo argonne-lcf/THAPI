@@ -54,8 +54,12 @@ experimental_functions = required[experimental] - required[final] - required[doc
 not_core = ICD_AND_LAYER_FUNCTIONS + SUPPORTED_EXTENSIONS + experimental_functions
 core = commands.keys.reject { |n| n.match?(VENDOR_EXT) || n.match?(WINDOWS) || not_core.include?(n) }
 extension = commands.keys & SUPPORTED_EXTENSIONS
+unknown = SUPPORTED_EXTENSIONS - commands.keys
+raise "supported_extensions.yaml names functions cl.xml does not: #{unknown.join(', ')}" unless unknown.empty?
 
-# The base types a typedef chain ends in, and the handles (opaque objects).
+# The base types a typedef chain ends in, and the handles (opaque objects), in
+# the order opencl_model.yaml lists them. Which types are handles is checked
+# against the registry below.
 CL_INT_SCALARS = ['unsigned int', 'int', 'uintptr_t', 'intptr_t', 'size_t', 'cl_int', 'cl_uint', 'cl_long', 'cl_ulong',
                   'cl_short', 'cl_ushort', 'cl_char', 'cl_uchar'].freeze
 CL_FLOAT_SCALARS = %w[cl_half cl_float cl_double].freeze
@@ -93,6 +97,12 @@ groups.each do |e|
   (matching.any? { |r| r['comment'].match(/ - bitfield/) } ? bitfields : enums)[e['name']] = group
 end
 
+# Whether the registry declares `node` (a <param> or a typedef <type>) as a
+# pointer: a `*` before its <name>.
+def pointer_before_name?(node)
+  node.children.take_while { |c| c.name != 'name' }.any? { |c| c.text.include?('*') }
+end
+
 # The registry's text of a node's children, one space between them, with the
 # <name> child spelled by the block (or dropped when it returns nil).
 def spelled(node)
@@ -109,7 +119,7 @@ def param_declaration(param)
     'decl' => decl,
     'type' => spelled(param) { nil },
     'registry_type' => type,
-    'pointer' => param.children.take_while { |c| c.name != 'name' }.any? { |c| c.text.include?('*') },
+    'pointer' => pointer_before_name?(param),
     'callback' => param.text.include?('CL_CALLBACK'),
   }
 end
@@ -132,13 +142,23 @@ end
 # The headers, not the registry, give the shared generators their signatures
 # (the registry only renames the parameters, see opencl_model.rb), so every
 # traced function needs a header declaration with as many parameters.
-api = YAML.load_file(api_path)['functions'].to_h { |f| [f['name'], (f['params'] || []).map { |p| p['name'] }] }
+api_yaml = YAML.load_file(api_path)
+api = api_yaml['functions'].to_h { |f| [f['name'], (f['params'] || []).map { |p| p['name'] }] }
 declarations.each do |n, d|
   raise "#{n} is traced but no header declares it" unless api.key?(n)
   next if api[n].size == d['params'].size
 
   raise "#{n}: parameters #{d['params'].map { |p| p['name'] }} in cl.xml but #{api[n]} in the headers"
 end
+
+# The handles are the registry's pointer typedefs (`struct _cl_foo *`,
+# `void *`) that the headers declare.
+header_types = api_yaml['typedefs'].map { |t| t['name'] }
+handles = doc.xpath('//types/type').filter_map do |t|
+  name = t.at_xpath('name')&.text
+  name if t['category'] == 'define' && header_types.include?(name) && pointer_before_name?(t)
+end
+raise "CL_OBJECTS must list exactly the handles: #{handles.sort.join(' ')}" if handles.sort != CL_OBJECTS.sort
 
 puts({ 'functions' => { 'core' => core, 'extension' => extension },
        'enums' => enums, 'bitfields' => bitfields, 'type_map' => type_map,

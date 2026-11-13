@@ -40,9 +40,6 @@ puts <<~EOF
   #define tracepoint_safe(provider, name, ...) \
           tracepoint(provider, name, __VA_ARGS__)
 EOF
-# The libraries export the core API but not its KHR/EXT extensions: those are
-# looked up with clGetExtensionFunctionAddress.
-LOOKED_UP_COMMANDS = CORE_EXTENSION_COMMANDS.select { |c| c.name.match(/KHR$|EXT$/) }
 
 # The libffi trampoline an extension function is wrapped in.
 def decl_ffi_wrapper(c)

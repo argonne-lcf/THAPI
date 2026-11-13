@@ -216,9 +216,9 @@ Both are in `gen_opencl_xml_yaml.rb`.
 
 ## A new opaque handle type
 
-`typedef struct _cl_foo_khr * cl_foo_khr`: add it to `CL_OBJECTS` in `gen_opencl_xml_yaml.rb`, so that
-`opencl_model.yaml` lists it among the `objects` the pretty printer reads as handles. (The tracer finds
-the handles in the headers by itself.)
+`typedef struct _cl_foo_khr * cl_foo_khr`: the build stops with `CL_OBJECTS must list exactly the handles`.
+Add it to `CL_OBJECTS` in `gen_opencl_xml_yaml.rb`, so that `opencl_model.yaml` lists it among the
+`objects` the pretty printer reads as handles. (The tracer finds the handles in the headers by itself.)
 
 ## A variable named after its type, in `btx_upstream.c`
 

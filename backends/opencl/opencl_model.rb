@@ -94,22 +94,26 @@ def with_registry_names(func)
   YAMLCAst::Declaration.new(name: func.name, type: type, storage: func.storage)
 end
 
+# Whether a function takes a pointer named `name`.
+def pointer_parameter?(func, name)
+  func.type.params.to_a.any? { |p| p.name == name && p.type.is_a?(YAMLCAst::Pointer) }
+end
+
 # A function's meta-parameters: the ones OpenCL's naming conventions imply, in
 # the order the tracepoints list them, then the hand-written ones, then the key
 # a clGet*Info call queries. errcode_ret and param_value_size_ret need no NULL
 # check: the prologues below point them at a local when the caller passes NULL.
 def opencl_meta_parameters(func, hand)
   params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
-  pointer = ->(name) { params[name].is_a?(YAMLCAst::Pointer) }
   rows = []
   rows << [InArray, %w[event_wait_list num_events_in_wait_list]] if params.key?('event_wait_list')
-  rows << [OutScalar, ['errcode_ret'], { nocheck: true }] if pointer['errcode_ret']
-  rows << [OutScalar, ['param_value_size_ret'], { nocheck: true }] if pointer['param_value_size_ret']
+  rows << [OutScalar, ['errcode_ret'], { nocheck: true }] if pointer_parameter?(func, 'errcode_ret')
+  rows << [OutScalar, ['param_value_size_ret'], { nocheck: true }] if pointer_parameter?(func, 'param_value_size_ret')
   # clSetKernelExecInfo's param_value is an input.
   if params.key?('param_value') && func.name != 'clSetKernelExecInfo'
     rows << [OutArray, %w[param_value param_value_size]]
   end
-  rows << [OutScalar, ['event']] if pointer['event']
+  rows << [OutScalar, ['event']] if pointer_parameter?(func, 'event')
   rows += hand[func.name]
   if func.name.match?(/clGet\w*?Info/) && params.key?('param_name')
     rows << [OutLTTng, ['param_name', 'ctf_integer_hex', params['param_name'].to_s, '_param_name', 'param_name']]
@@ -132,13 +136,11 @@ EXTENSION_COMMANDS = OPENCL_XML['functions']['extension'].map { |n| COMMANDS[n] 
 # keeps the header's own spelling instead of the upper-snake macro.
 OPENCL_POINTER_NAMES = COMMANDS.pointer_names { |c, name| name if EXTENSION_COMMANDS.include?(c) }
 
-# Core-API functions named like extensions are looked up with
-# clGetExtensionFunctionAddress, and handed back by it.
+# Core-API functions named like extensions: clGetExtensionFunctionAddress hands
+# them back too. The libraries export the GL ones, not the KHR/EXT ones: the
+# tracer looks those up with clGetExtensionFunctionAddress.
 CORE_EXTENSION_COMMANDS = CORE_COMMANDS.select { |c| c.name.match(/KHR$|EXT$|GL/) }
-
-def pointer_parameter?(c, name)
-  c[name]&.type.is_a?(YAMLCAst::Pointer)
-end
+LOOKED_UP_COMMANDS = CORE_EXTENSION_COMMANDS.select { |c| c.name.match(/KHR$|EXT$/) }
 
 def opencl_returns_event?(c)
   c.type.to_s == 'cl_event'
@@ -146,10 +148,10 @@ end
 
 # A call that creates an event, returned or through its `event` argument.
 def opencl_event?(c)
-  opencl_returns_event?(c) || pointer_parameter?(c, 'event')
+  opencl_returns_event?(c) || pointer_parameter?(c.function, 'event')
 end
 
-COMMANDS.select { |c| pointer_parameter?(c, 'errcode_ret') }.each do |c|
+COMMANDS.select { |c| pointer_parameter?(c.function, 'errcode_ret') }.each do |c|
   c.add_prologue <<EOF
   cl_int _errcode_ret_force;
   if (!errcode_ret)
@@ -157,7 +159,7 @@ COMMANDS.select { |c| pointer_parameter?(c, 'errcode_ret') }.each do |c|
 EOF
 end
 
-COMMANDS.select { |c| pointer_parameter?(c, 'param_value_size_ret') }.each do |c|
+COMMANDS.select { |c| pointer_parameter?(c.function, 'param_value_size_ret') }.each do |c|
   c.add_prologue <<EOF
   size_t _new_param_value_size;
   if (!param_value_size_ret)
