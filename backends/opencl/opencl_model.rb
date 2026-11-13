@@ -23,8 +23,11 @@ SUPPORTED_EXTENSIONS = yaml_load_file_cached(File.join(SRC_DIR, 'supported_exten
 
 # Not looked up when the tracer loads. The clIcd*KHR are called by the loader on
 # the drivers (cl_khr_icd), and the layer functions are the loader's.
-ABSENT_FUNCTIONS = /\A(?:#{(%w[clIcdGetPlatformIDsKHR clIcdGetFunctionAddressForPlatformKHR clIcdSetPlatformDispatchDataKHR
-                                    clGetLayerInfo clInitLayer] + SUPPORTED_EXTENSIONS).join('|')})\z/
+ICD_AND_LAYER_FUNCTIONS = %w[
+  clIcdGetPlatformIDsKHR clIcdGetFunctionAddressForPlatformKHR clIcdSetPlatformDispatchDataKHR
+  clGetLayerInfo clInitLayer
+].freeze
+ABSENT_FUNCTIONS = /\A(?:#{(ICD_AND_LAYER_FUNCTIONS + SUPPORTED_EXTENSIONS).join('|')})\z/
 
 EXTENSION_FUNCTIONS = /KHR$|EXT$|GL/
 
@@ -373,7 +376,8 @@ class Prototype < CLXML
     when *CL_OBJECTS
       return ['ctf_integer_hex', 'uintptr_t', @return_type.gsub(/^cl_/, ''), '(uintptr_t)_retval']
     when *CL_EXT_OBJECTS
-      return ['ctf_integer_hex', 'uintptr_t', @return_type.sub(/^(?:CL|cl_)/, '').sub(/(?:KHR|_khr)$/, ''), '(uintptr_t)_retval']
+      name = @return_type.sub(/^(?:CL|cl_)/, '').sub(/(?:KHR|_khr)$/, '')
+      return ['ctf_integer_hex', 'uintptr_t', name, '(uintptr_t)_retval']
     when 'void*'
       return ['ctf_integer_hex', 'uintptr_t', 'ret_ptr', '(uintptr_t)_retval']
     end
