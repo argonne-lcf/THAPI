@@ -539,9 +539,9 @@ EOF
 
   COMMANDS.add_epilogue ext_method, ffi_closure_epilogue(
     EXTENSION_COMMANDS, condition: '_retval != NULL', provider: :lttng_ust_opencl,
-                        name_var: 'func_name', prefix: 'opencl', real: '_retval', slot: '&_retval', found: <<~EOF
+                        name_var: 'func_name', real: '_retval', found: <<~EOF
                           tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
-                          return closure->c_ptr;
+                          return closure;
                         EOF
   )
 end

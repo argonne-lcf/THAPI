@@ -191,44 +191,21 @@ end
 
 # The epilogue of an extension-function lookup (ze's
 # zeDriverGetExtensionFunctionAddress, opencl's clGetExtensionFunctionAddress):
-# when it found one of `commands`, wrap the real function in a libffi closure
-# that calls the tracer's `<command>_ffi` wrapper, and hand that back instead.
-# Each driver returns its own function, so there is one closure per real
-# pointer, kept in `<prefix>_closures`.
+# when it found one of `commands`, hand back a libffi closure that calls the
+# tracer's `<command>_ffi` wrapper with the real function
+# (utils/include/function_pointer_utils.h).
 #
-# `real` is the C holding the real pointer, `slot` its address (the hash key),
-# `name_var` the looked-up name, and `found` the C that ends the lookup with
-# the closure's `c_ptr`.
-def ffi_closure_epilogue(commands, condition:, provider:, name_var:, prefix:, real:, slot:, found:)
+# `real` is the C holding the real pointer, `name_var` the looked-up name, and
+# `found` the C that ends the lookup with `closure`, what to hand back.
+def ffi_closure_epilogue(commands, condition:, provider:, name_var:, real:, found:)
   blocks = commands.map do |c|
-    n = c.parameters.size
-    types = c.parameters.each_with_index.map { |a, i| "\n          closure->types[#{i}] = &#{get_ffi_type(a)};" }
+    types = c.parameters.to_a.map { |a| "&#{get_ffi_type(a)}" }
     <<EOF
     if (tracepoint_enabled(#{provider}, #{c.name}_#{START}) && strcmp(#{name_var}, "#{c.name}") == 0) {
-      struct #{prefix}_closure *closure = NULL;
-      pthread_mutex_lock(&#{prefix}_closures_mutex);
-      HASH_FIND_PTR(#{prefix}_closures, #{slot}, closure);
-      pthread_mutex_unlock(&#{prefix}_closures_mutex);
+      static ffi_type *types[] = { #{(types + ['NULL']).join(', ')} };
+      void *closure = thapi_closure_for(#{real}, (thapi_closure_wrapper)#{c.name}_ffi, &#{get_ffi_type(c)}, #{types.size}, types);
       if (closure != NULL) {
         #{found.strip.gsub("\n", "\n        ")}
-      }
-      closure = (struct #{prefix}_closure *)malloc(sizeof(struct #{prefix}_closure) + #{n} * sizeof(ffi_type *));
-      if (closure != NULL) {
-        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct #{prefix}_closure));
-        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-        if (closure->closure != NULL) {
-          closure->ptr = #{real};#{types.join}
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{n}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
-            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, #{real}, closure->c_ptr) == FFI_OK) {
-              pthread_mutex_lock(&#{prefix}_closures_mutex);
-              HASH_ADD_PTR(#{prefix}_closures, ptr, closure);
-              pthread_mutex_unlock(&#{prefix}_closures_mutex);
-              #{found.strip.gsub("\n", "\n              ")}
-            }
-          }
-          ffi_closure_free(closure->closure);
-        }
-        free(closure);
       }
     }
 EOF

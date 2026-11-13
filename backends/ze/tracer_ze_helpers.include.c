@@ -78,26 +78,6 @@ static int _do_paranoid_memory_location = 0;
 static int _do_ddi_table_forward = 0;
 
 /**
- *      _
- *     /  |  _   _     ._ _
- *     \_ | (_) _> |_| | (/_
- *
- */
-
-pthread_mutex_t ze_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct ze_closure {
-  void *ptr;
-  void *c_ptr;
-  UT_hash_handle hh;
-  ffi_cif cif;
-  ffi_closure *closure;
-  ffi_type **types;
-};
-
-struct ze_closure *ze_closures = NULL;
-
-/**
  *     ___
  *      | ._ _.  _ o ._   _
  *      | | (_| (_ | | | (_|

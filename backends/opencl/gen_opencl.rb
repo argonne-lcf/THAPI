@@ -21,6 +21,7 @@ puts <<~EOF
   #include <ffi.h>
   #include "uthash.h"
   #include "utlist.h"
+  #include "function_pointer_utils.h"
 
   #include "opencl_tracepoints.h"
   #include "opencl_profiling.h"

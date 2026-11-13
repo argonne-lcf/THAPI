@@ -17,6 +17,7 @@ puts <<~EOF
     #include <ffi.h>
     #include "uthash.h"
     #include "utlist.h"
+    #include "function_pointer_utils.h"
 
     #include "ze_tracepoints.h"
     #include "zet_tracepoints.h"

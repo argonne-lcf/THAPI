@@ -1,17 +1,3 @@
-// pthread_mutex_t cuda_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
-//
-// struct cuda_closure {
-//   void *ptr;
-//   void *c_ptr;
-//   UT_hash_handle hh;
-//   ffi_cif cif;
-//   ffi_closure *closure;
-//   ffi_type **types;
-// };
-//
-// struct cuda_closure * cuda_closures = NULL;
-//
-
 #ifdef THAPI_USE_DESTRUCTORS
 #define THAPI_ATTRIBUTE_DESTRUCTOR __attribute__((destructor))
 #else
@@ -374,7 +360,7 @@ static void _context_event_cleanup(CUcontext hContext) {
   struct _cuda_event_s *evs = NULL;
 
   pthread_mutex_lock(&_cuda_events_mutex);
-  DL_FOREACH_SAFE(_events, ev, tmp) {
+  DL_FOREACH_SAFE (_events, ev, tmp) {
     if (ev->context == hContext) {
       DL_DELETE(_events, ev);
       DL_APPEND(evs, ev);
@@ -382,7 +368,7 @@ static void _context_event_cleanup(CUcontext hContext) {
   }
   pthread_mutex_unlock(&_cuda_events_mutex);
 
-  DL_FOREACH_SAFE(evs, ev, tmp) {
+  DL_FOREACH_SAFE (evs, ev, tmp) {
     DL_DELETE(evs, ev);
     _profile_event_results(ev);
     CU_EVENT_DESTROY_V2_PTR(ev->start);
@@ -393,7 +379,7 @@ static void _context_event_cleanup(CUcontext hContext) {
 
 static void _event_cleanup() {
   struct _cuda_event_s *ev, *tmp;
-  DL_FOREACH_SAFE(_events, ev, tmp) {
+  DL_FOREACH_SAFE (_events, ev, tmp) {
     DL_DELETE(_events, ev);
     _profile_event_results(ev);
     CU_EVENT_DESTROY_V2_PTR(ev->start);

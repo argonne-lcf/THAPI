@@ -132,19 +132,6 @@ static int64_t dump_end = INT64_MAX;
 #define OBJ_BUILD_TEMPLATE "/tmp/objbuildXXXXXX"
 #define IL_SOURCE_TEMPLATE "/tmp/ilsourceXXXXXX"
 
-pthread_mutex_t opencl_closures_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct opencl_closure {
-  void *ptr;
-  void *c_ptr;
-  UT_hash_handle hh;
-  ffi_cif cif;
-  ffi_closure *closure;
-  ffi_type **types;
-};
-
-struct opencl_closure *opencl_closures = NULL;
-
 struct buffer_obj_data {
   size_t size;
 };
@@ -612,7 +599,7 @@ static void dump_opencl_object(cl_command_queue command_queue,
   } else {
     // check if it is a pointer into an SVM region
     pthread_mutex_lock(&opencl_obj_mutex);
-    DL_FOREACH(svmptr_objs, svm_data) {
+    DL_FOREACH (svmptr_objs, svm_data) {
       if (*(uintptr_t *)(arg->arg_value) > (uintptr_t)(svm_data->ptr) &&
           *(uintptr_t *)(arg->arg_value) < (uintptr_t)(svm_data->ptr) + svm_data->size) {
         HASH_FIND_PTR(opencl_objs, (void **)(arg->arg_value), oo_h);
@@ -948,7 +935,7 @@ static void dump_program_objects(cl_program program) {
   size_t *binary_sizes;
   size_t total_size = 0;
   void **binaries;
-  char (*paths)[sizeof(OBJ_BUILD_TEMPLATE)];
+  char(*paths)[sizeof(OBJ_BUILD_TEMPLATE)];
   int *fds;
   cl_uint i;
 
@@ -967,7 +954,7 @@ static void dump_program_objects(cl_program program) {
   binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices * sizeof(OBJ_BUILD_TEMPLATE), 1);
+  paths = (char(*)[sizeof(OBJ_BUILD_TEMPLATE)])calloc(num_devices * sizeof(OBJ_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
   fds = (int *)calloc(num_devices * sizeof(int), 1);
@@ -1040,7 +1027,7 @@ static void dump_program_binaries(cl_program program) {
   size_t *binary_sizes;
   size_t total_size = 0;
   void **binaries;
-  char (*paths)[sizeof(BIN_BUILD_TEMPLATE)];
+  char(*paths)[sizeof(BIN_BUILD_TEMPLATE)];
   int *fds;
   cl_uint i;
 
@@ -1059,7 +1046,7 @@ static void dump_program_binaries(cl_program program) {
   binaries = (void **)calloc(num_devices * sizeof(void *), 1);
   if (!binaries)
     goto with_binary_sizes;
-  paths = (char (*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices * sizeof(BIN_BUILD_TEMPLATE), 1);
+  paths = (char(*)[sizeof(BIN_BUILD_TEMPLATE)])calloc(num_devices * sizeof(BIN_BUILD_TEMPLATE), 1);
   if (!paths)
     goto with_binaries;
   fds = (int *)calloc(num_devices * sizeof(int), 1);
