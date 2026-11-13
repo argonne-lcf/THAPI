@@ -67,7 +67,8 @@ git status include/CL                            # new / removed files upstream
 ```
 
 - Do not edit them. Anything they lack goes into `opencl_missing_apis.h`.
-- `.gitignore` ignores `*.h` but re-includes `include/CL/*.h`, so new upstream headers show up in `git status`.
+- `.gitignore` ignores every `*.h` (generated) except `include/CL/*.h` (the `!include/CL/*.h` line), so a
+  header that is new upstream shows up in `git status` instead of being silently left out.
 
 Upstream deprecates a header by turning it into a stub with a `#pragma message` and no include guard.
 `cl.h.include`, `gen_opencl.rb` and `gen_opencl_probes.rb` must not include those: gcc rejects the pragma
