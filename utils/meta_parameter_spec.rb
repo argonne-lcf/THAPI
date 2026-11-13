@@ -13,10 +13,9 @@ require_relative 'yaml_ast'
 # most one of them: listing it twice would silently concatenate both sets of
 # rows, so it raises instead.
 #
-# The row types are resolved with const_get against the top level, so each
-# backend gets its own: the AST backends the classes in utils/meta_parameters,
-# opencl the ones it defines itself. That is what lets this be shared, and why
-# it lives here rather than next to either set.
+# The row types are resolved with const_get against the top level: the classes
+# in utils/meta_parameters, plus any a backend defines for an API-specific
+# layout (opencl's DeviceFissionPropertyList).
 def load_meta_parameters(*filenames)
   spec = Hash.new { [] }
   filenames.each do |filename|

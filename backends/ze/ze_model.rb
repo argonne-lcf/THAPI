@@ -451,18 +451,6 @@ EOF
 EOF
 end
 
-def get_ffi_type(a)
-  if a.type.is_a?(YAMLCAst::Void)
-    'ffi_type_void'
-  elsif a.type.is_a?(YAMLCAst::Pointer)
-    'ffi_type_pointer'
-  elsif FFI_TYPE_MAP["#{a.type}"]
-    FFI_TYPE_MAP["#{a.type}"]
-  else
-    raise "Unsupported type: #{a.type}"
-  end
-end
-
 str = COMMANDS.groups[:lttng_ust_ze].select { |c| c.name.end_with?('Exp') }.map do |c|
   <<EOF
   if (strcmp(name, "#{c.name}") == 0) {
@@ -478,58 +466,14 @@ EOF
 
 COMMANDS.add_prologue 'zeDriverGetExtensionFunctionAddress', str
 
-str = <<EOF
-  if (_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress) {
-EOF
-str << zex_commands.collect { |c|
-  sstr = <<EOF
-    if (tracepoint_enabled(lttng_ust_zex, #{c.name}_#{START}) && strcmp(name, "#{c.name}") == 0) {
-      struct ze_closure *closure = NULL;
-      pthread_mutex_lock(&ze_closures_mutex);
-      HASH_FIND_PTR(ze_closures, ppFunctionAddress, closure);
-      pthread_mutex_unlock(&ze_closures_mutex);
-      if (closure != NULL) {
-        tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
-        *ppFunctionAddress = closure->c_ptr;
-        return _retval;
-      }
-      closure = (struct ze_closure *)malloc(sizeof(struct ze_closure) + #{c.parameters.size} * sizeof(ffi_type *));
-      if (closure != NULL) {
-        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct ze_closure));
-        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-        if (closure->closure != NULL) {
-          closure->ptr = *ppFunctionAddress;
-EOF
-  c.parameters.each_with_index { |a, i|
-    sstr << <<EOF
-          closure->types[#{i}] = &#{get_ffi_type(a)};
-EOF
-  }
-  sstr << <<EOF
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
-            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, *ppFunctionAddress, closure->c_ptr) == FFI_OK) {
-              pthread_mutex_lock(&ze_closures_mutex);
-              HASH_ADD_PTR(ze_closures, ptr, closure);
-              pthread_mutex_unlock(&ze_closures_mutex);
-              tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
-              *ppFunctionAddress = closure->c_ptr;
-              return _retval;
-            }
-          }
-          ffi_closure_free(closure->closure);
-        }
-        free(closure);
-      }
-    }
-EOF
-}.join(<<EOF)
-    else
-EOF
-str << <<EOF
-  }
-EOF
-
-COMMANDS.add_epilogue 'zeDriverGetExtensionFunctionAddress', str
+COMMANDS.add_epilogue 'zeDriverGetExtensionFunctionAddress', ffi_closure_epilogue(
+  zex_commands, condition: '_retval == ZE_RESULT_SUCCESS && *ppFunctionAddress', provider: :lttng_ust_zex,
+                name_var: 'name', prefix: 'ze', real: '*ppFunctionAddress', slot: 'ppFunctionAddress', found: <<~EOF
+                  tracepoint(lttng_ust_ze, zeDriverGetExtensionFunctionAddress_exit, hDriver, name, ppFunctionAddress, _retval);
+                  *ppFunctionAddress = closure->c_ptr;
+                  return _retval;
+                EOF
+)
 
 COMMANDS.add_epilogue 'zeMemOpenIpcHandle', <<EOF
   if (_retval == ZE_RESULT_SUCCESS && pptr) {

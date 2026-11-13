@@ -69,6 +69,8 @@ git status include/CL                            # new / removed files upstream
 - Do not edit them. Anything they lack goes into `opencl_missing_apis.h`.
 - `.gitignore` ignores every `*.h` (generated) except `include/CL/*.h` (the `!include/CL/*.h` line), so a
   header that is new upstream shows up in `git status` instead of being silently left out.
+- `CL_HDR_ROOT` in `Makefile.am` lists them (`opencl_api.yaml`, their h2yaml AST, is rebuilt when one
+  changes): add or remove the headers upstream added or removed.
 
 Upstream deprecates a header by turning it into a stub with a `#pragma message` and no include guard.
 `cl.h.include`, `gen_opencl.rb` and `gen_opencl_probes.rb` must not include those: gcc rejects the pragma
@@ -128,13 +130,14 @@ done
 ### What `cl.xml.patch` changes
 
 Only the first kind is about entry points; the others adapt the registry to THAPI's generators, mostly
-`gen_opencl_model.rb` and the Ruby pretty printer that reads `opencl_model.yaml` (`babeltrace_opencl_lib.rb`).
+`gen_opencl_xml_yaml.rb` (the enum groups of `opencl_model.yaml`) and the Ruby pretty printer that reads
+`opencl_model.yaml` (`babeltrace_opencl_lib.rb`).
 
 | Hunk | Why | Without it |
 |---|---|---|
 | Intel `<command>`s (and their types) | Intel entry points that neither the headers nor upstream `cl.xml` declare. The same list as `opencl_missing_apis.h` (`check_missing_apis.sh` checks both agree). | not traced |
-| A type name put in a `<require comment>` | `gen_opencl_model.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names crashes the generator (`reduce(:+)` on `nil`); otherwise its values are missing from `opencl_model.yaml` |
-| A typedef for a type `supported_enums.yaml` lists but upstream does not define (`cl_affinity_domain_ext`) | same | the generator crashes |
+| A type name put in a `<require comment>` | `gen_opencl_xml_yaml.rb` gives each type of `supported_enums.yaml` the values of the `<require>`s whose comment contains its name, followed by a space or the end. | a type no comment names stops the generator (`no <require comment> of cl.xml names ...`); otherwise its values are missing from `opencl_model.yaml` |
+| A typedef for a type `supported_enums.yaml` lists but upstream does not define (`cl_affinity_domain_ext`) | `opencl_model.yaml`'s `type_map` gives the C type of each typedef | the type is missing from `type_map` |
 | ` - bitfield` added to a comment | marks the type as a bitfield | the type is an enum in `opencl_model.yaml`: one name printed instead of OR'ed flags |
 | C casts in enum values replaced by plain values | the Ruby printer `eval`s each value; a cast does not evaluate | those values are printed without a name |
 | `_KHR` aliases of core enums removed | same value as the core name; the Ruby printer's value-to-name hash keeps the last one | the `_KHR` name printed instead of the core one |
@@ -150,9 +153,17 @@ make -C $BUILD/backends/opencl -j WERROR=-Werror                 # also with cla
 utils_spec_update/check_missing_apis.sh $BUILD/backends/opencl/tracer_opencl.c
 ```
 
-`check_missing_apis.sh` checks `opencl_missing_apis.h`: a traced function that no header declares still
-compiles, even with `-Werror`. No output: nothing to do. `+clFoo`: add it, with its signature from
-`cl.xml.patch`. `-clFoo`: upstream now declares it, remove it.
+The generated code takes its signatures from the headers (through h2yaml) and the rest from `cl.xml`
+(`gen_opencl_xml_yaml.rb`), so the build stops when they disagree:
+
+- `clFoo is traced but no header declares it`: add it to `opencl_missing_apis.h`, with its signature from
+  `cl.xml.patch`.
+- `clFoo: parameters [...] in cl.xml but [...] in the headers`: the two do not describe the same function.
+  Only the parameter count has to match: the tracepoints keep the registry's names (see "A changed spelling"
+  below).
+
+`check_missing_apis.sh` finds the reverse: `-clFoo` means upstream now declares it, remove it from
+`opencl_missing_apis.h` (a repeated prototype compiles, even with `-Werror`). No output: nothing to do.
 
 Then see "Potential problems" below.
 
@@ -194,31 +205,34 @@ they are then traced per platform, when the application gets them with
 `cl.xml` marks them `experimental="true"` (formerly `provisional`), and the headers declare them only with
 `CL_ENABLE_BETA_EXTENSIONS`. Symptom: `unknown type name 'cl_command_buffer_khr'`. Their signatures change
 between revisions (`cl_khr_command_buffer` 0.9.4 to 0.9.5 added a `properties` argument), so we do not trace
-them (`EXPERIMENTAL_FUNCTIONS` in `opencl_model.rb`). Applications still get the implementation's functions.
+them (`experimental_functions` in `gen_opencl_xml_yaml.rb`). Applications still get the implementation's functions.
 
 ## New entry points that are not for applications
 
-- `clIcd*KHR` (`cl_khr_icd`): called by the loader on the drivers. Add them to `ABSENT_FUNCTIONS`.
+- `clIcd*KHR` (`cl_khr_icd`): called by the loader on the drivers. Add them to `ICD_AND_LAYER_FUNCTIONS`.
 - A vendor suffix not in `VENDOR_EXT` (`clSetContentSizeBufferPoCL`): add the suffix.
 
-## `closure->types[0] = &;` (`expected expression`)
+Both are in `gen_opencl_xml_yaml.rb`.
 
-A new opaque handle type (`typedef struct _cl_foo_khr * cl_foo_khr`) has no libffi type. Add it to
-`CL_EXT_OBJECTS`.
+## A new opaque handle type
 
-## `use of undeclared identifier 'ffi_type_...'`
-
-A parameter type maps to a libffi type that does not exist (`int` is `ffi_type_sint`). Fix `FFI_TYPE_MAP`.
+`typedef struct _cl_foo_khr * cl_foo_khr`: the build stops with `CL_OBJECTS must list exactly the handles`.
+Add it to `CL_OBJECTS` in `gen_opencl_xml_yaml.rb`, so that `opencl_model.yaml` lists it among the
+`objects` the pretty printer reads as handles. (The tracer finds the handles in the headers by itself.)
 
 ## A variable named after its type, in `btx_upstream.c`
 
 `cl_semaphore_khr = (cl_semaphore_khr)...`: the event field of a returned handle is named after its type
-(`cl_context` gives `context`). Check `lttng_return_type` strips the new spelling (`cl_semaphore_khr` gives `semaphore`).
+(`cl_context` gives `context`). Check `opencl_result_field` (`opencl_model.rb`) strips the new spelling
+(`cl_semaphore_khr` gives `semaphore`).
 
 ## A changed spelling in `cl.xml`
 
-- No parameter used to be one `void` parameter; it is now none (`clUnloadCompiler`). The generator must
-  still print `(void)`.
+- No parameter used to be one `void` parameter; it is now none (`clUnloadCompiler`). The generated
+  declarations must still say `(void)` (`gen_opencl_xml_yaml.rb`).
+- A header can name a parameter differently from `cl.xml` (`clGetKernelArgInfo`: `arg_indx` in the oneAPI
+  `cl.h`, `arg_index` in `cl.xml`). The tracepoint fields keep the registry's name (`with_registry_names`
+  in `opencl_model.rb`), so a trace does not change with the headers.
 - Look at each `-` line of the generated diff: a fix in the registry (`clCreateFromGLBuffer`'s `errcode_ret`
   became `cl_int *`) is fine, anything else is a bug.
 

@@ -1,4 +1,5 @@
 require_relative 'opencl_model'
+require_relative '../../utils/gen_tracer_base'
 
 puts <<~EOF
   #define CL_TARGET_OPENCL_VERSION 300
@@ -40,22 +41,26 @@ puts <<~EOF
           tracepoint(provider, name, __VA_ARGS__)
 EOF
 
-print_pointer_defines(OPENCL_COMMANDS.groups[:core], OPENCL_POINTER_NAMES,
-                      pointer_name_of: ->(c) { c.prototype.pointer_name })
+# The libffi trampoline an extension function is wrapped in.
+def decl_ffi_wrapper(c)
+  "void #{c.ffi_name}(ffi_cif *cif, #{c.declaration('return_type')} *ffi_ret, void** args, #{c.pointer_type_name} #{c.pointer_name})"
+end
 
-OPENCL_COMMANDS.groups[:core].each do |c|
+print_pointer_defines(CORE_COMMANDS, OPENCL_POINTER_NAMES)
+
+CORE_COMMANDS.each do |c|
   puts <<~EOF
 
-    typedef #{c.decl_pointer(type: true)};
-    static #{c.prototype.pointer_type_name}  #{OPENCL_POINTER_NAMES[c]} = (void *) 0x0;
+    #{c.decl_pointer(c.pointer_type_name)};
+    static #{c.pointer_type_name}  #{OPENCL_POINTER_NAMES[c]} = (void *) 0x0;
   EOF
 end
 
-OPENCL_COMMANDS.groups[:extension].each do |c|
+EXTENSION_COMMANDS.each do |c|
   puts <<~EOF
 
-    typedef #{c.decl_pointer(type: true)};
-    static #{c.decl_ffi_wrapper};
+    #{c.decl_pointer(c.pointer_type_name)};
+    static #{decl_ffi_wrapper(c)};
   EOF
 end
 
@@ -64,25 +69,21 @@ puts <<~EOF
   static void find_opencl_symbols(void * handle, int verbose) {
 EOF
 
-OPENCL_COMMANDS.groups[:core].each do |c|
-  next if c.extension? && c.prototype.name.match(/KHR$|EXT$/)
-
+(CORE_COMMANDS - LOOKED_UP_COMMANDS).each do |c|
   puts <<EOF
 
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)dlsym(handle, "#{c.prototype.name}") ;
+  #{OPENCL_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)dlsym(handle, "#{c.name}") ;
   if (!#{OPENCL_POINTER_NAMES[c]} && verbose)
-    fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
+    fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
 end
 
-OPENCL_COMMANDS.groups[:core].each do |c|
-  next unless c.extension? && c.prototype.name.match(/KHR$|EXT$/)
-
+LOOKED_UP_COMMANDS.each do |c|
   puts <<EOF
 
-  #{OPENCL_POINTER_NAMES[c]} = (#{c.prototype.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[OPENCL_COMMANDS['clGetExtensionFunctionAddress']]}("#{c.prototype.name}");
+  #{OPENCL_POINTER_NAMES[c]} = (#{c.pointer_type_name})(intptr_t)#{OPENCL_POINTER_NAMES[COMMANDS['clGetExtensionFunctionAddress']]}("#{c.name}");
   if (!#{OPENCL_POINTER_NAMES[c]})
-    fprintf(stderr, "Missing symbol #{c.prototype.name}!\\n");
+    fprintf(stderr, "Missing symbol #{c.name}!\\n");
 EOF
 end
 
@@ -93,100 +94,18 @@ EOF
 
 puts File.read(File.join(SRC_DIR, 'tracer_opencl_helpers.include.c'))
 
-common_block = lambda { |c|
-  params = []
-  tp_params = []
-  unless c.void_parameters?
-    params = c.parameters.collect(&:name)
-    tp_params = c.parameters.collect { |p| (p.callback? ? '(void *)(intptr_t)' : '') + p.name }
-  end
-  tracepoint_params = c.tracepoint_parameters.collect(&:name)
-  c.tracepoint_parameters.each do |p|
-    puts "  #{p.type} #{p.name};"
-  end
-  c.tracepoint_parameters.each do |p|
-    puts p.init
-  end
-  puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['start']}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-  c.prologues.each do |p|
-    puts p
-  end
-  if HOST_PROFILE
-    puts <<EOF
-  uint64_t _start_ts = 0;
-  uint64_t _stop_ts = 0;
-  uint64_t _duration = 0;
-  if (do_host_profile)
-    _start_ts = get_timestamp_ns();
-EOF
-  end
-  if c.prototype.has_return_type?
-    puts <<EOF
-  #{c.prototype.return_type} _retval;
-  _retval = #{OPENCL_POINTER_NAMES[c]}(#{params.join(', ')});
-EOF
-  else
-    puts "  #{OPENCL_POINTER_NAMES[c]}(#{params.join(', ')});"
-  end
-  if HOST_PROFILE
-    puts <<EOF
-  if (do_host_profile) {
-    _stop_ts = get_timestamp_ns();
-    _duration = _stop_ts - _start_ts;
-  }
-EOF
-  end
-  c.epilogues.each do |e|
-    puts e
-  end
-  tp_params.push '_retval' if c.prototype.has_return_type?
-  tp_params.push '_duration' if HOST_PROFILE
-  puts <<EOF
-  tracepoint(lttng_ust_opencl, #{c.prototype.name}_#{CL_EVENT_SUFFIXES['stop']}, #{(tp_params + tracepoint_params).join(', ')});
-EOF
-}
+print_traced_wrappers(CORE_COMMANDS, :lttng_ust_opencl, OPENCL_POINTER_NAMES)
 
-OPENCL_COMMANDS.groups[:core].each do |c|
+EXTENSION_COMMANDS.each do |c|
   puts <<~EOF
-    #{c.decl} {
-  EOF
-  if c.init?
-    puts <<EOF
-  _init_tracer();
-EOF
-  end
-  common_block.call(c)
-  if c.prototype.has_return_type?
-    puts <<EOF
-  return _retval;
-EOF
-  end
-  puts <<~EOF
-    }
-
-  EOF
-end
-
-OPENCL_COMMANDS.groups[:extension].each do |c|
-  puts <<~EOF
-    static #{c.decl_ffi_wrapper} {
+    static #{decl_ffi_wrapper(c)} {
       (void)cif;
   EOF
-  c.parameters.each_with_index do |p, i|
-    puts <<EOF
-  #{p.decl} = *(#{p.decl_pointer} *)args[#{i}];
-EOF
+  c.declaration('params').each_with_index do |p, i|
+    puts "  #{p['decl']} = *(#{p['type']} *)args[#{i}];"
   end
-  common_block.call(c)
-  if c.prototype.has_return_type?
-    puts <<EOF
-  *ffi_ret = _retval;
-EOF
-  end
-  puts <<~EOF
-    }
-
-  EOF
+  print_traced_body(c, :lttng_ust_opencl, OPENCL_POINTER_NAMES)
+  puts '  *ffi_ret = _retval;' if c.has_return_type?
+  puts '}'
+  puts
 end

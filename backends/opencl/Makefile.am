@@ -1,3 +1,4 @@
+include $(top_srcdir)/utils/backend_model.mk
 .DELETE_ON_ERROR:
 
 if STRICT
@@ -27,24 +28,70 @@ CLEANFILES += tracer_opencl.h
 
 EXTRA_DIST += opencl_missing_apis.h
 
+# The C AST of the OpenCL headers, as every AST-driven backend has.
+CL_HDR_ROOT = \
+	CL/cl_d3d10.h \
+	CL/cl_d3d11.h \
+	CL/cl_dx9_media_sharing.h \
+	CL/cl_dx9_media_sharing_intel.h \
+	CL/cl_egl.h \
+	CL/cl_ext.h \
+	CL/cl_ext_intel.h \
+	CL/cl_function_types.h \
+	CL/cl_gl_ext.h \
+	CL/cl_gl.h \
+	CL/cl.h \
+	CL/cl_half.h \
+	CL/cl_icd.h \
+	CL/cl_layer.h \
+	CL/cl_platform.h \
+	CL/cl_va_api_media_sharing_intel.h \
+	CL/cl_version.h \
+	CL/opencl.h
+
+CL_HDR = $(CL_HDR_ROOT:%=$(srcdir)/include/%)
+
+# cl_platform.h includes the x86 intrinsic headers when __SSE__ & co. are
+# defined, which a libclang without its own resource headers (the pip wheel)
+# cannot parse: it falls back to GCC's. They only declare the vector types of
+# cl_float4 & co., which no traced function takes, so leave them out.
+H2YAML_NO_INTRINSICS = -Wc,-U__SSE__ -Wc,-U__SSE2__ -Wc,-U__MMX__ -Wc,-U__AVX__
+
+opencl_api.yaml: $(srcdir)/extract/opencl_api.h $(srcdir)/opencl_missing_apis.h $(CL_HDR)
+	h2yaml --compat-cast-to-yaml -Wc,-I$(srcdir) -Wc,-I$(srcdir)/include $(H2YAML_NO_INTRINSICS) $< > $@
+
+BUILT_SOURCES += opencl_api.yaml
+
+CLEANFILES += opencl_api.yaml
+
+EXTRA_DIST += extract/opencl_api.h
+
 ML_FILES = \
 	$(srcdir)/opencl_meta_parameters.yaml \
 	$(srcdir)/supported_extensions.yaml \
 	$(srcdir)/supported_enums.yaml
 
+# What the registry says and the headers cannot: the functions traced, their
+# declarations as written, the enum groups.
+opencl_xml.yaml: $(srcdir)/gen_opencl_xml_yaml.rb cl.xml.patched opencl_api.yaml \
+		$(srcdir)/supported_extensions.yaml $(srcdir)/supported_enums.yaml
+	SRC_DIR=$(srcdir) $(RUBY) $< cl.xml.patched opencl_api.yaml > $@
+
+CLEANFILES += opencl_xml.yaml
+
+EXTRA_DIST += gen_opencl_xml_yaml.rb
+
 TRACEPOINT_GEN = \
 	$(srcdir)/opencl_model.rb \
-	$(srcdir)/opencl_tracepoints.rb \
 	$(srcdir)/opencl_wrapper_events.yaml \
 	$(srcdir)/opencl_events.yaml
 
 OPENCL_MODEL = \
 	$(TRACEPOINT_GEN) \
-	$(ML_FILES) \
-	$(top_srcdir)/utils/LTTng.rb \
-	$(top_srcdir)/utils/command_index.rb \
-	$(top_srcdir)/utils/meta_parameter_spec.rb \
-	cl.xml.patched
+	$(srcdir)/opencl_meta_parameters.yaml \
+	opencl_api.yaml \
+	opencl_xml.yaml \
+	$(BACKEND_MODEL_DEPS)
 
 BTX_OPENCL_GENERATED = \
 	btx_filter_opencl/metababel/metababel.h \
@@ -106,7 +153,7 @@ OPENCL_STATIC_PROBES_INCL = $(OPENCL_STATIC_PROBES:=.h)
 
 OPENCL_STATIC_PROBES_SRC = $(OPENCL_STATIC_PROBES:=.c)
 
-opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h
+opencl_tracepoints.tp: $(srcdir)/gen_opencl_probes.rb $(OPENCL_MODEL) tracer_opencl.h $(top_srcdir)/utils/gen_probe_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 $(OPENCL_STATIC_PROBES_TP): %.tp: $(top_srcdir)/utils/gen_custom_probes.rb $(srcdir)/opencl_events.yaml $(srcdir)/cl.h.include $(top_srcdir)/utils/gen_probe_base.rb
@@ -142,7 +189,7 @@ bin_SCRIPTS = \
 	tracer_opencl.sh \
 	extract_enqueues
 
-tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h
+tracer_opencl.c: $(srcdir)/gen_opencl.rb $(OPENCL_MODEL) $(srcdir)/tracer_opencl_helpers.include.c $(OPENCL_PROBES_INCL) $(OPENCL_STATIC_PROBES_INCL) tracer_opencl.h $(top_srcdir)/utils/gen_tracer_base.rb
 	SRC_DIR=$(srcdir) $(RUBY) $< > $@
 
 CLEANFILES += tracer_opencl.c

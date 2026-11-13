@@ -15,9 +15,18 @@ end
 # `<backend>_events.yaml`.
 #
 # Enums first: a declared event may name one.
+#
+# An event that wraps a call -- `start` and `stop` field lists instead of
+# `fields` -- declares one tracepoint per phase, named like a traced call's.
 def print_declared_events(provider, declared)
   declared['enums'].to_a.each { |e| LTTng.print_enum(provider, e) }
-  declared['events'].to_a.each { |e| LTTng.print_tracepoint(provider, e) }
+  declared['events'].to_a.each do |e|
+    if SUFFIXES.keys.none? { |dir| e.key?(dir.to_s) }
+      LTTng.print_tracepoint(provider, e)
+    else
+      SUFFIXES.each { |dir, suffix| LTTng.print_tracepoint(provider, e, dir.to_s, suffix: suffix) }
+    end
+  end
 end
 
 # The whole of a tracepoint-provider generator. A provider's events come from
@@ -26,7 +35,10 @@ end
 #
 # A function with more parameters than LTTng can carry is skipped: the macro
 # would not compile, and dropping the event is better than failing the build.
-def print_tracepoint_provider(provider, commands, include:, events_path: nil)
+#
+# `preamble` is C that has to come before even lttng's header.
+def print_tracepoint_provider(provider, commands, include:, events_path: nil, preamble: nil)
+  puts preamble if preamble
   puts <<~EOF
     #include "lttng/tracepoint_gen.h"
     #{include}
@@ -79,9 +91,18 @@ def print_tracepoint(provider, c, dir = nil)
       #{name},
       TP_ARGS(
   EOF
-  decl = ->(p) { "#{p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}" }
+  decl = lambda do |p|
+    t = p.type
+    type = t.to_s.gsub(/\[.*\]/, '*')
+    if c.xml_arg_spelling?
+      type = 'void *' if t.is_a?(YAMLCAst::Pointer) && t.type.is_a?(YAMLCAst::Function)
+      type = "#{t.type} *" if t.is_a?(YAMLCAst::Array) && !t.length
+    end
+    "#{type}, #{p.name}"
+  end
   params = c.parameters.to_a.collect(&decl)
   params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
+  params.push('uint64_t, _duration') if c.duration? && dir == :stop
   params += c.tracepoint_parameters_for(dir).collect(&decl)
 
   # A tracepoint that carries nothing still has to say so: TP_ARGS(void).
@@ -95,7 +116,7 @@ EOF
   # Add Result
   r = c.type.lttng_type(c.type_classes)
   if dir != :start && r
-    r.name = c.result_name
+    r.name = c.result_field
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
                      "&#{c.result_name}"
                    else
@@ -108,6 +129,10 @@ EOF
   fields += c.parameters.collect { |p| p.lttng_type(c.type_classes) } if dir != :stop && c.parameters
 
   fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
+  if c.duration? && dir == :stop
+    fields.push(LTTng::TracepointField.new('ctf_integer', 'uint64_t', '_duration',
+                                           '_duration'))
+  end
 
   rows = fields.compact.map(&:call_string)
   puts "    #{rows.join("\n    ")}" unless rows.empty?

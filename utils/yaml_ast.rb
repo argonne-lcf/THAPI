@@ -479,7 +479,12 @@ end
 # API's own: a typedef chain bottoms out in `int` or `uint32_t`, so the
 # category has to contain both to answer "is this an integer?" in one lookup.
 TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unions, :pointers,
-                         :bytes, keyword_init: true) do
+                         :bytes, :floats, :trace_names, keyword_init: true) do
+  # The name a scalar typedef is recorded under (see ApiModel's trace_names).
+  def trace_name(name)
+    trace_names.fetch(name.to_s, name)
+  end
+
   # The one category a typedef name falls into, or nil when this API never
   # names it. The order is the answer: an object typedef is a pointer under the
   # hood and a hex int is an integer, so the more specific category has to win.
@@ -492,6 +497,7 @@ TypeClasses = Struct.new(:objects, :integers, :hex_ints, :enums, :structs, :unio
     when *integers then :integer
     when *enums then :enum
     when *structs, *unions then :aggregate
+    when *floats then :float
     end
   end
 
@@ -510,7 +516,7 @@ end
 
 # `hex_ints` are the API's own integer types to log in hex, on top of the ones
 # every API shares.
-def find_all_types(types, hex_ints: [])
+def find_all_types(types, hex_ints: [], trace_names: {})
   objects = transitive_closure(types, types.filter_map { |t| t.name if object_typedef?(t, types) })
   # Int and Char share one category, and the char pass closes over the list the
   # int pass produced, so a typedef aliasing either resolves the same way.
@@ -526,7 +532,9 @@ def find_all_types(types, hex_ints: [])
     bytes: transitive_closure(types, BYTE_TYPES.dup),
     enums: find_types(types, YAMLCAst::Enum),
     structs: find_types(types, YAMLCAst::Struct),
-    unions: find_types(types, YAMLCAst::Union)
+    unions: find_types(types, YAMLCAst::Union),
+    floats: find_types(types, YAMLCAst::Float),
+    trace_names: trace_names
   ).each_pair { |_, v| v.freeze }.freeze
 end
 
