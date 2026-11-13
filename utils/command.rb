@@ -229,3 +229,50 @@ def get_ffi_type(a)
     raise "Unsupported type: #{a.type}"
   end
 end
+
+# The epilogue of an extension-function lookup (ze's
+# zeDriverGetExtensionFunctionAddress, opencl's clGetExtensionFunctionAddress):
+# when it found one of `commands`, wrap the real function in a libffi closure
+# that calls the tracer's `<command>_ffi` wrapper, and hand that back instead.
+# Each driver returns its own function, so there is one closure per real
+# pointer, kept in `<prefix>_closures`.
+#
+# `real` is the C holding the real pointer, `slot` its address (the hash key),
+# `name_var` the looked-up name, and `found` the C that ends the lookup with
+# the closure's `c_ptr`.
+def ffi_closure_epilogue(commands, condition:, provider:, name_var:, prefix:, real:, slot:, found:)
+  blocks = commands.map do |c|
+    n = c.parameters.size
+    types = c.parameters.each_with_index.map { |a, i| "\n          closure->types[#{i}] = &#{get_ffi_type(a)};" }
+    <<EOF
+    if (tracepoint_enabled(#{provider}, #{c.name}_#{START}) && strcmp(#{name_var}, "#{c.name}") == 0) {
+      struct #{prefix}_closure *closure = NULL;
+      pthread_mutex_lock(&#{prefix}_closures_mutex);
+      HASH_FIND_PTR(#{prefix}_closures, #{slot}, closure);
+      pthread_mutex_unlock(&#{prefix}_closures_mutex);
+      if (closure != NULL) {
+        #{found.strip.gsub("\n", "\n        ")}
+      }
+      closure = (struct #{prefix}_closure *)malloc(sizeof(struct #{prefix}_closure) + #{n} * sizeof(ffi_type *));
+      if (closure != NULL) {
+        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct #{prefix}_closure));
+        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
+        if (closure->closure != NULL) {
+          closure->ptr = #{real};#{types.join}
+          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{n}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
+            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, #{real}, closure->c_ptr) == FFI_OK) {
+              pthread_mutex_lock(&#{prefix}_closures_mutex);
+              HASH_ADD_PTR(#{prefix}_closures, ptr, closure);
+              pthread_mutex_unlock(&#{prefix}_closures_mutex);
+              #{found.strip.gsub("\n", "\n              ")}
+            }
+          }
+          ffi_closure_free(closure->closure);
+        }
+        free(closure);
+      }
+    }
+EOF
+  end
+  "  if (#{condition}) {\n#{blocks.join("    else\n")}  }\n"
+end

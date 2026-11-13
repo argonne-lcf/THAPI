@@ -549,42 +549,13 @@ def wrap_extension_lookup(ext_method)
   }
 EOF
 
-  closures = EXTENSION_COMMANDS.collect do |c|
-    types = c.parameters.each_with_index.collect { |a, i| "closure->types[#{i}] = &#{get_ffi_type(a)};" }
-    <<EOF
-    if (tracepoint_enabled(lttng_ust_opencl, #{c.name}_#{START}) && strcmp(func_name, "#{c.name}") == 0) {
-      struct opencl_closure *closure = NULL;
-      pthread_mutex_lock(&opencl_closures_mutex);
-      HASH_FIND_PTR(opencl_closures, &_retval, closure);
-      pthread_mutex_unlock(&opencl_closures_mutex);
-      if (closure != NULL) {
-        tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
-        return closure->c_ptr;
-      }
-      closure = (struct opencl_closure *)malloc(sizeof(struct opencl_closure) + #{c.parameters.size} * sizeof(ffi_type *));
-      if (closure != NULL) {
-        closure->types = (ffi_type **)((intptr_t)closure + sizeof(struct opencl_closure));
-        closure->closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->c_ptr));
-        if (closure->closure != NULL) {
-          closure->ptr = _retval;
-          #{types.join("\n          ")}
-          if (ffi_prep_cif(&(closure->cif), FFI_DEFAULT_ABI, #{c.parameters.size}, &#{get_ffi_type(c)}, closure->types) == FFI_OK) {
-            if (ffi_prep_closure_loc(closure->closure, &(closure->cif), (void (*)(ffi_cif *, void *, void **, void *))#{c.name}_ffi, _retval, closure->c_ptr) == FFI_OK) {
-              pthread_mutex_lock(&opencl_closures_mutex);
-              HASH_ADD_PTR(opencl_closures, ptr, closure);
-              pthread_mutex_unlock(&opencl_closures_mutex);
-              tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
-              return closure->c_ptr;
-            }
-          }
-          ffi_closure_free(closure->closure);
-        }
-        free(closure);
-      }
-    }
-EOF
-  end
-  COMMANDS.add_epilogue ext_method, "  if (_retval != NULL) {\n#{closures.join("    else\n")}  }\n"
+  COMMANDS.add_epilogue ext_method, ffi_closure_epilogue(
+    EXTENSION_COMMANDS, condition: '_retval != NULL', provider: :lttng_ust_opencl,
+                        name_var: 'func_name', prefix: 'opencl', real: '_retval', slot: '&_retval', found: <<~EOF
+                          tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
+                          return closure->c_ptr;
+                        EOF
+  )
 end
 
 wrap_extension_lookup('clGetExtensionFunctionAddressForPlatform')
