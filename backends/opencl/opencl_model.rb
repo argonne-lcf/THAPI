@@ -4,9 +4,9 @@ require_relative '../../utils/backend_model'
 OPENCL_XML_PATH = File.expand_path('opencl_xml.yaml')
 OPENCL_XML = yaml_load_file_cached(OPENCL_XML_PATH)
 
-# OpenCL traces each scalar typedef as the cl_* (or C) type its chain reaches.
-API = ApiModel.load_file('opencl_api.yaml', trace_as: OPENCL_XML['int_scalars'] + OPENCL_XML['float_scalars'])
-              .register_ffi_types
+# OpenCL traces each scalar typedef as the cl_* (or C) type the registry says
+# it is (type_map).
+API = ApiModel.load_file('opencl_api.yaml', trace_names: OPENCL_XML['type_map']).register_ffi_types
 # The libffi type OpenCL's closures have always named a C int with.
 FFI_TYPE_MAP['int'] = 'ffi_type_sint'
 
