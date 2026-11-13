@@ -10,9 +10,8 @@ require_relative 'meta_parameter_spec'
 # A Command belongs to exactly one backend, so it carries this rather than the
 # shared generators reading it from whichever backend was required last.
 #
-# The settings after `directions` keep the C a backend generated before it
-# moved to these generators byte-for-byte (opencl). Each one defaults to the
-# shared spelling:
+# The settings after `directions` are what OpenCL's events and headers have
+# that the other backends' do not:
 #
 #   result_field  the field the return value is recorded in, from the command
 #                 (default: result_name)
