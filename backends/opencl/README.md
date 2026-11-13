@@ -26,19 +26,27 @@ Current (Aurora stack `26.181.0`, oneAPI `2026.1`, `intel-opencl-25.18`):
 
 ```bash
 $ module load oneapi
-$ clinfo | grep -E "ICD loader Version|cl_khr_command_buffer +0x"      # loader, and an extension revision
+$ clinfo | grep "ICD loader Version"                                     # loader
   ICD loader Version                              3.0.6
-  cl_khr_command_buffer 0x9007 (0.9.7)
 $ readlink /opt/aurora/26.181.0/support/libraries/khronos/default        # Khronos SDK (loader + headers)
 v2023.12.14
 $ O=$(dirname $(which icx))/../include/CL                                # oneAPI headers
-$ grep -A1 "define CL_KHR_COMMAND_BUFFER_EXTENSION_VERSION" $O/cl_ext.h
-#define CL_KHR_COMMAND_BUFFER_EXTENSION_VERSION \
-    CL_MAKE_VERSION(0, 9, 7)
+$ utils_spec_update/extension_versions.sh $O    # extensions with host functions: runtime vs headers revision
+cl_intel_unified_shared_memory          runtime  1.1.0  headers  0.0.0
+cl_khr_command_buffer                   runtime  0.9.7  headers  0.9.7
+cl_khr_command_buffer_mutable_dispatch  runtime  0.9.3  headers  0.9.3
+cl_khr_icd                              runtime  1.0.0  headers  2.0.0
+cl_khr_il_program                       runtime  1.0.0  headers  1.0.0
+cl_khr_suggested_local_work_size        runtime  1.0.0  headers  1.0.0
 ```
 
-Check a compute node too (`ssh` to one of your job's nodes): the GPU does not implement the same extensions
-as the CPU device (for example, no `cl_khr_command_buffer` on the GPU).
+`extension_versions.sh` lists only the extensions that add host functions (per `cl.xml`) and that a platform or
+device on the node reports. A different revision matters only for functions THAPI traces, and then the
+prototypes decide (see above). Here: the `cl_khr_icd` functions are the loader's, not traced, and the headers
+declare Intel's own extensions `0.0.0`.
+
+Run it on a compute node too (`ssh` to one of your job's nodes): the GPU does not implement the same extensions
+as the CPU device (for example, no `cl_khr_command_buffer` on the GPU, and `cl_khr_external_memory` 0.9.1).
 
 Then find the OpenCL-Headers commit the oneAPI headers come from:
 
