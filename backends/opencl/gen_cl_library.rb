@@ -8,8 +8,8 @@ end
 # The enum a registry group describes. A constant with no value of its own is
 # reserved, or another name for a constant of the group (CL_BLOCKING is
 # CL_TRUE): a value reads back as the constant that owns it.
-def registry_enum(name, group)
-  members = group['values'].filter_map do |n, v|
+def registry_enum(name, values)
+  members = values.filter_map do |n, v|
     YAMLCAst::Enumerator.new(name: n, val: constant_value(v)) if v && constant_value(v)
   end
   YAMLCAst::Enum.new(name: name, members: members)
@@ -36,8 +36,10 @@ API.types.each do |t|
 end
 puts
 
-OpenCLApi::GROUPS['enums'].each { |name, g| print_enum_with_namespace(NAMING, name, registry_enum(name, g)) }
-OpenCLApi::GROUPS['bitfields'].each { |name, g| print_bitfield_with_namespace(NAMING, name, registry_enum(name, g)) }
+OPENCL_XML['enums'].each { |name, values| print_enum_with_namespace(NAMING, name, registry_enum(name, values)) }
+OPENCL_XML['bitfields'].each do |name, values|
+  print_bitfield_with_namespace(NAMING, name, registry_enum(name, values))
+end
 
 print_typedefs(NAMING, enum: nil, function_pointer: nil, integer: nil)
 

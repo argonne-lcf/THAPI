@@ -1,7 +1,7 @@
 ---
 - name: Error codes
-  trace_name: errcode_ret
   type_name: cl_errcode
+- name: cl_bool
 - name: cl_platform_info
 - name: cl_device_type
 - name: cl_device_info

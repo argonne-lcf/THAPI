@@ -6,14 +6,12 @@ OPENCL_XML = yaml_load_file_cached('opencl_xml.yaml')
 # The headers #define the values of OpenCL's enums and flags, so no typedef
 # says it is one: the registry does, by grouping the constants each type takes.
 class OpenCLApi < ApiModel
-  GROUPS = %w[enums bitfields].to_h { |kind| [kind, OPENCL_XML[kind].to_h { |name, g| [g['type_name'] || name, g] }] }
-
   def enum_names
-    GROUPS['enums'].keys
+    OPENCL_XML['enums'].keys
   end
 
   def bitfield_names
-    GROUPS['bitfields'].keys
+    OPENCL_XML['bitfields'].keys
   end
 end
 
