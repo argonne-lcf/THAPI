@@ -41,7 +41,10 @@ render = lambda do |event, field|
     key = event[:payload_field_class][:members].find { |m| %w[_param_name param_name].include?(m[:name]) }
     next unless key
 
+    # The infos are listed by the name of their key, which only an enum gives.
     key_type = key[:field_class][:cast_type]
+    next unless API.enum_names.include?(key_type)
+
     key_name = %(#{NAMING.scoped_class_name(key_type)}.from_native(defi["#{key[:name]}"], nil))
     %(s << "#{name}: \#{CL.info_to_s(CL::INFOS.fetch("#{key_type}", {}), #{key_name}, defi["#{name}"])}")
   elsif type.match?(/\Acl_device_partition_property(_ext)? \*\z/) && field[:field_class][:type] == 'array_dynamic'

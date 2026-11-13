@@ -97,6 +97,15 @@ module CL
     ),
   }.freeze
 
+  # A cl_version packs major.minor.patch in 10, 10 and 12 bits.
+  module VersionedName
+    def to_s
+      v = self[:version]
+      "{ name: #{self[:name]}, version: #{v >> 22}.#{(v >> 12) & 0x3ff}.#{v & 0xfff} }"
+    end
+  end
+  [NameVersion, NameVersionKhr].each { |named| named.prepend VersionedName }
+
   # The value a clGet*Info call returned for `key`, read as INFOS says: the
   # unpack format of its bytes, whether it is an array, the class that names
   # its values, and :partition_list for the one that is a partition list.
