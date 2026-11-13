@@ -1,4 +1,3 @@
----
 - name: Error codes
   type_name: cl_errcode
 - name: cl_bool

@@ -70,4 +70,5 @@ end
 undeclared = core + extension - YAML.load_file(api_path)['functions'].map { |f| f['name'] }
 raise "traced but declared by no header: #{undeclared.join(', ')}" unless undeclared.empty?
 
-puts({ 'functions' => { 'core' => core, 'extension' => extension }, 'enums' => enums, 'bitfields' => bitfields }.to_yaml)
+puts({ 'functions' => { 'core' => core, 'extension' => extension },
+       'enums' => enums, 'bitfields' => bitfields }.to_yaml)
