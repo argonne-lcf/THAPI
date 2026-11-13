@@ -44,8 +44,6 @@ ICD_AND_LAYER_FUNCTIONS = %w[
   clIcdGetPlatformIDsKHR clIcdGetFunctionAddressForPlatformKHR clIcdSetPlatformDispatchDataKHR
   clGetLayerInfo clInitLayer
 ].freeze
-ABSENT_FUNCTIONS = /\A(?:#{(ICD_AND_LAYER_FUNCTIONS + SUPPORTED_EXTENSIONS).join('|')})\z/
-SUPPORTED_EXTENSION_FUNCTIONS = /#{SUPPORTED_EXTENSIONS.join('|')}/
 
 doc = Nokogiri::XML(File.read(xml_path))
 commands = doc.xpath('//commands/command').to_h { |c| [c.at_xpath('proto/name').text, c] }
@@ -58,10 +56,9 @@ end
 required = ->(nodes) { nodes.flat_map { |n| n.xpath('require/command').map { |c| c['name'] } } }
 experimental_functions = required[experimental] - required[final] - required[doc.xpath('//feature')]
 
-core = commands.keys.reject do |n|
-  n.match(VENDOR_EXT) || n.match(ABSENT_FUNCTIONS) || n.match(WINDOWS) || experimental_functions.include?(n)
-end
-extension = commands.keys.grep(SUPPORTED_EXTENSION_FUNCTIONS)
+not_core = ICD_AND_LAYER_FUNCTIONS + SUPPORTED_EXTENSIONS + experimental_functions
+core = commands.keys.reject { |n| n.match?(VENDOR_EXT) || n.match?(WINDOWS) || not_core.include?(n) }
+extension = commands.keys & SUPPORTED_EXTENSIONS
 
 # The base types a typedef chain ends in, and the handles (opaque objects).
 CL_INT_SCALARS = ['unsigned int', 'int', 'uintptr_t', 'intptr_t', 'size_t', 'cl_int', 'cl_uint', 'cl_long', 'cl_ulong',
@@ -92,6 +89,8 @@ enums = {}
 bitfields = {}
 groups.each do |e|
   matching = requires.select { |r| r['comment']&.match(/#{Regexp.escape(e['name'])}(\z| )/) }
+  raise "supported_enums.yaml: no <require comment> of cl.xml names #{e['name']}" if matching.empty?
+
   values = matching.flat_map { |r| r.search('enum').map { |c| c['name'] } }.to_h { |v| [v, constants[v]] }
   group = { 'values' => values }
   group['trace_name'] = e['trace_name'] if e['trace_name']
@@ -100,15 +99,13 @@ groups.each do |e|
 end
 
 # The registry's text of a node's children, one space between them, with the
-# <name> child spelled by the block (or dropped when it returns nil). A whole
-# declaration keeps the registry's trailing space (`clUnloadCompiler(void )`).
-def spelled(node, strip: true)
-  text = node.children.filter_map { |c| c.name == 'name' ? yield(c.text) : c.text }.join(' ').squeeze(' ')
-  strip ? text.strip : text
+# <name> child spelled by the block (or dropped when it returns nil).
+def spelled(node)
+  node.children.filter_map { |c| c.name == 'name' ? yield(c.text) : c.text }.join(' ').squeeze(' ').strip
 end
 
 def param_declaration(param)
-  decl = spelled(param, strip: false) { |name| name }
+  decl = spelled(param) { |name| name }
   type = param.search('type').text
   type += '*' if decl.match?(/\*\*/)
   type += '*' if decl.match?(/\[\]/)
@@ -125,7 +122,7 @@ end
 declarations = (core + extension).to_h do |n|
   proto = commands[n].at_xpath('proto')
   params = commands[n].xpath('param').map { |p| param_declaration(p) }
-  decl = spelled(proto, strip: false) { |name| "CL_API_CALL #{name}" }
+  decl = spelled(proto) { |name| "CL_API_CALL #{name}" }
   pointer = spelled(proto) { '(CL_API_CALL *%s)' }
   # C spells "no parameters" `(void)`; the registry lists none (clUnloadCompiler).
   list = ->(key) { params.empty? ? 'void' : params.map { |p| p[key] }.join(', ') }
@@ -143,9 +140,9 @@ end
 api = YAML.load_file(api_path)['functions'].to_h { |f| [f['name'], (f['params'] || []).map { |p| p['name'] }] }
 declarations.each do |n, d|
   raise "#{n} is traced but no header declares it" unless api.key?(n)
+  next if api[n].size == d['params'].size
 
-  xml_names = d['params'].filter_map { |p| p['name'] }
-  raise "#{n}: parameters #{xml_names.inspect} in cl.xml but #{api[n].inspect} in the headers" if api[n].size != xml_names.size
+  raise "#{n}: parameters #{d['params'].map { |p| p['name'] }} in cl.xml but #{api[n]} in the headers"
 end
 
 # The meta-parameters OpenCL's naming conventions imply, in the order the
