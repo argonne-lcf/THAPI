@@ -213,7 +213,7 @@ Both are in `gen_opencl_xml_yaml.rb`.
 ## A variable named after its type, in `btx_upstream.c`
 
 `cl_semaphore_khr = (cl_semaphore_khr)...`: the event field of a returned handle is named after its type
-(`cl_context` gives `context`). Check `opencl_result_field` (`opencl_model.rb`) strips the new spelling
+(`cl_context` gives `context`). Check `opencl_result_name` (`opencl_model.rb`) strips the new spelling
 (`cl_semaphore_khr` gives `semaphore`).
 
 ## A changed spelling in `cl.xml`
