@@ -74,20 +74,21 @@ def render_field(naming, field)
   end
 end
 
-# A bitmask's value is a set of flags, so it renders as a list; a plain enum
+# The text, inside a string literal, that names the integer `value`. A
+# bitmask's value is a set of flags, so it renders as a list; a plain enum
 # renders as the single name it stands for.
+def named_integer(naming, value, field_class, be_class)
+  names = "\#{#{be_class}.from_native(#{value}, nil)"
+  naming.api.bitfield?(field_class[:cast_type]) ? %([ #{names}.join(", ")} ]) : "#{names}}"
+end
+
 def render_named_integer(naming, name, field_class, be_class)
-  if naming.api.bitfield?(field_class[:cast_type])
-    %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
-  else
-    %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}
-  end
+  %(s << "#{name}: #{named_integer(naming, %(defi["#{name}"]), field_class, be_class)}")
 end
 
 def render_named_integers(naming, name, element_class, be_class)
-  one = "#{be_class}.from_native(v, nil)"
-  one = %("[ \#{#{one}.join(", ")} ]") if naming.api.bitfield?(element_class[:cast_type])
-  %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| #{one} }.join(", ")} ]"}
+  one = named_integer(naming, 'v', element_class, be_class)
+  %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| "#{one}" }.join(", ")} ]"}
 end
 
 # A struct traced as its raw bytes. A `_vals` field holds an array of them, so

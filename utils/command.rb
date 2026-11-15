@@ -189,6 +189,7 @@ end
 # `found` the C that ends the lookup with `closure`, what to hand back.
 def ffi_closure_epilogue(commands, condition:, provider:, name_var:, real:, found:)
   blocks = commands.map do |c|
+    # The NULL keeps the array non-empty for a command without parameters.
     types = c.parameters.to_a.map { |a| "&#{get_ffi_type(a)}" }
     <<EOF
     if (tracepoint_enabled(#{provider}, #{c.name}_#{START}) && strcmp(#{name_var}, "#{c.name}") == 0) {
