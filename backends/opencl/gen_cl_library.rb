@@ -1,16 +1,11 @@
 require_relative 'gen_opencl_library_base'
 
-# The registry writes a constant's value as a literal or a bit (`(1 << n)`).
-def constant_value(str)
-  Integer(str, exception: false) || (1 << Integer(Regexp.last_match(1)) if str.match(/\A\(1 << (\d+)\)\z/))
-end
-
-# The enum a registry group describes. A constant with no value of its own is
-# reserved, or another name for a constant of the group (CL_BLOCKING is
-# CL_TRUE): a value reads back as the constant that owns it.
+# The enum a registry group describes: a value reads back as the constant that
+# owns it (constant_value).
 def registry_enum(name, values)
   members = values.filter_map do |n, v|
-    YAMLCAst::Enumerator.new(name: n, val: constant_value(v)) if v && constant_value(v)
+    val = constant_value(v)
+    YAMLCAst::Enumerator.new(name: n, val: val) if val
   end
   YAMLCAst::Enum.new(name: name, members: members)
 end
@@ -42,5 +37,11 @@ OPENCL_XML['bitfields'].each do |name, values|
 end
 
 print_typedefs(NAMING, enum: nil, function_pointer: nil, integer: nil)
+
+# The keys of a device-partition property list that take a list of values, and
+# the constant that ends it: what the tracer walks the list with.
+puts '  PARTITION_VALUE_LISTS = {'
+DeviceFissionPropertyList::VALUE_LISTS.each { |type, lists| puts "    #{NAMING.class_name(type)} => #{lists}," }
+puts '  }.freeze'
 
 puts 'end'

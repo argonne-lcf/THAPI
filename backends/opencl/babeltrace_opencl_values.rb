@@ -69,31 +69,33 @@ module CL
   end
   PARTITION_KEYS[DevicePartitionProperty][0x4052] ||= 'CL_DEVICE_PARTITION_BY_NAMES_INTEL'
 
-  list_end = ->(enum, name, default = nil) { [name, enum.to_h.fetch(name.to_sym, default)] }
-  one_name = lambda { |enum|
-    lambda { |val|
-      v = enum.from_native(val, nil)
-      v.is_a?(Array) && v.size != 1 ? "[#{v.join(', ')}]" : [v].flatten.first.to_s
-    }
+  # "[ A, B ]", as the generated printers write a set of flags.
+  def self.flags_to_s(bitmask, val)
+    "[ #{bitmask.from_native(val, nil).join(', ')} ]"
+  end
+
+  # The keys that take a list (PARTITION_VALUE_LISTS, cl_library.rb), with the
+  # value of what ends it. The INTEL terminator is not in cl.xml either.
+  list_ends = lambda { |enum|
+    PARTITION_VALUE_LISTS.fetch(enum).transform_values do |name|
+      [name, enum.to_h.fetch(name.to_sym) { { 'CL_PARTITION_BY_NAMES_LIST_END_INTEL' => -1 }.fetch(name) }]
+    end
+  }
+  # The keys that take one value with a name: one flag, or one constant.
+  flag_name = lambda { |val|
+    names = DeviceAffinityDomain.from_native(val, nil)
+    names.size == 1 ? names.first.to_s : flags_to_s(DeviceAffinityDomain, val)
   }
   PARTITION_LISTS = {
     DevicePartitionProperty => PartitionList.new(
-      PARTITION_KEYS[DevicePartitionProperty], {
-        'CL_DEVICE_PARTITION_BY_COUNTS' =>
-          list_end.call(DevicePartitionProperty, 'CL_DEVICE_PARTITION_BY_COUNTS_LIST_END'),
-        'CL_DEVICE_PARTITION_BY_NAMES_INTEL' =>
-          list_end.call(DevicePartitionProperty, 'CL_PARTITION_BY_NAMES_LIST_END_INTEL', -1),
-        'CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN' => one_name.call(DeviceAffinityDomain),
-      }
+      PARTITION_KEYS[DevicePartitionProperty],
+      list_ends.call(DevicePartitionProperty).merge('CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN' => flag_name)
     ),
     DevicePartitionPropertyExt => PartitionList.new(
-      PARTITION_KEYS[DevicePartitionPropertyExt], {
-        'CL_DEVICE_PARTITION_BY_COUNTS_EXT' =>
-          list_end.call(DevicePartitionPropertyExt, 'CL_PARTITION_BY_COUNTS_LIST_END_EXT'),
-        'CL_DEVICE_PARTITION_BY_NAMES_EXT' =>
-          list_end.call(DevicePartitionPropertyExt, 'CL_PARTITION_BY_NAMES_LIST_END_EXT'),
-        'CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT' => one_name.call(AffinityDomainExt),
-      }
+      PARTITION_KEYS[DevicePartitionPropertyExt],
+      list_ends.call(DevicePartitionPropertyExt).merge(
+        'CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT' => ->(val) { names(AffinityDomainExt).fetch(val, val) }
+      )
     ),
   }.freeze
 
@@ -128,7 +130,7 @@ module CL
     elsif PARTITION_KEYS.key?(klass)
       bytes.unpack(format).collect { |val| PARTITION_KEYS[klass][val] || val }
     elsif klass.is_a?(FFI::Bitmask)
-      bytes.unpack(format).collect { |val| "[#{klass.from_native(val, nil).join(', ')}]" }
+      bytes.unpack(format).collect { |val| flags_to_s(klass, val) }
     elsif klass
       bytes.unpack(format).collect { |val| klass.from_native(val, nil) }
     elsif format.start_with?('J')

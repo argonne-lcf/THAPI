@@ -15,7 +15,7 @@ def info_reader(info)
   type = info['type']
   named = NAMING.scoped_class_name(type) if (API.enum_names + API.bitfield_names + API.struct_names).include?(type)
   format = if info['string'] || API.struct_names.include?(type) then 'Z*'
-           elsif info['pointer'] || API.object?(type) then 'J'
+           elsif info['pointer'] || API.object?(type) || type == 'uintptr_t' then 'J'
            else unpack_directive(type)
            end
   format += '*' if info['array'] && format != 'Z*'
@@ -25,10 +25,14 @@ def info_reader(info)
 end
 
 puts "require_relative 'babeltrace_opencl_values.rb'"
+# By the value of the key: the registry gives some keys two names
+# (CL_PROGRAM_IL, CL_PROGRAM_IL_KHR), and a value reads back as only one.
 puts 'CL::INFOS = {'
 yaml_load_file_cached(File.join(SRC_DIR, 'opencl_infos.yaml')).each do |type, versions|
+  keys = OPENCL_XML['enums'].fetch(type, {})
+  readers = versions.values.flatten.to_h { |i| [constant_value(keys[i['name']]), "#{info_reader(i)}, # #{i['name']}"] }
   puts "  #{type.inspect} => {"
-  versions.each_value { |infos| infos.each { |i| puts "    #{i['name'].to_sym.inspect} => #{info_reader(i)}," } }
+  readers.each { |value, reader| puts "    #{value} => #{reader}" if value }
   puts '  },'
 end
 puts '}.freeze'
@@ -41,12 +45,8 @@ render = lambda do |event, field|
     key = event[:payload_field_class][:members].find { |m| %w[_param_name param_name].include?(m[:name]) }
     next unless key
 
-    # The infos are listed by the name of their key, which only an enum gives.
-    key_type = key[:field_class][:cast_type]
-    next unless API.enum_names.include?(key_type)
-
-    key_name = %(#{NAMING.scoped_class_name(key_type)}.from_native(defi["#{key[:name]}"], nil))
-    %(s << "#{name}: \#{CL.info_to_s(CL::INFOS.fetch("#{key_type}", {}), #{key_name}, defi["#{name}"])}")
+    infos = %(CL::INFOS.fetch("#{key[:field_class][:cast_type]}", {}))
+    %(s << "#{name}: \#{CL.info_to_s(#{infos}, defi["#{key[:name]}"], defi["#{name}"])}")
   elsif type.match?(/\Acl_device_partition_property(_ext)? \*\z/) && field[:field_class][:type] == 'array_dynamic'
     list = NAMING.scoped_class_name(type.delete_suffix(' *'))
     %(s << "#{name}: \#{CL::PARTITION_LISTS[#{list}].to_a(defi["#{name}"])}")
