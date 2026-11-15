@@ -87,19 +87,6 @@ end
 # A function's meta-parameters: the ones OpenCL's naming conventions imply, in
 # the order the tracepoints list them, then the hand-written ones, then the key
 # a clGet*Info call queries.
-# The host time a call took, which every exit event carries as `_duration`
-# when LTTNG_UST_OPENCL_HOST_PROFILE asks for it. The clock starts in the last
-# prologue (below), so it times the call alone.
-class HostDuration < OutLTTng
-  def initialize(command)
-    command.tracepoint_parameters.push TracepointParameter.new(
-      name: '_duration', type: YAMLCAst::CustomType.new(name: 'uint64_t'), dir: :stop,
-      fill: "  _duration = do_host_profile ? get_timestamp_ns() - _start_ts : 0;\n"
-    )
-    super(command, '_duration', 'ctf_integer', 'uint64_t', '_duration', '_duration')
-  end
-end
-
 def opencl_meta_parameters(func, hand)
   params = func.type.params.to_a.to_h { |p| [p.name, p.type] }
   rows = []
@@ -115,7 +102,7 @@ def opencl_meta_parameters(func, hand)
   if func.name.match?(/clGet\w*?Info/) && params.key?('param_name')
     rows << [OutLTTng, ['param_name', 'ctf_integer_hex', params['param_name'].to_s, '_param_name', 'param_name']]
   end
-  rows << [HostDuration, []]
+  rows
 end
 
 functions = API.functions.to_h { |f| [f.name, f] }
@@ -543,7 +530,7 @@ def wrap_extension_lookup(ext_method)
 
   COMMANDS.add_prologue ext_method, CORE_EXTENSION_COMMANDS.collect { |c| <<EOF }.join("  else\n")
   if (strcmp(func_name, "#{c.name}") == 0) {
-    tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]}, 0);
+    tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, (void *)(intptr_t)#{OPENCL_POINTER_NAMES[c]});
     return (void *)(intptr_t)(&#{c.name});
   }
 EOF
@@ -551,7 +538,7 @@ EOF
   COMMANDS.add_epilogue ext_method, ffi_closure_epilogue(
     EXTENSION_COMMANDS, condition: '_retval != NULL', provider: :lttng_ust_opencl,
                         name_var: 'func_name', real: '_retval', found: <<~EOF
-                          tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval, _duration);
+                          tracepoint(lttng_ust_opencl, #{ext_method}_#{STOP}, #{args}, _retval);
                           return closure;
                         EOF
   )
@@ -626,6 +613,3 @@ str = <<EOF
 EOF
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernel', str
 COMMANDS.add_epilogue 'clEnqueueNDRangeKernelINTEL', str
-
-# After every other prologue: see HostDuration.
-COMMANDS.each { |c| c.add_prologue "  uint64_t _start_ts = do_host_profile ? get_timestamp_ns() : 0;\n" }
