@@ -3,20 +3,24 @@ require_relative 'gen_probe_base'
 
 # The whole of a backend's babeltrace-library generator: require the FFI
 # bindings, then emit one pretty-printer per event in the model.
-def print_babeltrace_lib(naming)
+#
+# `render` is handed an event and one of its fields, and returns the statement
+# that prints the field when the backend knows more about it than its type
+# says (opencl decodes what a clGet*Info call returned), nil otherwise.
+def print_babeltrace_lib(naming, render: ->(_event, _field) {})
   puts "require_relative '#{naming.backend}_library.rb'"
-  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml")
+  add_babeltrace_event_callbacks(naming, "btx_#{naming.backend}_model.yaml", render: render)
 end
 
 # One `$event_lambdas` entry per event: a lambda that renders the event's
 # payload as a string.
-def add_babeltrace_event_callbacks(naming, file)
+def add_babeltrace_event_callbacks(naming, file, render: ->(_event, _field) {})
   yaml_load_file_cached(file)[:stream_classes].each do |s|
     s[:event_classes].each do |e|
       # Handle payload_field_class not present, in this case empty array
       members = e[:payload_field_class]&.[](:members).to_a
       fields = members.reject { |f| length_field_name?(f[:name]) }
-                      .map { |f| render_field(naming, f) }
+                      .map { |f| render.call(e, f) || render_field(naming, f) }
 
       # Now just print the full strings to pretty printf the struct
       puts <<~EOF
@@ -48,7 +52,7 @@ def render_field(naming, field)
     else
       plain
     end
-  when 'double', 'single'
+  when 'double', 'single', 'enumeration_signed', 'enumeration_unsigned'
     plain
   when 'string', 'blob_static', 'blob_dynamic'
     be_class ? render_packed_struct(name, be_class) : %(s << "#{name}: \#{defi["#{name}"].inspect}")
@@ -58,7 +62,9 @@ def render_field(naming, field)
       raise "Unsupported field type for array: #{element[:type]}"
     end
 
-    if element[:preferred_display_base] == 16
+    if be_class
+      render_named_integers(naming, name, element, be_class)
+    elsif element[:preferred_display_base] == 16
       %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| "0x%016x" % v }.join(", ")} ]"}
     else
       plain
@@ -68,14 +74,21 @@ def render_field(naming, field)
   end
 end
 
-# A bitmask's value is a set of flags, so it renders as a list; a plain enum
+# The text, inside a string literal, that names the integer `value`. A
+# bitmask's value is a set of flags, so it renders as a list; a plain enum
 # renders as the single name it stands for.
+def named_integer(naming, value, field_class, be_class)
+  names = "\#{#{be_class}.from_native(#{value}, nil)"
+  naming.api.bitfield?(field_class[:cast_type]) ? %([ #{names}.join(", ")} ]) : "#{names}}"
+end
+
 def render_named_integer(naming, name, field_class, be_class)
-  if naming.api.bitfield?(field_class[:cast_type])
-    %{s << "#{name}: [ \#{#{be_class}.from_native(defi["#{name}"], nil).join(", ")} ]"}
-  else
-    %{s << "#{name}: \#{#{be_class}.from_native(defi["#{name}"], nil)}"}
-  end
+  %(s << "#{name}: #{named_integer(naming, %(defi["#{name}"]), field_class, be_class)}")
+end
+
+def render_named_integers(naming, name, element_class, be_class)
+  one = named_integer(naming, 'v', element_class, be_class)
+  %{s << "#{name}: [ \#{defi["#{name}"].collect { |v| "#{one}" }.join(", ")} ]"}
 end
 
 # A struct traced as its raw bytes. A `_vals` field holds an array of them, so

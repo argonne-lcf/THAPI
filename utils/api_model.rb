@@ -8,21 +8,18 @@
 require_relative 'yaml_ast'
 
 class ApiModel
-  attr_reader :types, :structs, :unions, :enums, :functions, :hex_ints, :trace_names
+  attr_reader :types, :structs, :unions, :enums, :functions, :hex_ints
 
   # A list the file does not declare reads back empty, so every model answers
   # all five questions.
   #
   # `hex_ints` names integer typedefs this API logs in hex: an address carried
   # in an integer reads as a decimal that means nothing to anyone.
-  #
-  # `trace_names` maps a scalar typedef to the type it is traced as, for an API
-  # that records one under another name (opencl's cl_mem_flags as cl_ulong).
-  def self.load_file(path, hex_ints: [], trace_names: {})
+  def self.load_file(path, hex_ints: [])
     lists = YAMLCAst.load_file(path)
     new(types: lists.fetch('typedefs', []), structs: lists.fetch('structs', []),
         unions: lists.fetch('unions', []), enums: lists.fetch('enums', []),
-        functions: lists.fetch('functions', []), hex_ints: hex_ints, trace_names: trace_names)
+        functions: lists.fetch('functions', []), hex_ints: hex_ints)
   end
 
   # The five lists are what the YAML said, so they are frozen: a generator that
@@ -30,14 +27,13 @@ class ApiModel
   # freeze turns that into a FrozenError at the site instead of a puzzle later.
   # It is shallow -- it guards the lists, not the AST nodes in them -- and `+`
   # builds new lists, so composing models still works.
-  def initialize(types: [], structs: [], unions: [], enums: [], functions: [], hex_ints: [], trace_names: {})
+  def initialize(types: [], structs: [], unions: [], enums: [], functions: [], hex_ints: [])
     @types = types.freeze
     @structs = structs.freeze
     @unions = unions.freeze
     @enums = enums.freeze
     @functions = functions.freeze
     @hex_ints = hex_ints.freeze
-    @trace_names = trace_names.freeze
   end
 
   # Grow the shared INT_*/FFI_* maps with this API's typedefs. Every generator
@@ -52,13 +48,13 @@ class ApiModel
     ApiModel.new(types: types + other.types, structs: structs + other.structs,
                  unions: unions + other.unions, enums: enums + other.enums,
                  functions: functions + other.functions,
-                 hex_ints: @hex_ints | other.hex_ints, trace_names: @trace_names.merge(other.trace_names))
+                 hex_ints: @hex_ints | other.hex_ints)
   end
 
   # How each typedef in this API is classified: objects, integers, pointers,
   # hex ints, enums, structs, unions.
   def type_classes
-    @type_classes ||= find_all_types(@types, hex_ints: @hex_ints, trace_names: @trace_names)
+    @type_classes ||= find_all_types(@types, hex_ints: @hex_ints)
   end
 
   def int_scalars

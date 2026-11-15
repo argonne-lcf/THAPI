@@ -17,6 +17,7 @@ puts <<~EOF
     #include <ffi.h>
     #include "uthash.h"
     #include "utlist.h"
+    #include "function_pointer_utils.h"
 
     #include "ze_tracepoints.h"
     #include "zet_tracepoints.h"
@@ -91,13 +92,7 @@ print_pointer_defines(all_commands, ZE_POINTER_NAMES)
 
 print_pointer_table(all_commands, ZE_POINTER_NAMES)
 
-zex_commands.each do |c|
-  puts <<~EOF
-
-    #{c.decl_pointer(c.pointer_type_name)};
-    static #{c.decl_ffi_wrapper};
-  EOF
-end
+print_ffi_wrapper_declarations(zex_commands)
 
 print_find_symbols('ze', all_commands, ZE_POINTER_NAMES)
 
@@ -163,25 +158,5 @@ end
                         init: ze_init, body_opts: ->(c) { ze_body_opts(c, provider, struct_types[ns]) })
 end
 
-zex_commands.each do |c|
-  puts <<~EOF
-    static #{c.decl_ffi_wrapper} {
-      (void)cif;
-  EOF
-  c.parameters.each_with_index do |p, i|
-    puts <<EOF
-  #{p} = *(#{p.type} *)args[#{i}];
-EOF
-  end
-  print_traced_body(c, :lttng_ust_zex, ZE_POINTER_NAMES,
-                    **ze_body_opts(c, :lttng_ust_zex, struct_types[:zex]))
-  if c.has_return_type?
-    puts <<EOF
-  *ffi_ret = _retval;
-EOF
-  end
-  puts <<~EOF
-    }
-
-  EOF
-end
+print_ffi_wrappers(zex_commands, :lttng_ust_zex, ZE_POINTER_NAMES,
+                   body_opts: ->(c) { ze_body_opts(c, :lttng_ust_zex, struct_types[:zex]) })

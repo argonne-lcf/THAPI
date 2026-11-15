@@ -42,7 +42,7 @@ runs:
       packages: gcc g++ ruby ruby-dev elfutils libelf-dev libpopt-dev libdw-dev libprotobuf-dev protobuf-compiler valgrind libc6-dbg libglib2.0-dev libnuma-dev llvm-dev
   - name: Install Ruby Dependencies
     shell: bash
-    run: sudo gem install nokogiri opencl_ruby_ffi metababel cast-to-yaml
+    run: sudo gem install nokogiri ffi metababel cast-to-yaml
   - name: Install babeltrace2-ruby
     shell: bash
     # The published gem (0.1.5) predates BLOB support, so it cannot read the

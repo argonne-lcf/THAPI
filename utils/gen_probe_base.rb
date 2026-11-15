@@ -35,10 +35,7 @@ end
 #
 # A function with more parameters than LTTng can carry is skipped: the macro
 # would not compile, and dropping the event is better than failing the build.
-#
-# `preamble` is C that has to come before even lttng's header.
-def print_tracepoint_provider(provider, commands, include:, events_path: nil, preamble: nil)
-  puts preamble if preamble
+def print_tracepoint_provider(provider, commands, include:, events_path: nil)
   puts <<~EOF
     #include "lttng/tracepoint_gen.h"
     #{include}
@@ -82,6 +79,12 @@ def payload_length_field_location(name)
   { root_scope: 'BT_FIELD_LOCATION_SCOPE_EVENT_PAYLOAD', items: [length_field_name(name)] }
 end
 
+# A function pointer travels through a tracepoint as an address: TP_ARGS cannot
+# spell its type, so the probe declares `void *` and the tracer casts to it.
+def function_pointer?(type)
+  type.is_a?(YAMLCAst::Pointer) && type.type.is_a?(YAMLCAst::Function)
+end
+
 def print_tracepoint(provider, c, dir = nil)
   name = tracepoint_event_name(c, dir)
 
@@ -92,17 +95,10 @@ def print_tracepoint(provider, c, dir = nil)
       TP_ARGS(
   EOF
   decl = lambda do |p|
-    t = p.type
-    type = t.to_s.gsub(/\[.*\]/, '*')
-    if c.xml_arg_spelling?
-      type = 'void *' if t.is_a?(YAMLCAst::Pointer) && t.type.is_a?(YAMLCAst::Function)
-      type = "#{t.type} *" if t.is_a?(YAMLCAst::Array) && !t.length
-    end
-    "#{type}, #{p.name}"
+    "#{function_pointer?(p.type) ? 'void *' : p.type.to_s.gsub(/\[.*\]/, '*')}, #{p.name}"
   end
   params = c.parameters.to_a.collect(&decl)
   params.push("#{c.type}, #{c.result_name}") if c.has_return_type? && dir != :start
-  params.push('uint64_t, _duration') if c.duration? && dir == :stop
   params += c.tracepoint_parameters_for(dir).collect(&decl)
 
   # A tracepoint that carries nothing still has to say so: TP_ARGS(void).
@@ -116,7 +112,7 @@ EOF
   # Add Result
   r = c.type.lttng_type(c.type_classes)
   if dir != :start && r
-    r.name = c.result_field
+    r.name = c.result_name
     r.expression = if c.type.is_a?(YAMLCAst::Struct) || c.type.is_a?(YAMLCAst::Union)
                      "&#{c.result_name}"
                    else
@@ -129,10 +125,6 @@ EOF
   fields += c.parameters.collect { |p| p.lttng_type(c.type_classes) } if dir != :stop && c.parameters
 
   fields += c.meta_parameters.collect { |m| m.lttng_type_for(dir) }.flatten
-  if c.duration? && dir == :stop
-    fields.push(LTTng::TracepointField.new('ctf_integer', 'uint64_t', '_duration',
-                                           '_duration'))
-  end
 
   rows = fields.compact.map(&:call_string)
   puts "    #{rows.join("\n    ")}" unless rows.empty?

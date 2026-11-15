@@ -71,7 +71,7 @@ filenames += [
 filenames += [
     "backends/opencl/tracer_opencl.c",
     "backends/opencl/btx_cl_model.yaml",
-    "backends/opencl/opencl_model.yaml",
+    "backends/opencl/cl_library.rb",
     "backends/opencl/opencl_arguments.tp",
     "backends/opencl/opencl_build.tp",
     "backends/opencl/opencl_devices.tp",

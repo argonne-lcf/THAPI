@@ -80,9 +80,6 @@ Ruby Gems:
  - `babeltrace2`
  - `metababel`
 
-Optional Gem:
- - `opencl_ruby_ffi`
-
 Required pip:
  - `h2yaml`
 
@@ -191,7 +188,6 @@ tracer_opencl.sh [options] [--] <application> <application-arguments>
   -s, --source                  Dump program sources to disk
   -a, --arguments               Dump argument and kernel infos
   -b, --build                   Dump program build infos
-  -h, --host-profile            Gather precise host profiling information
   -d, --dump                    Dump kernels input and output to disk
   -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE
   -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE

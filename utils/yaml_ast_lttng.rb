@@ -126,10 +126,10 @@ module YAMLCAst
         ev.type = name
       when :integer
         ev.macro = :ctf_integer
-        ev.type = type_classes.trace_name(name)
+        ev.type = name
       when :float
         ev.macro = :ctf_float
-        ev.type = type_classes.trace_name(name)
+        ev.type = name
       when :enum
         ev.macro = :ctf_integer
         ev.type = :int32_t
@@ -187,7 +187,7 @@ module YAMLCAst
           ev.type = type.name
         when :integer
           ev.macro = :"ctf_#{lttng_arr_type}"
-          ev.type = type_classes.trace_name(type.name)
+          ev.type = type.name
         when :enum
           ev.macro = :"ctf_#{lttng_arr_type}"
           ev.type = :int32_t

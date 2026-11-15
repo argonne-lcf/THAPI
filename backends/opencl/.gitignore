@@ -6,7 +6,8 @@
 *.tp
 tracer_opencl.sh
 cl.xml.patched
-opencl_model.yaml
+cl_library.rb
+babeltrace_opencl_lib.rb
 clprof_callbacks.cpp
 !include/CL/*.h
 !opencl_missing_apis.h

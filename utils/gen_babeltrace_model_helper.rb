@@ -42,15 +42,21 @@ end
 # length-less scalar is read by value; everything else is traced by address.
 def meta_parameter_types_name(m, dir)
   lttng = m.lttng_type_for(dir)
-  t = m.command[m.name].type.type
+  decl_type = m.command[m.name].type
+  # A literal row on a by-value parameter (opencl's _param_name).
+  unless decl_type.is_a?(YAMLCAst::Pointer) || decl_type.is_a?(YAMLCAst::Array)
+    return field_types_name(lttng.macro.to_s, decl_type.to_s, lttng.name.to_s, lttng)
+  end
+
+  t = decl_type.type
   t = t.type if m.is_a?(ArrayByRefMetaParameter)
   by_value = m.is_a?(OutPtrString) || (m.is_a?(ScalarMetaParameter) && !lttng.length)
 
   field_types_name(lttng.macro.to_s, by_value ? t.to_s : "#{t} *", lttng.name.to_s, lttng)
 end
 
-def get_extra_fields_types_name(event)
-  event['fields'].collect do |field|
+def get_extra_fields_types_name(event, phase = 'fields')
+  event[phase].to_a.collect do |field|
     lttng = LTTng::TracepointField.new(*field)
     name = lttng.name.to_s
     type = LTTng.argument_type(event['args'], name)
@@ -79,7 +85,17 @@ def name_packed_struct(registry, member, type)
   member[:metadata] = { be_class: registry.class_namer.call(t) } if registry.struct_names.include?(t)
 end
 
-def gen_bt_field_model(registry, lttng_name, type, name, lttng)
+# An integer whose type is an enum or a set of flags names the class that
+# reads it back, whether the field holds one or an array of them.
+def name_enum(registry, member, type)
+  return unless registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
+
+  member[:metadata] = { be_class: registry.class_namer.call(type) }
+end
+
+# `lttng_enums` maps the name of each LTTng enum the provider declares to its
+# [macro, label, value] rows, for a ctf_enum field.
+def gen_bt_field_model(registry, lttng_name, type, name, lttng, lttng_enums: {})
   types_by_name = registry.types_by_name
   member = { name: name }
 
@@ -96,15 +112,19 @@ def gen_bt_field_model(registry, lttng_name, type, name, lttng)
     field[:type] = registry.integer_signed?(type) ? 'integer_signed' : 'integer_unsigned'
     field[:field_value_range] = registry.integer_size(type)
     field[:preferred_display_base] = 16 if lttng_name.end_with?('_hex')
-    if registry.enum_names.include?(type) || registry.bitfield_names.include?(type)
-      member[:metadata] = { be_class: registry.class_namer.call(type) }
+    name_enum(registry, member, type)
+  when 'ctf_enum'
+    field[:type] = registry.integer_signed?(type) ? 'enumeration_signed' : 'enumeration_unsigned'
+    field[:mappings] = lttng_enums.fetch(lttng.enum_name).map do |_macro, label, value|
+      { label: label, integer_range_set: [[value, value]] }
     end
   when 'ctf_sequence', 'ctf_sequence_hex'
     # A sequence carries its length in a companion field, and its element type
     # is the pointed-to half of the member's own type.
     field[:type] = 'array_dynamic'
     field[:element_field_class] = element_field_class(registry, lttng, lttng_name)
-    field[:element_field_class][:cast_type] = type.match(/(.*) \*/)[1]
+    field[:element_field_class][:cast_type] = type.sub(/ ?\*\z/, '')
+    name_enum(registry, member, field[:element_field_class][:cast_type])
     field[:length_field_location] = payload_length_field_location(name)
   when 'ctf_array', 'ctf_array_hex'
     field[:type] = 'array_static'
@@ -143,7 +163,8 @@ def get_fields_types_name(c, dir)
   if dir != :stop
     fields += c.parameters.to_a.collect do |p|
       lttng = p.lttng_type(c.type_classes)
-      [lttng.macro.to_s, p.type.to_s, p.name.to_s, lttng]
+      # A function pointer is traced as an address (function_pointer?).
+      [lttng.macro.to_s, function_pointer?(p.type) ? 'void *' : p.type.to_s, p.name.to_s, lttng]
     end
   end
 
@@ -162,9 +183,9 @@ end
 # One event class: its name, qualified by the provider that declares it, and a
 # field for each row describing its payload. `const` is a promise to the C
 # compiler, not part of the traced type, so it is dropped here.
-def gen_bt_event(registry, provider, name, types_name)
+def gen_bt_event(registry, provider, name, types_name, lttng_enums: {})
   members = types_name.collect do |lttng_name, type, field_name, lttng|
-    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), field_name, lttng)
+    gen_bt_field_model(registry, lttng_name, type.sub(/\Aconst /, ''), field_name, lttng, lttng_enums: lttng_enums)
   end
   event = { name: "#{provider}:#{name}" }
   event[:payload_field_class] = { type: 'structure', members: members } unless members.empty?
@@ -176,8 +197,12 @@ def gen_event_bt_model(registry, provider, c, dir = nil)
   gen_bt_event(registry, provider, tracepoint_event_name(c, dir), get_fields_types_name(c, dir))
 end
 
-def gen_extra_event_bt_model(registry, provider, event)
-  gen_bt_event(registry, provider, event['name'], get_extra_fields_types_name(event))
+# The event classes of a declared event, as [name, the key of its fields]: one,
+# or one per phase for a wrapped call (as print_declared_events).
+def extra_event_phases(event)
+  return [[event['name'], 'fields']] if SUFFIXES.keys.none? { |dir| event.key?(dir.to_s) }
+
+  SUFFIXES.collect { |dir, suffix| ["#{event['name']}_#{suffix}", dir.to_s] }
 end
 
 # One event class per event the command produces, which is the command's own
@@ -192,8 +217,11 @@ end
 
 def gen_extra_events_bt_model(registry, events_path)
   yaml_load_file_cached(events_path).collect do |provider, es|
+    lttng_enums = es['enums'].to_a.to_h { |e| [e['name'], e['values']] }
     es['events'].collect do |event|
-      gen_extra_event_bt_model(registry, provider, event)
+      extra_event_phases(event).collect do |name, phase|
+        gen_bt_event(registry, provider, name, get_extra_fields_types_name(event, phase), lttng_enums: lttng_enums)
+      end
     end
   end.flatten
 end
@@ -202,8 +230,8 @@ end
 # types, turn every traced command into event classes, add the events the
 # backend declares by hand, and print the model.
 #
-# `extra_events_path` is the backend's declared-event file, absent for a
-# backend that declares none. `expect_bitfields` says whether this API's headers
+# `extra_events_path` is the backend's declared-event file (or files), absent
+# for a backend that declares none. `expect_bitfields` says whether this API's headers
 # have bitfield types at all.
 #
 # `extra_event_classes` is anything the backend derives itself: ze adds one
@@ -214,7 +242,7 @@ def print_bt_model(naming, commands, expect_bitfields:, extra_events_path: nil,
   registry = build_ast_registry(naming, expect_bitfields: expect_bitfields)
 
   event_classes = gen_command_events_bt_model(registry, commands.groups)
-  event_classes += gen_extra_events_bt_model(registry, extra_events_path) if extra_events_path
+  Array(extra_events_path).each { |path| event_classes += gen_extra_events_bt_model(registry, path) }
   event_classes += extra_event_classes.call(registry)
 
   puts YAML.dump(gen_yaml(event_classes, naming.backend))

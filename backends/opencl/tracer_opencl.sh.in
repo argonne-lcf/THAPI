@@ -41,7 +41,6 @@ display_help() {
   echo "  -s, --source                  Dump program sources to disk"
   echo "  -a, --arguments               Dump argument and kernel infos"
   echo "  -b, --build                   Dump program build infos"
-  echo "  -h, --host-profile            Gather precise host profiling information"
   echo "  -d, --dump                    Dump kernels input and output to disk"
   echo "  -i, --iteration VALUE         Dump inputs and outputs for kernel with enqueue counter VALUE"
   echo "  -s, --iteration-start VALUE   Dump inputs and outputs for kernels starting with enqueue counter VALUE"
@@ -86,10 +85,6 @@ while true; do
     -b | --build)
       shift
       build=1
-      ;;
-    -h | --host-profile)
-      shift
-      export LTTNG_UST_OPENCL_HOST_PROFILE=1
       ;;
     -d | --dump)
       shift
