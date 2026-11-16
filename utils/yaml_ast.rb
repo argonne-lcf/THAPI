@@ -392,6 +392,7 @@ end
 # signed, size, ffi_type
 INT_TYPE_MAP = {
   'char' => [false, 1, 'ffi_type_sint8'],
+  'signed char' => [true, 1, 'ffi_type_sint8'],
   'unsigned char' => [false, 1, 'ffi_type_uint8'],
   'short' => [true, 2, 'ffi_type_sint16'],
   'unsigned short' => [false, 2, 'ffi_type_uint16'],

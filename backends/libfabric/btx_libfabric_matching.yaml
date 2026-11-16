@@ -1,0 +1,26 @@
+:environment:
+  :entries:
+  - :name: ^hostname$
+    :type: string
+:stream_classes:
+- :default_clock_class: {}
+  :event_common_context_field_class:
+    :type: structure
+    :members:
+    - :name: ^vpid$
+      :field_class:
+        :type: integer_signed
+    - :name: ^vtid$
+      :field_class:
+        :type: integer_unsigned
+  :event_classes:
+  - :set_id: entries
+    :name: "^lttng_ust_libfabric:.*_entry$"
+  - :set_id: exits
+    :name: "^lttng_ust_libfabric:.*_exit$"
+    :payload_field_class:
+      :type: structure
+      :members:
+      - :name: ^ret$
+        :field_class:
+          :type: integer_signed
