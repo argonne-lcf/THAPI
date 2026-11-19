@@ -127,6 +127,47 @@ Signal.trap('SIGPIPE', 'SYSTEM_DEFAULT')
 
 NameComp = Struct.new(:name, :comp)
 
+# THAPI component classes, by "type.plugin.class" name.
+def thapi_component_classes
+  @thapi_component_classes ||= begin
+    h = {}
+    BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib', '@PACKAGE@', 'bt2')).each do |pg|
+      pg.source_component_classes.each { |c| h["source.#{pg.name}.#{c.name}"] = c }
+      pg.filter_component_classes.each { |c| h["filter.#{pg.name}.#{c.name}"] = c }
+      pg.sink_component_classes.each { |c| h["sink.#{pg.name}.#{c.name}"] = c }
+    end
+    h
+  end
+end
+
+# `trace` prints with the C++ pretty filters (one per backend, then
+# sink.thapipretty.text) when every selected backend has one, else with the
+# Ruby printer. THAPI_PRETTY=ruby or THAPI_PRETTY=cxx forces one of them.
+# The backends sink.text.rubypretty has a printer (babeltrace_<backend>_lib.rb) for.
+RUBY_PRETTY_BACKENDS = %w[mpi omp cl ze cuda hip itt pytorch].freeze
+
+# The selected backends with a C++ pretty filter (filter.<backend>pretty.pretty).
+def pretty_filters
+  ($options[:'backend-names'] & RUBY_PRETTY_BACKENDS).select { |b| thapi_component_classes.include?("filter.#{b}pretty.pretty") }
+end
+
+# The components of `trace` after the source:
+# - every selected backend (with a Ruby printer: cxi has none) has a C++ pretty
+#   filter: the filters, then sink.thapipretty.text;
+# - some do: the filters, then the Ruby sink, which prints their lines as they
+#   are and the events of the other backends with its Ruby printers;
+# - none does: the Ruby sink.
+# THAPI_PRETTY=ruby or THAPI_PRETTY=cxx forces the Ruby sink or sink.thapipretty.text.
+def trace_components
+  filters = ENV['THAPI_PRETTY'] == 'ruby' ? [] : ['filter.pretty.pretty']
+  all = (($options[:'backend-names'] & RUBY_PRETTY_BACKENDS) - pretty_filters).empty?
+  if ENV['THAPI_PRETTY'] == 'cxx' || (ENV['THAPI_PRETTY'] != 'ruby' && all)
+    filters + ['sink.thapipretty.text']
+  else
+    (pretty_filters.empty? ? [] : filters) + ['sink.text.rubypretty']
+  end
+end
+
 def get_components(names)
   # BT "native" component classes
   components_classes = {
@@ -148,33 +189,39 @@ def get_components(names)
   end
 
   # THAPI components
-  thapi_plugins = BT2::BTPlugin.find_all_from_dir(File.join('@prefix@', 'lib', '@PACKAGE@', 'bt2'))
-  thapi_plugins.map do |pg|
-    pg.source_component_classes.each { |c| components_classes["source.#{pg.name}.#{c.name}"] = c }
-    pg.filter_component_classes.each { |c| components_classes["filter.#{pg.name}.#{c.name}"] = c }
-    pg.sink_component_classes.each { |c| components_classes["sink.#{pg.name}.#{c.name}"] = c }
-  end
+  components_classes.merge!(thapi_component_classes)
 
   names.flat_map do |name|
     case name
     when 'filter.intervals.interval'
       $options[:'backend-names'].map { |b| NameComp.new(b, components_classes["filter.#{b}interval.interval"]) }
+    when 'filter.pretty.pretty'
+      pretty_filters.map do |b|
+        n = "filter.#{b}pretty.pretty"
+        NameComp.new(n, components_classes[n])
+      end
     when 'sink.text.rubypretty'
-      # Yaml and event_lambdas are required by babeltrace*_lib
+      # Yaml and event_lambdas are required by babeltrace*_lib. The backends a C++
+      # pretty filter prints (see trace_components) need no Ruby printer.
       $event_lambdas = {}
-      require 'babeltrace_mpi_lib' if $options[:'backend-names'].include?('mpi')
-      require 'babeltrace_omp_lib' if $options[:'backend-names'].include?('omp')
-      require 'babeltrace_opencl_lib' if $options[:'backend-names'].include?('cl')
-      require 'babeltrace_ze_lib' if $options[:'backend-names'].include?('ze')
-      require 'babeltrace_cuda_lib' if $options[:'backend-names'].include?('cuda')
-      require 'babeltrace_hip_lib' if $options[:'backend-names'].include?('hip')
-      require 'babeltrace_itt_lib' if $options[:'backend-names'].include?('itt')
-      require 'babeltrace_pytorch_lib' if $options[:'backend-names'].include?('pytorch')
+      ruby_printed = $options[:'backend-names'] & RUBY_PRETTY_BACKENDS
+      ruby_printed -= pretty_filters if names.include?('filter.pretty.pretty')
+      ruby_printed.each { |b| require "babeltrace_#{b == 'cl' ? 'opencl' : b}_lib" }
       f = lambda { |iterator, _|
+        lines = +''
         iterator.next_messages.each do |m|
           next unless m.type == :BT_MESSAGE_TYPE_EVENT
 
           e = m.event
+          # A line a C++ pretty filter formatted: its only member.
+          if e.name == 'thapi_pretty:line'
+            lines << e.payload_field.get_member_field_by_index(0).value << "\n"
+            next
+          end
+          unless lines.empty?
+            $stdout.write(lines)
+            lines.clear
+          end
           l = $event_lambdas[e.name]
           next unless l || !$options[:restrict]
 
@@ -192,6 +239,7 @@ def get_components(names)
           str << (l ? l.call(e.payload_field.value) : e.payload_field.to_s)
           puts str
         end
+        $stdout.write(lines) unless lines.empty?
       }
       NameComp.new('sink.text.rubypretty', f)
     else
@@ -209,6 +257,11 @@ def get_and_add_components(graph, names, l_inputs)
     case name
     when 'sink.text.rubypretty'
       graph.add_simple_sink('rubypretty', comp)
+    when /\Afilter\.\w+pretty\.pretty\z/
+      graph.add(comp, name.gsub('.', '_'), params: { 'context' => $options[:context] ? true : false })
+    when 'sink.thapipretty.text'
+      graph.add(comp, 'pretty', params: { 'context' => $options[:context] ? true : false,
+                                          'restricted' => $options[:restrict] ? true : false })
     when 'source.ctf.lttng_live'
       graph.add(comp, 'source_live',
                 params: { 'inputs' => $options[:inputs],
@@ -341,7 +394,7 @@ def bt_graphs(inputs)
                   'filter.btx_aggreg.aggreg', 'sink.btx_tally.tally'],
       'timeline' => ['filter.intervals.interval',
                      'sink.btx_timeline.timeline'],
-      'trace' => ['sink.text.rubypretty'],
+      'trace' => trace_components,
       'to_interval' => ['filter.intervals.interval',
                         'filter.btx_stripper.stripper', 'sink.ctf.fs'],
       'to_aggreg' => ['filter.intervals.interval', 'filter.btx_aggreg.aggreg',

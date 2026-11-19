@@ -261,6 +261,7 @@ CLEANFILES += \
 BUILT_SOURCES += \
 	$(BTX_ZE_GENERATED)
 
+
 nodist_libZEInterval_la_SOURCES = \
 	$(BTX_ZE_GENERATED) \
 	xprof_utils.hpp
@@ -320,3 +321,16 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_ZE_GENERATED_SOURCE_TEST)
+
+# filter.zepretty.pretty: the ze events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = ze
+PRETTY_MODEL = btx_ze_model.yaml
+PRETTY_API = ze_api.yaml zet_api.yaml zes_api.yaml zel_api.yaml zex_api.yaml
+PRETTY_INC = -i ze.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libZEPretty.la
+nodist_libZEPretty_la_SOURCES = $(PRETTY_GENERATED)
+libZEPretty_la_CPPFLAGS = -I./modified_include -I./btx_filter_zepretty $(PRETTY_CPPFLAGS)
+libZEPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libZEPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libZEPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

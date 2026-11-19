@@ -10,3 +10,4 @@ ze_library.rb
 ze_bindings.rb
 ze_refinements.rb
 zeprof_callbacks.cpp
+!pretty_rules.yaml

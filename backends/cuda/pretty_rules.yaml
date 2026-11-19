@@ -1,0 +1,8 @@
+---
+special:
+  uuid:
+  - CUuuid
+drop_enumerators:
+- CU_COREDUMP_LIGHTWEIGHT_FLAGS
+pointers:
+- CUdeviceptr

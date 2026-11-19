@@ -1,0 +1,6 @@
+:type: map
+:entries:
+- :name: context
+  :type: bool
+- :name: restricted
+  :type: bool

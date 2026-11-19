@@ -151,7 +151,29 @@ libXAggreg_la_SOURCES = \
 
 # Library to be packaged
 bt2dir = $(pkglibdir)/bt2
-bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la
+bt2_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXStripper.la libThapiPretty.la
+
+# sink.thapipretty.text: prints the lines of the per-backend pretty filters (a
+# callback of btx_pretty_model.yaml), and every other event like the Ruby printer
+# prints an event it has no printer for (metababel on_upstream).
+BTX_PRETTY_PRINT_GENERATED = \
+	btx_sink_pretty/metababel/metababel.h \
+	btx_sink_pretty/metababel/btx_component.h \
+	btx_sink_pretty/metababel/btx_component.c \
+	btx_sink_pretty/metababel/btx_upstream.h \
+	btx_sink_pretty/metababel/btx_upstream.c \
+	btx_sink_pretty/btx_main.c
+
+$(BTX_PRETTY_PRINT_GENERATED) &: $(srcdir)/btx_pretty_model.yaml $(srcdir)/btx_pretty_print_params.yaml
+	$(METABABEL) -u $(srcdir)/btx_pretty_model.yaml -t SINK -o btx_sink_pretty -p thapipretty -c text --enable-callbacks on_upstream --params $(srcdir)/btx_pretty_print_params.yaml
+
+BUILT_SOURCES += $(BTX_PRETTY_PRINT_GENERATED)
+nodist_libThapiPretty_la_SOURCES = $(BTX_PRETTY_PRINT_GENERATED)
+libThapiPretty_la_SOURCES = btx_pretty_print_callbacks.cpp
+libThapiPretty_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(top_srcdir)/utils/pretty_print -I./btx_sink_pretty $(FMT_CPPFLAGS)
+libThapiPretty_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libThapiPretty_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-unused-parameter -fno-fast-math $(BABELTRACE2_CFLAGS)
+libThapiPretty_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
@@ -240,6 +262,9 @@ check_DATA = \
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
+	btx_pretty_model.yaml \
+	btx_pretty_params.yaml \
+	btx_pretty_print_params.yaml \
 	btx_aggreg_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
@@ -259,6 +284,7 @@ CLEANFILES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_AGGREG_GENERATED) \
 	$(BTX_STRIPPER_GENERATED) \
+	$(BTX_PRETTY_PRINT_GENERATED) \
 	$(BTX_INTERVAL_GENERATED_SOURCE_TEST) \
 	$(BTX_AGGREG_GENERATED_SOURCE_TEST)
 

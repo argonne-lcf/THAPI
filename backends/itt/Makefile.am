@@ -270,3 +270,16 @@ EXTRA_DIST += \
 CLEANFILES += \
        $(TRACE_COMMON) \
        $(BTX_ITT_GENERATED_SOURCE_TEST)
+
+# filter.ittpretty.pretty: the itt events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = itt
+PRETTY_MODEL = btx_itt_model.yaml
+PRETTY_API = itt_api.yaml
+PRETTY_INC = -i ittnotify.h
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libITTPretty.la
+nodist_libITTPretty_la_SOURCES = $(PRETTY_GENERATED)
+libITTPretty_la_CPPFLAGS = -I$(srcdir)/include -I./btx_filter_ittpretty $(PRETTY_CPPFLAGS)
+libITTPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libITTPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libITTPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

@@ -130,6 +130,32 @@ PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.1])
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.16])
 
+# fmt, header-only, for the C++ pretty printers: --with-fmt=PREFIX, else the
+# compiler's include path, else (or with --with-fmt=no) the copy bundled in
+# utils/include/fmt_bundled. fmt >= 11 is required: the printers are checked
+# byte for byte against the Ruby printer with fmt 11 and 12.
+AC_ARG_WITH([fmt],
+  [AS_HELP_STRING([--with-fmt=PREFIX], [fmt >= 11 install prefix (default: search, then the bundled copy; no: the bundled copy)])])
+FMT_BUNDLED='-DFMT_HEADER_ONLY -I$(top_srcdir)/utils/include/fmt_bundled'
+AS_IF([test "x$with_fmt" = xno],
+  [FMT_CPPFLAGS=$FMT_BUNDLED],
+  [FMT_CPPFLAGS="-DFMT_HEADER_ONLY"
+   AS_IF([test -n "$with_fmt" && test "x$with_fmt" != xyes], [FMT_CPPFLAGS="$FMT_CPPFLAGS -I$with_fmt/include"])
+   AC_LANG_PUSH([C++])
+   save_CPPFLAGS=$CPPFLAGS
+   CPPFLAGS="$CPPFLAGS $FMT_CPPFLAGS"
+   AC_MSG_CHECKING([for fmt >= 11])
+   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <fmt/format.h>
+#if FMT_VERSION < 110000
+#error fmt too old
+#endif]], [[fmt::memory_buffer b; fmt::format_to(fmt::appender(b), "{}", 1.5);]])],
+     [AC_MSG_RESULT([yes])],
+     [AC_MSG_RESULT([no, using the bundled copy])
+      FMT_CPPFLAGS=$FMT_BUNDLED])
+   CPPFLAGS=$save_CPPFLAGS
+   AC_LANG_POP([C++])])
+AC_SUBST([FMT_CPPFLAGS])
+
 AX_RUBY_EXTENSION([nokogiri], [yes])
 AX_RUBY_EXTENSION([babeltrace2], [yes])
 AX_RUBY_EXTENSION([metababel >= 2.0.0], [yes])

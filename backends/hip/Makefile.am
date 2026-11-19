@@ -382,3 +382,16 @@ EXTRA_DIST += \
 
 CLEANFILES += \
 	$(BTX_HIP_GENERATED_SOURCE_TEST)
+
+# filter.hippretty.pretty: the hip events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = hip
+PRETTY_MODEL = btx_hip_model.yaml
+PRETTY_API = hip_api.yaml
+PRETTY_INC = -i hip.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libHIPPretty.la
+nodist_libHIPPretty_la_SOURCES = $(PRETTY_GENERATED)
+libHIPPretty_la_CPPFLAGS = -I$(srcdir)/include -I./btx_filter_hippretty $(PRETTY_CPPFLAGS)
+libHIPPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libHIPPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libHIPPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)

@@ -231,3 +231,16 @@ EXTRA_DIST += \
 CLEANFILES += \
 	$(TRACE_COMMON) \
 	$(BTX_OMP_GENERATED_SOURCE_TEST)
+
+# filter.omppretty.pretty: the omp events printed in C++ (utils/pretty_print/pretty.am).
+PRETTY_BE = omp
+PRETTY_MODEL = btx_omp_model.yaml
+PRETTY_API = ompt_api.yaml
+PRETTY_INC = -i ompt.h.include
+include $(top_srcdir)/utils/pretty_print/pretty.am
+bt2_LTLIBRARIES += libOMPPretty.la
+nodist_libOMPPretty_la_SOURCES = $(PRETTY_GENERATED)
+libOMPPretty_la_CPPFLAGS = -I./modified_include -I./btx_filter_omppretty $(PRETTY_CPPFLAGS)
+libOMPPretty_la_CFLAGS = $(PRETTY_CFLAGS)
+libOMPPretty_la_CXXFLAGS = $(PRETTY_CXXFLAGS)
+libOMPPretty_la_LDFLAGS = $(PRETTY_LDFLAGS)
