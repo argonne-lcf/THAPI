@@ -128,6 +128,9 @@ PKG_CHECK_MODULES([LIBFFI], [libffi >= 3.2])
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 3.0])
 # For blob support
 PKG_CHECK_MODULES([BABELTRACE2], [babeltrace2 >= 2.1])
+# Also for blob support. This covers `lttng-ust >= 2.12.8` as well, which
+# __attribute__((constructor)) needs to work properly, specifically this fix:
+# https://github.com/lttng/lttng-ust/commit/a8fafb675a9f580f6a889223e26664ea11cb0c99.
 PKG_CHECK_MODULES([LTTNG_UST], [lttng-ust >= 2.16])
 
 AX_RUBY_EXTENSION([nokogiri], [yes])
@@ -160,6 +163,8 @@ AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([clock_gettime ftruncate memmove memset strdup strstr strtoull strlen strchr])
+
+AX_GCC_FUNC_ATTRIBUTE(constructor)
 
 # Required for configuring thapi.pc.in
 PKG_PROG_PKG_CONFIG
